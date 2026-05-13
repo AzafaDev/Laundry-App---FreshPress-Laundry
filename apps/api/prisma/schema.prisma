@@ -1,7 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// schema.prisma
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +7,374 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  customer
+  super_admin
+  outlet_admin
+  worker
+  driver
+}
+
+enum PickupRequestStatus {
+  waiting_driver
+  driver_assigned
+  picked_up
+  cancelled
+}
+
+enum LaundryPaymentStatus {
+  unpaid
+  paid
+  failed
+}
+
+enum LaundryOrderStatus {
+  menunggu_penjemputan_driver
+  laundry_sedang_menuju_outlet
+  laundry_telah_sampai_outlet
+  laundry_sedang_dicuci
+  laundry_sedang_disetrika
+  laundry_sedang_di_packing
+  menunggu_pembayaran
+  laundry_siap_diantar
+  laundry_sedang_dikirim_menuju_customer
+  laundry_telah_diterima_customer
+  dibatalkan
+}
+
+enum PaymentMethod {
+  card
+  bank_transfer
+  wallet
+}
+
+enum PaymentStatus {
+  pending
+  success
+  failed
+  refunded
+}
+
+enum ComplaintType {
+  lost
+  damaged
+  mismatch
+  other
+}
+
+enum ComplaintStatus {
+  open
+  in_review
+  resolved
+  rejected
+}
+
+enum AttendanceStatus {
+  on_time
+  late
+  absent
+}
+
+enum BypassRequestStatus {
+  pending
+  approved
+  rejected
+}
+
+// ==================== MODELS ====================
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password_hash String
+  full_name     String
+  phone         String
+  avatar_url    String?
+  role          UserRole
+  is_verified   Boolean  @default(false)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  addresses         UserAddress[]
+  pickup_requests   PickupRequest[]  @relation("CustomerPickupRequests")
+  laundry_orders    LaundryOrder[]   @relation("CustomerLaundryOrders")
+  created_orders    LaundryOrder[]   @relation("OutletAdminOrders")
+  station_processes StationProcess[]
+  bypass_requests   BypassRequest[]  @relation("WorkerBypassRequests")
+  resolved_bypasses BypassRequest[]  @relation("AdminResolvedBypasses")
+  attendances       Attendance[]
+  payments          Payment[]
+  complaints        Complaint[]
+  notifications     Notification[]
+  user_shifts       UserShift[]
+  driver_pickup_requests PickupRequest[] @relation("DriverAssigned")
+  related_pickup_requests PickupRequest[] @relation("PickupRequestRelatedUser")
+}
+
+model UserAddress {
+  id            String   @id @default(uuid())
+  user_id       String
+  label         String? // e.g., Home, Office, etc
+  receiver_name String
+  phone         String
+  province      String
+  city          String
+  district      String
+  postal_code   String
+  full_address  String
+  courier_note  String?  @db.Text
+  latitude      Float?
+  longitude     Float?
+  is_main       Boolean  @default(false)
+  created_at    DateTime @default(now())
+
+  user            User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  pickup_requests PickupRequest[]
+
+  @@index([user_id])
+}
+
+model Outlet {
+  id             String   @id @default(uuid())
+  name           String
+  address        String
+  latitude       Float?
+  longitude      Float?
+  max_service_km Float?
+  is_active      Boolean  @default(true)
+  created_at     DateTime @default(now())
+
+  pickup_requests PickupRequest[]
+  laundry_orders  LaundryOrder[]
+  stations        Station[]
+  shifts          Shift[]
+}
+
+model Shift {
+  id         String @id @default(uuid())
+  outlet_id  String
+  name       String // Morning, Afternoon, Night
+  start_time String // Format: "HH:MM:SS" or use DateTime? Prisma has no Time type, store as String
+  end_time   String
+
+  outlet      Outlet      @relation(fields: [outlet_id], references: [id], onDelete: Cascade)
+  user_shifts UserShift[]
+
+  @@index([outlet_id])
+}
+
+model UserShift {
+  user_id    String
+  shift_id   String
+  shift_date DateTime @db.Date
+  is_active  Boolean  @default(true)
+
+  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  shift Shift @relation(fields: [shift_id], references: [id], onDelete: Cascade)
+
+  @@id([user_id, shift_id, shift_date])
+}
+
+model PickupRequest {
+  id                   String              @id @default(uuid())
+  customer_id          String
+  address_id           String
+  assigned_outlet_id   String?
+  assigned_driver_id   String?
+  requested_time       DateTime
+  scheduled_date       DateTime            @db.Date
+  scheduled_time_start String? // Time as String
+  scheduled_time_end   String?
+  status               PickupRequestStatus @default(waiting_driver)
+  created_at           DateTime            @default(now())
+
+  customer      User          @relation("CustomerPickupRequests", fields: [customer_id], references: [id])
+  address       UserAddress   @relation(fields: [address_id], references: [id])
+  outlet        Outlet?       @relation(fields: [assigned_outlet_id], references: [id])
+  driver        User?         @relation("DriverAssigned", fields: [assigned_driver_id], references: [id])
+  laundry_order LaundryOrder? @relation
+  user          User?         @relation("PickupRequestRelatedUser", fields: [userId], references: [id])
+  userId        String?
+
+  @@index([customer_id])
+  @@index([assigned_outlet_id])
+  @@index([assigned_driver_id])
+  @@index([status])
+}
+
+model LaundryOrder {
+  id                String               @id @default(uuid())
+  order_number      String               @unique
+  pickup_request_id String               @unique
+  outlet_id         String
+  customer_id       String
+  outlet_admin_id   String // who created the order
+  total_weight_kg   Float?
+  payment_status    LaundryPaymentStatus @default(unpaid)
+  order_status      LaundryOrderStatus
+  confirmed_at      DateTime? // customer confirms receipt
+  delivered_at      DateTime?
+  created_at        DateTime             @default(now())
+  updated_at        DateTime             @updatedAt
+
+  pickup_request    PickupRequest    @relation(fields: [pickup_request_id], references: [id])
+  outlet            Outlet           @relation(fields: [outlet_id], references: [id])
+  customer          User             @relation("CustomerLaundryOrders", fields: [customer_id], references: [id])
+  outlet_admin      User             @relation("OutletAdminOrders", fields: [outlet_admin_id], references: [id])
+  order_items       OrderItem[]
+  station_processes StationProcess[]
+  bypass_requests   BypassRequest[]
+  payment           Payment?
+  complaints        Complaint[]
+
+  @@index([outlet_id])
+  @@index([customer_id])
+  @@index([order_status])
+}
+
+model OrderItem {
+  id                String   @id @default(uuid())
+  order_id          String
+  item_name         String // e.g., Kaos, Celana Panjang
+  expected_quantity Int // from outlet admin
+  current_quantity  Int? // verified by worker
+  price_per_item    Float
+  created_at        DateTime @default(now())
+
+  order LaundryOrder @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([order_id])
+}
+
+model Station {
+  id             String @id @default(uuid())
+  outlet_id      String
+  name           String // washing|ironing|packing
+  sequence_order Int
+
+  outlet            Outlet           @relation(fields: [outlet_id], references: [id], onDelete: Cascade)
+  station_processes StationProcess[]
+  bypassRequests    BypassRequest[]
+
+  @@index([outlet_id])
+}
+
+model StationProcess {
+  id                String    @id @default(uuid())
+  order_id          String
+  station_id        String
+  worker_id         String // who processed this station
+  items_input       Json? // array of {item_name, quantity}
+  is_completed      Boolean   @default(false)
+  is_bypassed       Boolean   @default(false)
+  bypass_request_id String? @unique
+  started_at        DateTime? @default(now())
+  completed_at      DateTime?
+
+  order          LaundryOrder    @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  station        Station         @relation(fields: [station_id], references: [id])
+  worker         User            @relation(fields: [worker_id], references: [id])
+  bypass_request BypassRequest?  @relation("StationProcessToBypassRequest", fields: [bypass_request_id], references: [id])
+  inverse_bypass BypassRequest?  @relation("BypassRequestToProcess")
+  bypassRequests BypassRequest[] @relation("StationProcessBypassRequests")
+
+  @@index([order_id])
+  @@index([station_id])
+  @@index([worker_id])
+}
+
+model BypassRequest {
+  id                   String              @id @default(uuid())
+  order_id             String
+  station_id           String
+  worker_id            String
+  resolved_by_admin_id String?
+  reason               String
+  admin_note           String?
+  status               BypassRequestStatus @default(pending)
+  requested_at         DateTime            @default(now())
+  resolved_at          DateTime?
+
+  order            LaundryOrder     @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  station          Station          @relation(fields: [station_id], references: [id])
+  worker           User             @relation("WorkerBypassRequests", fields: [worker_id], references: [id])
+  resolved_by      User?            @relation("AdminResolvedBypasses", fields: [resolved_by_admin_id], references: [id])
+  station_process  StationProcess?  @relation("BypassRequestToProcess", fields: [stationProcessId], references: [id])
+  inverse_process  StationProcess?  @relation("StationProcessToBypassRequest")
+  stationProcesses StationProcess[] @relation("StationProcessBypassRequests")
+  stationProcessId String? @unique
+
+  @@index([order_id])
+  @@index([status])
+}
+
+model Attendance {
+  id              String           @id @default(uuid())
+  user_id         String
+  attendance_date DateTime         @db.Date
+  check_in_time   String? // Time as String
+  check_out_time  String? // Time as String
+  status          AttendanceStatus @default(absent)
+  total_hours     Float?
+  created_at      DateTime         @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, attendance_date])
+  @@index([user_id])
+}
+
+model Payment {
+  id                     String         @id @default(uuid())
+  order_id               String         @unique
+  customer_id            String
+  amount                 Float
+  payment_method         PaymentMethod?
+  gateway_transaction_id String?
+  status                 PaymentStatus  @default(pending)
+  paid_at                DateTime?
+  created_at             DateTime       @default(now())
+
+  order    LaundryOrder @relation(fields: [order_id], references: [id])
+  customer User         @relation(fields: [customer_id], references: [id])
+
+  @@index([customer_id])
+  @@index([status])
+}
+
+model Complaint {
+  id          String          @id @default(uuid())
+  order_id    String
+  customer_id String
+  type        ComplaintType
+  description String          @db.Text
+  file_url    String?
+  status      ComplaintStatus @default(open)
+  created_at  DateTime        @default(now())
+  resolved_at DateTime?
+
+  order    LaundryOrder @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  customer User         @relation(fields: [customer_id], references: [id])
+
+  @@index([order_id])
+  @@index([customer_id])
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  user_id    String
+  title      String
+  message    String
+  data       Json? // additional payload
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([created_at])
 }
