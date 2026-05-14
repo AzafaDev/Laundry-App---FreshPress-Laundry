@@ -1,27 +1,14 @@
-// Role-based middleware
-import { Request, Response, NextFunction } from "express";
-import { UserRole } from "../../generated/prisma/enums.js";
+import type { Request, Response, NextFunction } from "express";
+import { AppError } from "./error.middleware.js";
 
-export const allowRoles = (...allowed: UserRole[]) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    const user = (req as any).user;
-
-    if (!user) {
-      res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
-      return;
+export const requireRole =
+  (...roles: string[]) =>
+  (req: Request, _res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      return next(new AppError("Autentikasi diperlukan.", 401));
     }
-
-    if (!allowed.includes(user.role)) {
-      res.status(403).json({
-        success: false,
-        message: "Access denied: insufficient permissions",
-      });
-      return;
+    if (!roles.includes(req.user.role)) {
+      return next(new AppError("Akses ditolak.", 403));
     }
-
     next();
   };
-};

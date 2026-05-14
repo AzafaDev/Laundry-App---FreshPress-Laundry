@@ -1,14 +1,8 @@
-// bcrypt hash utilities
 import bcrypt from "bcrypt";
-import { env } from "../config/env.js";
+import { SALT_ROUNDS } from "../config/constants.js";
 
-export const hashPassword = async (plain: string): Promise<string> => {
-  return bcrypt.hash(plain, env.BCRYPT_SALT_ROUNDS);
-};
+export const hashPassword = (plain: string): Promise<string> =>
+  bcrypt.hash(plain, SALT_ROUNDS);
 
-export const comparePassword = async (
-  plain: string,
-  hashed: string,
-): Promise<boolean> => {
-  return bcrypt.compare(plain, hashed);
-};
+export const comparePassword = (plain: string, hashed: string): Promise<boolean> =>
+  bcrypt.compare(plain, hashed);
