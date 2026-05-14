@@ -14,9 +14,9 @@ export const checkIn = async (
   next: NextFunction,
 ) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user?.userId;
     checkInSchema.parse(req.body);
-    const attendance = await attendanceService.checkIn(userId);
+    const attendance = await attendanceService.checkIn(userId!);
     res.status(201).json({ success: true, data: attendance });
   } catch (error) {
     next(error);
@@ -29,9 +29,9 @@ export const checkOut = async (
   next: NextFunction,
 ) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user?.userId;
     const { attendanceId } = checkOutSchema.parse(req.body);
-    const attendance = await attendanceService.checkOut(attendanceId, userId);
+    const attendance = await attendanceService.checkOut(attendanceId, userId!);
     res.json({ success: true, data: attendance });
   } catch (error) {
     next(error);
@@ -44,20 +44,34 @@ export const getMyLogs = async (
   next: NextFunction,
 ) => {
   try {
-    const userId = req.user!.id;
+    const userId = req.user?.userId;
     const { page, limit, startDate, endDate } = getMyLogsQuerySchema.parse(
       req.query,
     );
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
     const result = await attendanceService.getMyattendanceLogs(
-      userId,
+      userId!,
       page,
       limit,
       start,
       end,
     );
     res.json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const checkTodayAttendance = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.user?.userId;
+    const result = await attendanceService.checkTodayAttendance(userId!);
+    res.json({ success: true, data: result });
   } catch (error) {
     next(error);
   }
