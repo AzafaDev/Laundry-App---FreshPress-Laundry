@@ -1,12 +1,14 @@
-// apps/web/src/components/home/Hero.tsx
+﻿// apps/web/src/components/home/Hero.tsx
 "use client";
 
+import Link from "next/link";
 import { MapPin } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Autoplay, EffectFade } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/effect-fade";
 import Image from "next/image";
+import { useAuthStore } from "@/stores/authStore";
 
 const slides = [
   {
@@ -33,8 +35,20 @@ const slides = [
   },
 ];
 
+const HeroCta = ({ label, className }: { label: string; className?: string }) => {
+  const user = useAuthStore((s) => s.user);
+  const href = user ? "/dashboard" : "/register";
+  return (
+    <Link
+      href={href}
+      className={className ?? "bg-primary text-on-primary px-8 py-4 rounded-lg text-xl font-semibold shadow-lg hover:scale-105 transition-transform inline-block"}
+    >
+      {label || "Pesan Sekarang"}
+    </Link>
+  );
+};
+
 export const Hero = () => (
-  // 1. HAPUS overflow-hidden dari section
   <section className="relative bg-surface-container-low ">
     <Swiper
       modules={[Autoplay, EffectFade]}
@@ -65,9 +79,7 @@ export const Hero = () => (
                       </span>
                     </h1>
                     <p className="text-white/90 text-lg mb-8">{slide.sub}</p>
-                    <button className="bg-primary text-on-primary px-8 py-4 rounded-lg text-xl font-semibold shadow-lg hover:scale-105 transition-transform">
-                      {slide.cta}
-                    </button>
+                    <HeroCta label={slide.cta} />
                   </div>
                 </div>
               </>
@@ -87,9 +99,10 @@ export const Hero = () => (
                     {slide.headline}
                   </h2>
                   <p className="text-white/80 text-lg mb-8">{slide.sub}</p>
-                  <button className="bg-white text-secondary px-8 py-4 rounded-lg text-xl font-semibold shadow-lg hover:scale-105 transition-transform">
-                    {slide.cta}
-                  </button>
+                  <HeroCta
+                    label={slide.cta}
+                    className="bg-white text-secondary px-8 py-4 rounded-lg text-xl font-semibold shadow-lg hover:scale-105 transition-transform inline-block"
+                  />
                 </div>
               </div>
             )}

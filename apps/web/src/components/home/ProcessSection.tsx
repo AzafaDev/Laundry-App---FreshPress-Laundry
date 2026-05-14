@@ -12,6 +12,7 @@ export const ProcessSection = () => (
             src="/images/laundry-process.jpg"
             alt="Petugas laundry melipat pakaian"
             fill
+            sizes="(max-width: 1024px) 100vw, 50vw"
           />
         </div>
 
