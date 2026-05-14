@@ -1,7 +1,7 @@
 // Global error handler middleware
 import { Request, Response, NextFunction } from "express";
 import { ZodError } from "zod";
-import { JsonWebTokenError } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { Prisma } from "../../generated/prisma/client.js";
 
 export class AppError extends Error {
@@ -31,7 +31,7 @@ export const errorHandler = (
       field: issue.path.join("."),
       message: issue.message,
     }));
-  } else if (err instanceof JsonWebTokenError) {
+  } else if (err instanceof jwt.JsonWebTokenError) {
     statusCode = 401;
     message = "Invalid or expired token";
   } else if (err instanceof Prisma.PrismaClientKnownRequestError) {
