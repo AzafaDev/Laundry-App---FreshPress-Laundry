@@ -8,6 +8,7 @@ laundry-app/
 │   ├── api/                     # Backend Express + Prisma (deploy ke Railway/Render)
 │   │   ├── src/
 │   │   ├── prisma/
+│   │   ├── generated/           # Prisma client output
 │   │   ├── package.json
 │   │   └── ...
 │   └── web/                     # Frontend Next.js (deploy ke Vercel)
@@ -15,7 +16,6 @@ laundry-app/
 │       ├── src/components/
 │       ├── package.json
 │       └── ...
-├── docs/                        # Dokumentasi proyek
 ├── .gitignore
 └── README.md
 ```
@@ -31,6 +31,7 @@ apps/api/
 ├── prisma/
 │   ├── schema.prisma           # Semua model database dari ERD terintegrasi
 │   └── migrations/             # File migrasi (generated)
+├── generated/                  # Output prisma generate (client, enums, types)
 ├── src/
 │   ├── controllers/            # Handler request/response
 │   │   ├── customer/           # Milik Orang A
@@ -40,15 +41,15 @@ apps/api/
 │   │   │   ├── pickup.controller.ts
 │   │   │   └── payment.controller.ts
 │   │   ├── admin/              # Milik Orang B
-│   │   │   ├── user.controller.ts
-│   │   │   ├── outlet.controller.ts
-│   │   │   ├── order.controller.ts
-│   │   │   ├── bypass.controller.ts
-│   │   │   └── report.controller.ts
+│   │   │   ├── user.controller.ts      # (Sprint 1)
+│   │   │   ├── outlet.controller.ts    # (Sprint 2)
+│   │   │   ├── order.controller.ts     # (Sprint 3-4)
+│   │   │   ├── bypass.controller.ts    # (Sprint 4)
+│   │   │   └── report.controller.ts    # (Sprint 1 — attendance report)
 │   │   └── driver-worker/      # Milik Orang C
-│   │       ├── attendance.controller.ts
-│   │       ├── driver.controller.ts
-│   │       └── worker.controller.ts
+│   │       ├── attendance.controller.ts  # (Sprint 1) ✅
+│   │       ├── driver.controller.ts      # (Sprint 2 & 4) 🔜
+│   │       └── worker.controller.ts      # (Sprint 3, 4, 5) 🔜
 │   ├── services/               # Business logic (aksi database)
 │   │   ├── customer/
 │   │   ├── admin/
@@ -61,17 +62,19 @@ apps/api/
 │   ├── routes/                 # API endpoint definitions
 │   │   ├── v1/
 │   │   │   ├── customer.routes.ts
-│   │   │   ├── admin.routes.ts
-│   │   │   └── driver-worker.routes.ts
+│   │   │   ├── admin.routes.ts        # (Sprint 1 — attendance report)
+│   │   │   └── driver-worker.routes.ts # (Sprint 1 — attendance)
 │   │   └── index.ts
 │   ├── lib/                    # Utilities / third-party configs
 │   │   ├── prisma.ts           # PrismaClient instance
-│   │   ├── socket.ts           # Socket.IO server
+│   │   ├── socket.ts           # Socket.IO server (Sprint 2)
 │   │   ├── email.ts            # Nodemailer config
 │   │   └── payment.ts          # Midtrans / Xendit config
 │   ├── types/                  # Type definitions (overrides)
 │   ├── utils/                  # Helper functions (bcrypt, jwt, geocode, distance, format)
 │   ├── config/                 # Environment & app config
+│   │   ├── env.ts
+│   │   └── constants.ts
 │   └── server.ts               # Entry point
 ├── .env                        # DATABASE_URL, JWT_SECRET, dll
 ├── .env.example
@@ -87,53 +90,63 @@ apps/api/
 ```
 apps/web/
 ├── app/
-│   ├── (auth)/                 # Rute tanpa sidebar / navbar khusus
-│   │   ├── login/
-│   │   ├── register/
-│   │   ├── forgot-password/
-│   │   ├── reset-password/
-│   │   └── verify/
-│   ├── (customer)/             # Milik Orang A — semua rute customer
-│   │   ├── dashboard/
-│   │   │   ├── page.tsx
-│   │   │   ├── profile/
-│   │   │   ├── addresses/
-│   │   │   ├── orders/
-│   │   │   ├── pickup/
-│   │   │   └── payment/
-│   │   └── layout.tsx          # Layout dengan BottomNav & TopBar khusus customer
-│   ├── (admin)/                # Milik Orang B
-│   │   ├── dashboard/admin/
-│   │   │   ├── page.tsx
-│   │   │   ├── users/
+│   ├── (auth)/                 # Route group tanpa sidebar/navbar khusus (layout wrapper)
+│   ├── (customer)/             # Milik Orang A — route group untuk customer
+│   ├── (admin)/                # Milik Orang B — route group untuk admin
+│   ├── (driver)/               # Milik Orang C — route group untuk driver
+│   ├── (worker)/               # Milik Orang C — route group untuk worker
+│   ├── login/                  # Halaman login
+│   ├── register/               # Halaman registrasi
+│   ├── forgot-password/        # Lupa password
+│   ├── reset-password/         # Reset password
+│   ├── verify/                 # Verifikasi email + set password
+│   ├── access-denied/          # Halaman akses ditolak
+│   ├── add-address/            # Tambah alamat baru
+│   ├── profile/                # Edit profil
+│   ├── dashboard/
+│   │   ├── page.tsx            # Dashboard landing (redirect by role)
+│   │   ├── admin/
 │   │   │   ├── outlets/
-│   │   │   ├── orders/
+│   │   │   ├── staff/          # Kelola user + attendance + clock-in-out
+│   │   │   ├── orders/         # List + create + manage
 │   │   │   ├── bypass-requests/
+│   │   │   ├── attandance-report/
 │   │   │   └── reports/
-│   │   └── layout.tsx          # Layout dengan Sidebar admin
-│   ├── (driver)/               # Milik Orang C
-│   │   ├── dashboard/driver/
+│   │   ├── driver/
 │   │   │   ├── page.tsx
-│   │   │   ├── tasks/
-│   │   │   ├── task-history/
-│   │   │   └── attendance/
-│   │   └── layout.tsx
-│   ├── (worker)/               # Milik Orang C
-│   │   ├── dashboard/worker/
-│   │   │   ├── station/        # washing, ironing, packing
+│   │   │   ├── attendance/
+│   │   │   ├── task-detail/
+│   │   │   └── task-history/
+│   │   ├── worker/
+│   │   │   ├── station/        # Washing, ironing, packing
+│   │   │   ├── attendance/
+│   │   │   ├── packing/
+│   │   │   └── history/
+│   │   ├── orders/             # Customer order list + detail + complain
+│   │   │   ├── page.tsx
+│   │   │   ├── new/
 │   │   │   ├── history/
-│   │   │   └── attendance/
-│   │   └── layout.tsx
+│   │   │   └── [id]/
+│   │   │       ├── page.tsx
+│   │   │       └── complain/
+│   │   ├── outlets/            # Outlet list (customer view)
+│   │   ├── pickup/             # Buat pickup request
+│   │   ├── payment/            # Halaman pembayaran
+│   │   └── profile/
+│   │       └── addresses/
 │   ├── layout.tsx              # Root layout (tanpa role specific)
 │   ├── globals.css
+│   ├── page.tsx                # Landing page
 │   └── favicon.ico
 ├── src/
 │   ├── components/
 │   │   ├── ui/                 # Button, Input, Modal, Card dll (shared)
-│   │   ├── layout/             # Navbar, Sidebar, BottomNav, Footer
-│   │   ├── customer/           # Komponen khusus feature 1 (Orang A)
-│   │   ├── admin/              # Komponen khusus feature 2 (Orang B)
-│   │   └── driver-worker/      # Komponen khusus feature 3 (Orang C)
+│   │   ├── layout/             # Navbar, Sidebar, BottomNav, Footer, TopBar
+│   │   ├── home/               # Hero, ProcessSection, ServiceList
+│   │   ├── orders/             # Komponen order (checklist, stepper, table, filter)
+│   │   ├── outlets/            # OutletCard, OutletMap, AddOutletModal
+│   │   ├── dashboard/          # Sidebar, TopBar, StatCard, TaskCard, StatusStepper
+│   │   └── attendance/         # AttendanceCard, AttendanceLog
 │   ├── hooks/
 │   │   ├── useAuth.ts
 │   │   ├── useGeolocation.ts
@@ -148,6 +161,9 @@ apps/web/
 │   │   ├── locationStore.ts
 │   │   └── notificationStore.ts
 │   ├── types/                  # Tipe data untuk frontend
+│   │   ├── user.types.ts
+│   │   ├── order.types.ts
+│   │   └── outlet.types.ts
 │   ├── utils/
 │   │   ├── formatPrice.ts
 │   │   ├── formatDate.ts
@@ -162,7 +178,6 @@ apps/web/
 ├── package.json
 ├── tsconfig.json
 ├── next.config.ts
-├── tailwind.config.ts
 ├── postcss.config.mjs
 └── README.md
 ```
