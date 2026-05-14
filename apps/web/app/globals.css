@@ -51,15 +51,6 @@
   --font-geist: "Geist", sans-serif;
   --radius-xl: 0.75rem;
   --radius-3xl: 1.5rem;
-
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-2xl: 48px;
-  --spacing-margin-mobile: 16px;
-  --spacing-margin-desktop: 32px;
 }
 
 /* font family override jika perlu */

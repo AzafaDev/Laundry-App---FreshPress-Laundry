@@ -2,34 +2,20 @@
 
 import { useState, FormEvent } from "react";
 import Link from "next/link";
-import {
-  User,
-  Truck,
-  Shirt,
-  ShieldAlert,
-  Mail,
-  Lock,
-  EyeOff,
-  Eye,
-  ArrowRight,
-} from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Shirt, Mail, Lock, EyeOff, Eye, ArrowRight } from "lucide-react";
+import { axiosInstance } from "@/lib/axios";
+import { useAuthStore } from "@/stores/authStore";
+import type { User as UserType } from "@/types/user.types";
 
 /* ------------------------------------------------------------------ */
 /*  Data & Tipe                                                       */
 /* ------------------------------------------------------------------ */
 
-const roles = [
-  { icon: User, label: "Customer" },
-  { icon: Truck, label: "Driver" },
-  { icon: Shirt, label: "Worker" },
-  { icon: ShieldAlert, label: "Admin" },
-] as const;
-
-type RoleLabel = (typeof roles)[number]["label"];
-
 interface LoginErrors {
   email?: string;
   password?: string;
+  server?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -102,12 +88,15 @@ const InputField = ({
 /* ------------------------------------------------------------------ */
 
 export default function LoginPage() {
-  const [selectedRole, setSelectedRole] = useState<RoleLabel>("Customer");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<LoginErrors>({});
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { setAuth } = useAuthStore();
 
   /* ---------- validasi ---------- */
   const validate = (): boolean => {
@@ -130,17 +119,32 @@ export default function LoginPage() {
     if (!validate()) return;
 
     setLoading(true);
+    setErrors({});
     try {
-      // TODO: ganti dengan panggilan API sesungguhnya
-      // const { data } = await axiosInstance.post('/auth/login', { email, password, role: selectedRole });
-      console.log("Login:", { email, password, role: selectedRole });
-      // Redirect atau simpan token di sini
-    } catch (err) {
-      console.error(err);
-      // Tampilkan pesan error dari server jika perlu
+      const { data } = await axiosInstance.post<{
+        accessToken: string;
+        user: UserType;
+      }>("/v1/customer/auth/login", { email, password });
+
+      setAuth(data.user, data.accessToken);
+
+      const redirectTo = searchParams.get("redirect") ?? getDashboardPath(data.user.role);
+      router.push(redirectTo);
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? "Login gagal. Periksa kembali email dan password Anda.";
+      setErrors({ server: msg });
     } finally {
       setLoading(false);
     }
+  };
+
+  const getDashboardPath = (role: string): string => {
+    if (role === "super_admin" || role === "outlet_admin") return "/dashboard/admin";
+    if (role === "driver") return "/dashboard/driver";
+    if (role === "worker") return "/dashboard/worker";
+    return "/dashboard";
   };
 
   /* ---------- UI ---------- */
@@ -205,33 +209,13 @@ export default function LoginPage() {
               </p>
             </div>
 
-            {/* Role Selection */}
-            <fieldset className="mb-6">
-              <legend className="text-sm font-medium text-on-surface-variant mb-3">
-                Pilih Peran Anda
-              </legend>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {roles.map(({ icon: Icon, label }) => (
-                  <button
-                    key={label}
-                    type="button"
-                    aria-pressed={selectedRole === label}
-                    onClick={() => setSelectedRole(label)}
-                    className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-                      selectedRole === label
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-outline-variant bg-surface text-on-surface-variant hover:border-primary/50 hover:text-primary"
-                    }`}
-                  >
-                    <Icon className="w-5 h-5 mb-1" />
-                    <span className="text-xs font-bold">{label}</span>
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
+              {errors.server && (
+                <div className="bg-error-container/30 border border-error/30 text-error text-sm px-4 py-3 rounded-xl" role="alert">
+                  {errors.server}
+                </div>
+              )}
               <InputField
                 label="Email"
                 icon={Mail}
