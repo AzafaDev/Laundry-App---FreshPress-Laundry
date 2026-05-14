@@ -8,8 +8,10 @@ import { getAttendanceReport } from "../../controllers/admin/report.controller.j
 const router = Router();
 
 router.use(authenticate);
-router.use(requireRole("super_admin", "outlet_admin"));
-
-router.get("/reports/attendance", getAttendanceReport);
+router.get(
+  "/reports/attendance",
+  requireRole("super_admin", "outlet_admin"),
+  getAttendanceReport,
+);
 
 export default router;

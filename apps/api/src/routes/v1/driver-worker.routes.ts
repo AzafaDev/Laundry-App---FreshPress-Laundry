@@ -6,16 +6,20 @@ import { requireRole } from "../../middlewares/role.middleware.js";
 import {
   checkIn,
   checkOut,
+  checkTodayAttendance,
   getMyLogs,
 } from "../../controllers/driver-worker/attendance.controller.js";
 
 const router = Router();
 
 router.use(authenticate);
-router.use(requireRole("driver", "worker"));
-
-router.post("/attendance/check-in", checkIn);
-router.post("/attendance/check-out", checkOut);
-router.get("/attendance/my-logs", getMyLogs);
+router.post("/attendance/check-in", requireRole("driver", "worker"), checkIn);
+router.post("/attendance/check-out", requireRole("driver", "worker"), checkOut);
+router.get("/attendance/my-logs", requireRole("driver", "worker"), getMyLogs);
+router.get(
+  "/attendance/today",
+  requireRole("driver", "worker"),
+  checkTodayAttendance,
+);
 
 export default router;

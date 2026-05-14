@@ -1,68 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { AttendanceCard } from "@/components/attendance/AttendanceCard";
 import { AttendanceLog } from "@/components/attendance/AttendanceLog";
-
-const mockRecords = [
-  {
-    date: "Sen, 12 Mei 2026",
-    checkIn: "08:00",
-    checkOut: "16:00",
-    duration: "8h 0m",
-    status: "on-time" as const,
-  },
-  {
-    date: "Min, 11 Mei 2026",
-    checkIn: "08:15",
-    checkOut: "16:00",
-    duration: "7h 45m",
-    status: "late" as const,
-  },
-  {
-    date: "Sab, 10 Mei 2026",
-    checkIn: "07:55",
-    checkOut: "15:30",
-    duration: "7h 35m",
-    status: "on-time" as const,
-  },
-];
+import { useAttendance } from "@/hooks/useAttendance";
+import { toLogRecord } from "@/utils/formatDate";
 
 export default function DriverAttendancePage() {
-  const [checkedIn, setCheckedIn] = useState(false);
-  const [checkInTime, setCheckInTime] = useState<string>();
-  const [checkOutTime, setCheckOutTime] = useState<string>();
-  const [loading, setLoading] = useState(false);
-
-  const handleCheckIn = () => {
-    setLoading(true);
-    setTimeout(() => {
-      const now = new Date().toLocaleTimeString("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      setCheckInTime(now);
-      setCheckedIn(true);
-      setCheckOutTime(undefined);
-      setLoading(false);
-    }, 800);
-  };
-
-  const handleCheckOut = () => {
-    setLoading(true);
-    setTimeout(() => {
-      const now = new Date().toLocaleTimeString("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-      setCheckOutTime(now);
-      setCheckedIn(false);
-      setLoading(false);
-    }, 800);
-  };
-
+  const att = useAttendance();
+  const logRecords = att.records.map(toLogRecord);
   return (
     <div className="min-h-screen bg-background text-on-background pb-24 lg:pb-0">
       <header className="sticky top-0 z-50 w-full px-4 h-16 bg-surface border-b border-outline-variant flex items-center gap-2">
@@ -77,20 +24,41 @@ export default function DriverAttendancePage() {
       </header>
 
       <main className="max-w-lg mx-auto p-4 space-y-6">
+        {att.isError && (
+          <div className="p-4 rounded-xl bg-error/10 border border-error/30">
+            <p className="text-sm font-bold text-error">Gagal memuat data</p>
+            <p className="text-xs text-error mt-1">
+              {att.error instanceof Error
+                ? att.error.message
+                : "Terjadi kesalahan"}
+            </p>
+            <button
+              onClick={att.refetch}
+              className="mt-2 text-xs text-error underline underline-offset-2"
+            >
+              Coba lagi
+            </button>
+          </div>
+        )}
+
         <AttendanceCard
-          checkedIn={checkedIn}
-          checkInTime={checkInTime}
-          checkOutTime={checkOutTime}
-          onCheckIn={handleCheckIn}
-          onCheckOut={handleCheckOut}
-          loading={loading}
+          checkedIn={att.checkedIn}
+          checkInTime={att.checkInTime}
+          checkOutTime={att.checkOutTime}
+          onCheckIn={att.checkIn}
+          onCheckOut={() => {
+            if (att.attendanceId) {
+              att.checkOut(att.attendanceId);
+            }
+          }}
+          loading={att.isCheckingIn || att.isCheckingOut}
         />
 
         <section>
           <h2 className="text-lg font-bold text-on-surface mb-3">
             Riwayat Absensi
           </h2>
-          <AttendanceLog records={mockRecords} />
+          <AttendanceLog records={logRecords} />
         </section>
       </main>
     </div>

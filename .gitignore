@@ -6,3 +6,4 @@ generated/
 dist/
 *.log
 .kilo
+INSTRUCTIONS.md

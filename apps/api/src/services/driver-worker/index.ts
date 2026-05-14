@@ -3,6 +3,7 @@
 import { AttendanceStatus } from "../../../generated/prisma/enums.js";
 import { prisma } from "../../lib/prisma.js";
 import { differenceInMinutes } from "date-fns";
+import { AppError } from "../../middlewares/error.middleware.js";
 
 export const attendanceService = {
   async checkIn(userId: string) {
@@ -19,7 +20,7 @@ export const attendanceService = {
     });
 
     if (existing && existing.check_in_time) {
-      throw new Error("Sudah check-in hari ini");
+      throw new AppError("Sudah check-in hari ini");
     }
 
     const now = new Date();
@@ -163,6 +164,15 @@ export const attendanceService = {
               full_name: true,
               email: true,
               role: true,
+              user_shifts: {
+                where: { is_active: true },
+                include: {
+                  shift: {
+                    select: { outlet: { select: { name: true } } },
+                  },
+                },
+                take: 1,
+              },
             },
           },
         },
