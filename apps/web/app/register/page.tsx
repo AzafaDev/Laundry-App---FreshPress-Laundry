@@ -2,21 +2,32 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
-import { User, Mail, Phone, ArrowRight } from "lucide-react";
+import { User, Mail, Phone, ArrowRight, Truck, Shirt } from "lucide-react";
+import { axiosInstance } from "@/lib/axios";
+
+const roles = [
+  { icon: User, label: "Customer", value: "customer", desc: "Pengguna laundry" },
+  { icon: Truck, label: "Driver", value: "driver", desc: "Kurir antar-jemput" },
+  { icon: Shirt, label: "Worker", value: "worker", desc: "Petugas laundry" },
+] as const;
+
+type RoleValue = (typeof roles)[number]["value"];
 
 type RegisterForm = {
   name: string;
   email: string;
   phone: string;
+  role: RoleValue;
 };
 
-type FormErrors = Partial<Record<keyof RegisterForm, string>>;
+type FormErrors = Partial<Record<keyof RegisterForm | "server", string>>;
 
 export default function RegisterPage() {
   const [form, setForm] = useState<RegisterForm>({
     name: "",
     email: "",
     phone: "",
+    role: "customer",
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -58,12 +69,18 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      // TODO: ganti dengan panggilan API nyata
-      // await axiosInstance.post('/auth/register', form);
-      console.log("Registrasi:", form);
+      await axiosInstance.post("/v1/customer/auth/register", {
+        full_name: form.name,
+        email: form.email,
+        phone: form.phone || undefined,
+        role: form.role,
+      });
       setSent(true);
-    } catch (err) {
-      console.error(err);
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? "Registrasi gagal. Coba lagi.";
+      setErrors({ server: msg });
     } finally {
       setLoading(false);
     }
@@ -120,6 +137,37 @@ export default function RegisterPage() {
         </header>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-md">
+          {errors.server && (
+            <div className="bg-error-container/30 border border-error/30 text-error text-sm px-4 py-3 rounded-xl" role="alert">
+              {errors.server}
+            </div>
+          )}
+          {/* Pilih Peran */}
+          <fieldset>
+            <legend className="text-sm font-bold text-on-surface/80 ml-1 mb-2 block">
+              Daftar Sebagai
+            </legend>
+            <div className="grid grid-cols-3 gap-2">
+              {roles.map(({ icon: Icon, label, value, desc }) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={form.role === value}
+                  onClick={() => updateField("role", value)}
+                  className={`flex flex-col items-center gap-1 p-3 rounded-2xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                    form.role === value
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-outline-variant bg-white text-on-surface-variant hover:border-primary/40 hover:text-primary"
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-xs font-bold">{label}</span>
+                  <span className="text-[10px] text-center leading-tight opacity-70">{desc}</span>
+                </button>
+              ))}
+            </div>
+          </fieldset>
+
           {/* Nama Lengkap */}
           <div className="group">
             <label

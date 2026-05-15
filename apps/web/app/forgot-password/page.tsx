@@ -3,26 +3,28 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Shirt, Mail, ArrowRight, ArrowLeft, ShieldCheck } from "lucide-react";
+import { axiosInstance } from "@/lib/axios";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [serverError, setServerError] = useState("");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
 
     setLoading(true);
+    setServerError("");
     try {
-      // TODO: integrate actual API call
-      // await axiosInstance.post('/auth/forgot-password', { email });
-      console.log("Forgot password request:", { email });
-      // Simulate API delay
-      await new Promise((r) => setTimeout(r, 1000));
+      await axiosInstance.post("/v1/customer/auth/forgot-password", { email });
       setSubmitted(true);
-    } catch (err) {
-      console.error(err);
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? "Gagal mengirim. Coba lagi.";
+      setServerError(msg);
     } finally {
       setLoading(false);
     }
@@ -83,6 +85,11 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-lg">
+                  {serverError && (
+                    <div className="bg-error-container/30 border border-error/30 text-error text-sm px-4 py-3 rounded-xl" role="alert">
+                      {serverError}
+                    </div>
+                  )}
                   <div className="space-y-xs">
                     <label
                       htmlFor="email"

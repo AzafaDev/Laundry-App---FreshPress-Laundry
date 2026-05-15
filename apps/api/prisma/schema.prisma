@@ -99,20 +99,20 @@ model User {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  addresses         UserAddress[]
-  pickup_requests   PickupRequest[]  @relation("CustomerPickupRequests")
-  laundry_orders    LaundryOrder[]   @relation("CustomerLaundryOrders")
-  created_orders    LaundryOrder[]   @relation("OutletAdminOrders")
-  station_processes StationProcess[]
-  bypass_requests   BypassRequest[]  @relation("WorkerBypassRequests")
-  resolved_bypasses BypassRequest[]  @relation("AdminResolvedBypasses")
-  attendances       Attendance[]
-  payments          Payment[]
-  complaints        Complaint[]
-  notifications     Notification[]
-  user_shifts       UserShift[]
-  driver_pickup_requests PickupRequest[] @relation("DriverAssigned")
-  related_pickup_requests PickupRequest[] @relation("PickupRequestRelatedUser")
+  addresses               UserAddress[]
+  pickup_requests         PickupRequest[]  @relation("CustomerPickupRequests")
+  laundry_orders          LaundryOrder[]   @relation("CustomerLaundryOrders")
+  created_orders          LaundryOrder[]   @relation("OutletAdminOrders")
+  station_processes       StationProcess[]
+  bypass_requests         BypassRequest[]  @relation("WorkerBypassRequests")
+  resolved_bypasses       BypassRequest[]  @relation("AdminResolvedBypasses")
+  attendances             Attendance[]
+  payments                Payment[]
+  complaints              Complaint[]
+  notifications           Notification[]
+  user_shifts             UserShift[]
+  driver_pickup_requests  PickupRequest[]  @relation("DriverAssigned")
+  related_pickup_requests PickupRequest[]  @relation("PickupRequestRelatedUser")
 }
 
 model UserAddress {
@@ -271,7 +271,7 @@ model StationProcess {
   items_input       Json? // array of {item_name, quantity}
   is_completed      Boolean   @default(false)
   is_bypassed       Boolean   @default(false)
-  bypass_request_id String? @unique
+  bypass_request_id String?   @unique
   started_at        DateTime? @default(now())
   completed_at      DateTime?
 
@@ -306,7 +306,7 @@ model BypassRequest {
   station_process  StationProcess?  @relation("BypassRequestToProcess", fields: [stationProcessId], references: [id])
   inverse_process  StationProcess?  @relation("StationProcessToBypassRequest")
   stationProcesses StationProcess[] @relation("StationProcessBypassRequests")
-  stationProcessId String? @unique
+  stationProcessId String?          @unique
 
   @@index([order_id])
   @@index([status])

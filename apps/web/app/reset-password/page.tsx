@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Shirt,
   Eye,
@@ -11,13 +12,20 @@ import {
   ArrowLeft,
   Droplets,
 } from "lucide-react";
+import { axiosInstance } from "@/lib/axios";
 
 export default function ResetPasswordPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const token = searchParams.get("token");
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [serverError, setServerError] = useState("");
 
   // --- Password strength calculation (matching the UI bar and label) ---
   const evaluateStrength = (pwd: string) => {
@@ -51,13 +59,25 @@ export default function ResetPasswordPage() {
   const minLengthMet = password.length >= 8;
   const hasLetterAndNumber = /[a-zA-Z]/.test(password) && /\d/.test(password);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // TODO: integrate actual API call
-    console.log("Password reset:", { password, confirmPassword });
+    if (!token) { setServerError("Token tidak valid. Minta link reset password baru."); return; }
+    if (password !== confirmPassword) { setServerError("Konfirmasi password tidak cocok."); return; }
+
+    setServerError("");
     setLoading(true);
-    // Simulate async action
-    setTimeout(() => setLoading(false), 1000);
+    try {
+      await axiosInstance.post("/v1/customer/auth/reset-password", { token, password });
+      setSuccess(true);
+      setTimeout(() => router.push("/login"), 2000);
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? "Reset password gagal. Token mungkin sudah kadaluarsa.";
+      setServerError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -77,6 +97,17 @@ export default function ResetPasswordPage() {
 
       {/* Main Card */}
       <div className="w-full max-w-[480px] bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm p-lg md:p-xl">
+        {success ? (
+          <div className="text-center py-6 space-y-4">
+            <CheckCircle className="w-16 h-16 text-primary mx-auto" />
+            <h2 className="text-headline-md font-headline-md text-primary">Password Berhasil Diubah!</h2>
+            <p className="text-body-md font-body-md text-on-surface-variant">Anda akan diarahkan ke halaman login...</p>
+            <Link href="/login" className="inline-block bg-primary text-on-primary py-3 px-8 rounded-xl font-bold hover:opacity-90 transition-all">
+              Masuk Sekarang
+            </Link>
+          </div>
+        ) : (
+        <>
         <div className="mb-xl">
           <h2 className="text-headline-md font-headline-md text-on-surface">
             Buat Kata Sandi Baru
@@ -88,6 +119,11 @@ export default function ResetPasswordPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-lg">
+          {serverError && (
+            <div className="bg-error-container/30 border border-error/30 text-error text-sm px-4 py-3 rounded-xl" role="alert">
+              {serverError}
+            </div>
+          )}
           {/* New Password */}
           <div className="space-y-sm">
             <label
@@ -205,6 +241,8 @@ export default function ResetPasswordPage() {
             {loading ? "Menyimpan..." : "Simpan & Masuk"}
           </button>
         </form>
+        </>
+        )}
       </div>
 
       {/* Footer link */}
