@@ -88,16 +88,17 @@ enum BypassRequestStatus {
 // ==================== MODELS ====================
 
 model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
+  id            String    @id @default(uuid())
+  email         String    @unique
   password_hash String
   full_name     String
   phone         String
   avatar_url    String?
   role          UserRole
-  is_verified   Boolean  @default(false)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  is_verified   Boolean   @default(false)
+  deleted_at    DateTime? // soft-delete marker; null = active
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
 
   addresses               UserAddress[]
   pickup_requests         PickupRequest[]  @relation("CustomerPickupRequests")
