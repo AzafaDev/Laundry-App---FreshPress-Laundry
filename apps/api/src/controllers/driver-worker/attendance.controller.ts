@@ -1,12 +1,11 @@
-// Driver/Worker attendance controller
-
-import { NextFunction, Request, Response } from "express";
+import { NextFunction, Request, Response } from 'express';
 import {
   checkInSchema,
   checkOutSchema,
   getMyLogsQuerySchema,
-} from "../../validations/attendance.validation.js";
-import { attendanceService } from "../../services/driver-worker/index.js";
+} from '../../validations/attendance.validation.js';
+import { attendanceService } from '../../services/driver-worker/index.js';
+import { AppError } from '../../middlewares/error.middleware.js';
 
 export const checkIn = async (
   req: Request,
@@ -15,8 +14,10 @@ export const checkIn = async (
 ) => {
   try {
     const userId = req.user?.userId;
-    checkInSchema.parse(req.body);
-    const attendance = await attendanceService.checkIn(userId!);
+    if (!userId) throw new AppError('Unauthorized', 401);
+
+    checkInSchema.parse(req.body); // no body, just validate structure
+    const attendance = await attendanceService.checkIn(userId);
     res.status(201).json({ success: true, data: attendance });
   } catch (error) {
     next(error);
@@ -30,8 +31,10 @@ export const checkOut = async (
 ) => {
   try {
     const userId = req.user?.userId;
+    if (!userId) throw new AppError('Unauthorized', 401);
+
     const { attendanceId } = checkOutSchema.parse(req.body);
-    const attendance = await attendanceService.checkOut(attendanceId, userId!);
+    const attendance = await attendanceService.checkOut(attendanceId, userId);
     res.json({ success: true, data: attendance });
   } catch (error) {
     next(error);
@@ -45,13 +48,14 @@ export const getMyLogs = async (
 ) => {
   try {
     const userId = req.user?.userId;
-    const { page, limit, startDate, endDate } = getMyLogsQuerySchema.parse(
-      req.query,
-    );
+    if (!userId) throw new AppError('Unauthorized', 401);
+
+    const { page, limit, startDate, endDate } = getMyLogsQuerySchema.parse(req.query);
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
-    const result = await attendanceService.getMyattendanceLogs(
-      userId!,
+
+    const result = await attendanceService.getMyAttendanceLogs(
+      userId,
       page,
       limit,
       start,
@@ -70,8 +74,26 @@ export const checkTodayAttendance = async (
 ) => {
   try {
     const userId = req.user?.userId;
-    const result = await attendanceService.checkTodayAttendance(userId!);
+    if (!userId) throw new AppError('Unauthorized', 401);
+
+    const result = await attendanceService.checkTodayAttendance(userId);
     res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getCurrentShift = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) throw new AppError('Unauthorized', 401);
+
+    const shift = await attendanceService.getCurrentShift(userId);
+    res.json({ success: true, data: shift });
   } catch (error) {
     next(error);
   }

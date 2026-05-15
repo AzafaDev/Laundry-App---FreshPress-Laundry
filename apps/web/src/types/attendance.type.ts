@@ -1,4 +1,4 @@
-export type AttendanceStatus = "on_time" | "late" | "absent";
+export type AttendanceStatus = 'on_time' | 'late' | 'absent';
 
 export interface Attendance {
   id: string;
@@ -13,6 +13,12 @@ export interface Attendance {
     full_name: string;
     email: string;
     role: string;
+    user_shifts?: Array<{
+      shift: {
+        name: string;
+        outlet: { name: string };
+      };
+    }>;
   };
 }
 
