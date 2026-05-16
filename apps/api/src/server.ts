@@ -1,10 +1,12 @@
 import express, { type Application } from "express";
 import cors from "cors";
+import http from "http";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import router from "./routes/index.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 import { env } from "./config/env.js";
+import { initSocketServer } from "./lib/socket.js";
 
 const app: Application = express();
 
@@ -29,7 +31,11 @@ app.get("/health", (_req, res) => {
 app.use("/api", router);
 app.use(errorHandler);
 
-app.listen(env.PORT, () => {
+const httpServer = http.createServer(app);
+
+initSocketServer(httpServer);
+
+httpServer.listen(env.PORT, () => {
   console.log(`[server]: Server is running at http://localhost:${env.PORT}`);
 });
 
