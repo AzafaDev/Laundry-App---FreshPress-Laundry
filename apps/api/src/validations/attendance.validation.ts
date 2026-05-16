@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-export const checkInSchema = z.object({});
+export const checkInSchema = z.object({
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
+});
 
 export const checkOutSchema = z.object({
   attendanceId: z.string().uuid("ID absensi tidak valid"),

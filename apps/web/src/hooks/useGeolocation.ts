@@ -1,11 +1,16 @@
 "use client";
 
+import { useLocationStore } from "@/stores/locationStore";
 import { useEffect } from "react";
-import { useLocationStore } from "@/features/location/locationStore";
 
 export function useGeolocation() {
-  const { latitude, longitude, permissionDenied, setLocation, setPermissionDenied } =
-    useLocationStore();
+  const {
+    latitude,
+    longitude,
+    permissionDenied,
+    setLocation,
+    setPermissionDenied,
+  } = useLocationStore();
 
   useEffect(() => {
     if (!navigator?.geolocation) return;
