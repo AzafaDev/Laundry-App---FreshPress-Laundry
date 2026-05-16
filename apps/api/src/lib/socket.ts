@@ -45,7 +45,7 @@ export function initSocketServer(httpServer: HttpServer): IOServer {
     socket.join(`online:${user.role}`);
 
     socket.on("disconnect", (reason) => {
-      console.log(`[socket] disconneccted: ${user.email} - ${reason}`);
+      console.log(`[socket] disconnected: ${user.email} - ${reason}`);
     });
   });
 
