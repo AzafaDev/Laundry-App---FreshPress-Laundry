@@ -1,8 +1,18 @@
 import { z } from "zod";
 
 export const checkInSchema = z.object({
-  lat: z.coerce.number().min(-90).max(90).optional(),
-  lng: z.coerce.number().min(-180).max(180).optional(),
+  lat: z.coerce
+    .number()
+    .min(-90)
+    .max(90)
+    .optional()
+    .refine((v) => v === undefined || !isNaN(v), "Latitude tidak valid"),
+  lng: z.coerce
+    .number()
+    .min(-180)
+    .max(180)
+    .optional()
+    .refine((v) => v === undefined || !isNaN(v), "Latitude tidak valid"),
 });
 
 export const checkOutSchema = z.object({
