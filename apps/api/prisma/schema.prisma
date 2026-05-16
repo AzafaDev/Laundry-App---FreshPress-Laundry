@@ -318,6 +318,8 @@ model Attendance {
   attendance_date DateTime         @db.Date
   check_in_time   String? // Time as String
   check_out_time  String? // Time as String
+  check_in_lat    Float? // ← TAMBAH
+  check_in_lng    Float? // ← TAMBAH
   status          AttendanceStatus @default(absent)
   total_hours     Float?
   created_at      DateTime         @default(now())

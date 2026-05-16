@@ -1,4 +1,5 @@
 import { axiosInstance } from "@/lib/axios";
+import { useLocationStore } from "@/stores/locationStore";
 import {
   Attendance,
   AttendanceLogsResponse,
@@ -14,10 +15,17 @@ export interface CurrentShift {
 
 export const attendanceService = {
   checkIn: async (): Promise<Attendance> => {
+    // Ambil lokasi terkini dari store
+    const { latitude, longitude } = useLocationStore.getState();
+
+    const payload: Record<string, any> = {};
+    if (latitude != null) payload.lat = latitude;
+    if (longitude != null) payload.lng = longitude;
+
     const { data } = await axiosInstance.post<{
       success: true;
       data: Attendance;
-    }>("/v1/attendance/check-in", {});
+    }>("/v1/attendance/check-in", payload);
     return data.data;
   },
 

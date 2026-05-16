@@ -49,6 +49,7 @@
   "scripts": {
     "prebuild": "prisma generate",
     "build": "tsc",
+    "dev": "tsx watch src/server.ts",
     "start": "node dist/src/server.js",
     "postinstall": "prisma generate",
     "seed": "tsx prisma/seed.ts"
