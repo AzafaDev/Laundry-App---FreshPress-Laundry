@@ -30,12 +30,11 @@ export const useNotificationStore = create<NotificationStore>((set) => ({
     });
   },
 
-  addNotification: (notif) => {
+  addNotification: (notif) =>
     set((state) => ({
       notifications: [notif, ...state.notifications],
       unreadCount: state.unreadCount + (notif.is_read ? 0 : 1),
-    }));
-  },
+    })),
 
   markAsRead: (id) => {
     set((state) => {
