@@ -47,9 +47,10 @@
     "typescript": "^6.0.3"
   },
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "prebuild": "prisma generate",
     "build": "tsc",
     "start": "node dist/src/server.js",
+    "postinstall": "prisma generate",
     "seed": "tsx prisma/seed.ts"
   },
   "keywords": [],
