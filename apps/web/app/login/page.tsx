@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Shirt, Mail, Lock, EyeOff, Eye, ArrowRight } from "lucide-react";
@@ -87,7 +87,7 @@ const InputField = ({
 /*  Halaman Login                                                      */
 /* ------------------------------------------------------------------ */
 
-export default function LoginPage() {
+function LoginContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -345,5 +345,13 @@ export default function LoginPage() {
         </svg>
       </div>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><span className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

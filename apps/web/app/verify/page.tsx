@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -30,7 +30,7 @@ interface FormErrors {
   email?: string;
 }
 
-export default function VerifyPage() {
+function VerifyContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
@@ -292,5 +292,13 @@ export default function VerifyPage() {
         </div>
       </footer>
     </main>
+  );
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><span className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
+      <VerifyContent />
+    </Suspense>
   );
 }
