@@ -75,7 +75,7 @@ export default function WorkerDashboardPage() {
         </div>
 
         {/* Quick Actions Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Card: Attendance */}
           <Link
             href="/dashboard/worker/attendance"
@@ -96,13 +96,18 @@ export default function WorkerDashboardPage() {
           {/* Card: Station */}
           <Link
             href="/dashboard/worker/station"
-            className="bg-surface border border-outline-variant rounded-2xl p-6 hover:shadow-md transition-all group"
+            className="bg-surface border border-outline-variant rounded-2xl p-6 hover:shadow-md transition-all group relative"
           >
             <div className="flex items-start justify-between">
               <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary group-hover:scale-110 transition-transform">
                 <ClipboardList className="w-6 h-6" />
               </div>
-              <ArrowRight className="w-5 h-5 text-outline group-hover:text-secondary transition-colors" />
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-secondary-container text-on-secondary-container text-xs font-bold">
+                  12
+                </span>
+                <ArrowRight className="w-5 h-5 text-outline group-hover:text-secondary transition-colors" />
+              </div>
             </div>
             <h3 className="text-lg font-bold text-on-surface mt-4">
               Station Kerja
@@ -115,13 +120,18 @@ export default function WorkerDashboardPage() {
           {/* Card: Packing */}
           <Link
             href="/dashboard/worker/packing"
-            className="bg-surface border border-outline-variant rounded-2xl p-6 hover:shadow-md transition-all group"
+            className="bg-surface border border-outline-variant rounded-2xl p-6 hover:shadow-md transition-all group relative"
           >
             <div className="flex items-start justify-between">
               <div className="w-12 h-12 rounded-xl bg-tertiary/10 flex items-center justify-center text-tertiary group-hover:scale-110 transition-transform">
                 <Package className="w-6 h-6" />
               </div>
-              <ArrowRight className="w-5 h-5 text-outline group-hover:text-tertiary transition-colors" />
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-tertiary-container/30 text-tertiary text-xs font-bold">
+                  5
+                </span>
+                <ArrowRight className="w-5 h-5 text-outline group-hover:text-tertiary transition-colors" />
+              </div>
             </div>
             <h3 className="text-lg font-bold text-on-surface mt-4">Packing</h3>
             <p className="text-sm text-on-surface-variant">

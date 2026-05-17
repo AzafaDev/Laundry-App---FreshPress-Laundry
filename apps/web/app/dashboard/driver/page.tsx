@@ -56,137 +56,137 @@ export default function DriverDashboardPage() {
       <DriverSidebar activePath="/dashboard/driver" />
 
       {/* Main Content */}
-      <main className="lg:pl-72 p-4 md:p-8 space-y-6">
-        {/* Notification Banner */}
-        <div className="bg-primary-container text-on-primary-container p-4 rounded-xl shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="bg-primary-fixed text-on-primary-fixed p-2 rounded-lg">
-              <ClipboardList className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm font-bold">New Requests</p>
-              <p className="text-base opacity-90">
-                3 new pickup requests available in your area.
-              </p>
-            </div>
-          </div>
-          <button className="bg-on-primary-container text-primary-container px-4 py-2 rounded-lg text-sm font-bold hover:bg-white transition-colors">
-            View All
-          </button>
-        </div>
-
-        {/* Shift Badge */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-on-surface-variant">Shift:</span>
-          <ShiftBadge shift="Morning" />
-        </div>
-
-        {/* Section Title */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-on-surface">Active Tasks</h2>
-          <div className="flex gap-2">
-            <button
-              className="p-2 rounded-lg border border-outline-variant hover:bg-surface-container transition-colors"
-              aria-label="Filter"
-            >
-              <ListFilter className="w-5 h-5 text-on-surface-variant" />
-            </button>
-            <button
-              className="p-2 rounded-lg border border-outline-variant hover:bg-surface-container transition-colors"
-              aria-label="Map view"
-            >
-              <Map className="w-5 h-5 text-on-surface-variant" />
-            </button>
-          </div>
-        </div>
-
-        {/* Task Grid — 3 hardcoded task cards (keep as-is) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <DriverTaskCard
-            orderId="#FP-8291"
-            status="On the Way"
-            statusColor="bg-secondary-container text-on-secondary-container"
-            type="Delivery"
-            typeIcon={Truck}
-            typeColor="bg-primary/10 text-primary"
-            time="15:00 - 17:00 Today"
-            address="428 Corporate Plaza, Suite 102, Tech District"
-            primaryAction="Complete Task"
-            primaryActionClass="bg-primary text-on-primary hover:opacity-90"
-            secondaryIcon={Navigation}
-          />
-          <DriverTaskCard
-            orderId="#FP-8304"
-            status="Assigned"
-            statusColor="bg-surface-container-highest text-on-surface-variant"
-            type="Pickup"
-            typeIcon={ShoppingBag}
-            typeColor="bg-tertiary/10 text-tertiary"
-            time="17:30 - 18:30 Today"
-            address="89 Riverside Drive, Apt 4B, East Side"
-            primaryAction="Start Pickup"
-            primaryActionClass="border border-primary text-primary hover:bg-primary/5"
-            secondaryIcon={Phone}
-          />
-          <DriverTaskCard
-            orderId="#FP-8311"
-            status="Assigned"
-            statusColor="bg-surface-container-highest text-on-surface-variant"
-            type="Delivery"
-            typeIcon={Truck}
-            typeColor="bg-primary/10 text-primary"
-            time="09:00 - 11:00 Tomorrow"
-            address="12 Oakwood Terrace, North Hills"
-            primaryAction="Scheduled"
-            primaryActionClass="border border-outline text-outline cursor-not-allowed opacity-60"
-            secondaryIcon={MoreVertical}
-            disableActions
-          />
-        </div>
-
-        {/* Mini Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pt-6">
-          {/* Earnings Overview */}
-          <div className="md:col-span-8 bg-white border border-outline-variant rounded-2xl p-6 flex flex-col justify-between min-h-[200px]">
-            <div>
-              <h3 className="text-lg font-bold text-on-surface mb-2">
-                Earnings Overview
-              </h3>
-              <p className="text-base text-on-surface-variant">
-                Great job today! You've completed 85% of your daily goal.
-              </p>
-            </div>
-            <div className="flex items-end justify-between">
-              <div className="space-y-1">
-                <p className="text-xs text-outline uppercase font-bold">
-                  Today's Total
+      <main className="lg:pl-80 p-4 md:p-8 space-y-8">
+        {/* Section 1: Active Tasks (priority on mobile) */}
+        <section className="space-y-4">
+          {/* Notification Banner */}
+          <div className="bg-primary-container text-on-primary-container p-4 rounded-xl shadow-sm flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="bg-primary-fixed text-on-primary-fixed p-2 rounded-lg">
+                <ClipboardList className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm font-bold">New Requests</p>
+                <p className="text-base opacity-90">
+                  3 new pickup requests available in your area.
                 </p>
-                <p className="text-3xl font-bold text-primary">$184.50</p>
               </div>
-              <div className="flex gap-1 items-end h-16">
-                {[40, 70, 55, 90, 65, 85].map((h, i) => (
-                  <div
-                    key={i}
-                    className={`w-8 rounded-t-sm transition-all ${
-                      i === 5 ? "bg-primary" : "bg-primary-container"
-                    }`}
-                    style={{ height: `${h}%` }}
-                  />
-                ))}
-              </div>
+            </div>
+            <button className="bg-on-primary-container text-primary-container px-4 py-2 rounded-lg text-sm font-bold hover:bg-white transition-colors">
+              View All
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-on-surface-variant">Shift:</span>
+            <ShiftBadge shift="Morning" />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-on-surface">Active Tasks</h2>
+            <div className="flex gap-2">
+              <button
+                className="p-2 rounded-lg border border-outline-variant hover:bg-surface-container transition-colors"
+                aria-label="Filter"
+              >
+                <ListFilter className="w-5 h-5 text-on-surface-variant" />
+              </button>
+              <button
+                className="p-2 rounded-lg border border-outline-variant hover:bg-surface-container transition-colors"
+                aria-label="Map view"
+              >
+                <Map className="w-5 h-5 text-on-surface-variant" />
+              </button>
             </div>
           </div>
 
-          {/* Driver Rating */}
-          <div className="md:col-span-4 bg-secondary text-on-secondary rounded-2xl p-6 space-y-4 flex flex-col justify-center">
-            <Star className="w-10 h-10 fill-current" />
-            <div className="space-y-1">
-              <p className="text-5xl font-bold leading-none">4.9</p>
-              <p className="text-lg font-bold opacity-90">Driver Rating</p>
-            </div>
-            <p className="text-sm opacity-80">Based on last 50 deliveries</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+            <DriverTaskCard
+              orderId="#FP-8291"
+              status="On the Way"
+              statusColor="bg-secondary-container text-on-secondary-container"
+              type="Delivery"
+              typeIcon={Truck}
+              typeColor="bg-primary/10 text-primary"
+              time="15:00 - 17:00 Today"
+              address="428 Corporate Plaza, Suite 102, Tech District"
+              primaryAction="Complete Task"
+              primaryActionClass="bg-primary text-on-primary hover:opacity-90"
+              secondaryIcon={Navigation}
+            />
+            <DriverTaskCard
+              orderId="#FP-8304"
+              status="Assigned"
+              statusColor="bg-surface-container-highest text-on-surface-variant"
+              type="Pickup"
+              typeIcon={ShoppingBag}
+              typeColor="bg-tertiary/10 text-tertiary"
+              time="17:30 - 18:30 Today"
+              address="89 Riverside Drive, Apt 4B, East Side"
+              primaryAction="Start Pickup"
+              primaryActionClass="border border-primary text-primary hover:bg-primary/5"
+              secondaryIcon={Phone}
+            />
+            <DriverTaskCard
+              orderId="#FP-8311"
+              status="Assigned"
+              statusColor="bg-surface-container-highest text-on-surface-variant"
+              type="Delivery"
+              typeIcon={Truck}
+              typeColor="bg-primary/10 text-primary"
+              time="09:00 - 11:00 Tomorrow"
+              address="12 Oakwood Terrace, North Hills"
+              primaryAction="Scheduled"
+              primaryActionClass="border border-outline text-outline cursor-not-allowed opacity-60"
+              secondaryIcon={MoreVertical}
+              disableActions
+            />
           </div>
-        </div>
+        </section>
+
+        {/* Section 2: Performance Summary */}
+        <section className="space-y-4">
+          <h2 className="text-xl font-bold text-on-surface">
+            Performance Summary
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <div className="md:col-span-8 bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 flex flex-col justify-between min-h-[200px]">
+              <div>
+                <h3 className="text-lg font-bold text-on-surface mb-2">
+                  Earnings Overview
+                </h3>
+                <p className="text-base text-on-surface-variant">
+                  Great job today! You've completed 85% of your daily goal.
+                </p>
+              </div>
+              <div className="flex items-end justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs text-outline uppercase font-bold">
+                    Today's Total
+                  </p>
+                  <p className="text-3xl font-bold text-primary">$184.50</p>
+                </div>
+                <div className="flex gap-1 items-end h-16">
+                  {[40, 70, 55, 90, 65, 85].map((h, i) => (
+                    <div
+                      key={i}
+                      className={`w-8 rounded-t-sm transition-all ${i === 5 ? "bg-primary" : "bg-primary-container"}`}
+                      style={{ height: `${h}%` }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="md:col-span-4 bg-secondary text-on-secondary rounded-2xl p-6 space-y-4 flex flex-col justify-center">
+              <Star className="w-10 h-10 fill-current" />
+              <div className="space-y-1">
+                <p className="text-5xl font-bold leading-none">4.9</p>
+                <p className="text-lg font-bold opacity-90">Driver Rating</p>
+              </div>
+              <p className="text-sm opacity-80">Based on last 50 deliveries</p>
+            </div>
+          </div>
+        </section>
       </main>
 
       {/* Floating Action Button */}
@@ -262,16 +262,16 @@ function DriverTaskCard({
           <p className="text-base text-on-surface">{address}</p>
         </div>
       </div>
-      <div className="px-4 py-2 bg-surface-container-lowest border-t border-outline-variant flex gap-2">
+      <div className="px-4 py-3 bg-surface-container-lowest border-t border-outline-variant flex gap-3">
         <button
-          className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${primaryActionClass}`}
+          className={`flex-1 py-3 md:py-2 rounded-xl md:rounded-lg text-sm font-bold transition-colors ${primaryActionClass}`}
           disabled={disableActions}
         >
           {primaryAction}
         </button>
         {SecondaryIcon && (
           <button
-            className="px-2 py-2 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
+            className="p-3 md:p-2 border border-outline-variant rounded-xl md:rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors"
             aria-label="Secondary action"
           >
             <SecondaryIcon className="w-5 h-5" />

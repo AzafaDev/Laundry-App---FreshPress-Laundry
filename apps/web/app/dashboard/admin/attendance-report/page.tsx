@@ -47,6 +47,7 @@ export default function AttendanceReportPage() {
     page: 1,
     limit: 10,
   });
+  const [searchQuery, setSearchQuery] = useState("");
 
   const queryParams = {
     page: filters.page,
@@ -76,8 +77,14 @@ export default function AttendanceReportPage() {
     queryFn: () => attendanceService.getReport(debouncedParams),
   });
 
-  const records = data?.data ?? [];
+  const allRecords = data?.data ?? [];
   const pagination = data?.pagination;
+
+  const records = searchQuery
+    ? allRecords.filter((att: any) =>
+        att.user?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : allRecords;
 
   const handleExportCSV = () => {
     if (!records.length) return;
@@ -175,6 +182,18 @@ export default function AttendanceReportPage() {
                 className="w-full pl-9 pr-4 py-2 border border-outline-variant rounded-lg bg-surface"
               />
             </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari nama staf..."
+              className="w-full pl-9 pr-4 py-2.5 border border-outline-variant rounded-lg bg-surface focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all text-sm"
+            />
           </div>
 
           {/* Summary Row */}

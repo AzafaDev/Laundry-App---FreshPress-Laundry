@@ -39,12 +39,19 @@ export function AttendanceCard({
   >("idle");
 
   const shiftProgress = useMemo(() => {
-    if (!currentShift?.isActive || !currentShift?.startTime || !currentShift?.endTime) return 0;
+    if (
+      !currentShift?.isActive ||
+      !currentShift?.startTime ||
+      !currentShift?.endTime
+    )
+      return 0;
     const now = new Date();
     const [startH, startM] = currentShift.startTime.split(":").map(Number);
     const [endH, endM] = currentShift.endTime.split(":").map(Number);
-    const start = new Date(); start.setHours(startH, startM, 0);
-    const end = new Date(); end.setHours(endH, endM, 0);
+    const start = new Date();
+    start.setHours(startH, startM, 0);
+    const end = new Date();
+    end.setHours(endH, endM, 0);
     const total = end.getTime() - start.getTime();
     const elapsed = now.getTime() - start.getTime();
     if (total <= 0 || elapsed < 0) return 0;
@@ -154,26 +161,39 @@ export function AttendanceCard({
               Di luar jam shift
             </div>
           )}
-          {locationStatus !== "idle" && (
+          {locationStatus === "captured" && (
             <div className="flex items-center gap-1 mt-2 text-xs" role="status">
-              {locationStatus === "captured" ? (
-                <>
-                  <MapPin className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-primary">Lokasi tercatat</span>
-                </>
-              ) : (
-                <>
-                  <MapPinOff className="w-3.5 h-3.5 text-amber-600" />
-                  <span className="text-amber-600">Lokasi tidak tersedia — check-in tetap diproses</span>
-                </>
-              )}
+              <MapPin className="w-3.5 h-3.5 text-primary" />
+              <span className="text-primary">Lokasi tercatat</span>
+            </div>
+          )}
+          {(locationStatus === "denied" || locationStatus === "error") && (
+            <div
+              className="mt-2 p-3 bg-error/5 border border-error/20 rounded-lg flex items-start gap-2"
+              role="alert"
+            >
+              <MapPinOff className="w-4 h-4 text-error mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs font-bold text-error">
+                  Lokasi tidak tersedia
+                </p>
+                <p className="text-[11px] text-error/80">
+                  {locationStatus === "denied"
+                    ? "Izin lokasi ditolak. Check-in tetap diproses tanpa lokasi."
+                    : "Gagal mendapatkan lokasi. Check-in tetap diproses."}
+                </p>
+              </div>
             </div>
           )}
         </div>
       )}
 
       {error && (
-        <div className="mb-4 p-3 bg-error/10 text-error text-sm rounded-lg flex items-center gap-2" role="alert" aria-live="polite">
+        <div
+          className="mb-4 p-3 bg-error/10 text-error text-sm rounded-lg flex items-center gap-2"
+          role="alert"
+          aria-live="polite"
+        >
           <AlertCircle className="w-4 h-4" />
           {error.message}
         </div>
@@ -196,7 +216,7 @@ export function AttendanceCard({
         <button
           onClick={onCheckOut}
           disabled={!checkedIn || loading}
-          className={`py-4 px-6 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
+          className={` rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
             !checkedIn
               ? "bg-surface-container-low text-on-surface-variant cursor-not-allowed"
               : "bg-error text-on-error hover:opacity-90 active:scale-[0.98]"
