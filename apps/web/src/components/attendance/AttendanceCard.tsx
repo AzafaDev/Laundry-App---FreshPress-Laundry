@@ -1,15 +1,23 @@
-'use client';
-import { Clock, LogIn, LogOut, AlertCircle, Timer } from 'lucide-react';
-import { ShiftBadge } from '@/components/ui/ShiftBadge';
-import type { CurrentShift } from '@/services/attendance.service';
-import { useState, useEffect } from 'react';
+"use client";
+import {
+  Clock,
+  LogIn,
+  LogOut,
+  AlertCircle,
+  Timer,
+  MapPin,
+  MapPinOff,
+} from "lucide-react";
+import { ShiftBadge } from "@/components/ui/ShiftBadge";
+import type { CurrentShift } from "@/services/attendance.service";
+import { useState, useEffect, useMemo } from "react";
 
 interface AttendanceCardProps {
   checkedIn: boolean;
   checkInTime?: string;
   checkOutTime?: string;
   currentShift?: CurrentShift | null;
-  onCheckIn: () => void;
+  onCheckIn: (lat?: number, lng?: number) => void;
   onCheckOut: () => void;
   loading?: boolean;
   error?: Error | null;
@@ -26,6 +34,44 @@ export function AttendanceCard({
   error = null,
 }: AttendanceCardProps) {
   const [timeRemaining, setTimeRemaining] = useState<string | null>(null);
+  const [locationStatus, setLocationStatus] = useState<
+    "idle" | "captured" | "denied" | "error"
+  >("idle");
+
+  const shiftProgress = useMemo(() => {
+    if (!currentShift?.isActive || !currentShift?.startTime || !currentShift?.endTime) return 0;
+    const now = new Date();
+    const [startH, startM] = currentShift.startTime.split(":").map(Number);
+    const [endH, endM] = currentShift.endTime.split(":").map(Number);
+    const start = new Date(); start.setHours(startH, startM, 0);
+    const end = new Date(); end.setHours(endH, endM, 0);
+    const total = end.getTime() - start.getTime();
+    const elapsed = now.getTime() - start.getTime();
+    if (total <= 0 || elapsed < 0) return 0;
+    return Math.min(100, Math.round((elapsed / total) * 100));
+  }, [currentShift]);
+
+  const handleCheckInClick = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocationStatus("captured");
+          onCheckIn(pos.coords.latitude, pos.coords.longitude);
+        },
+        (err) => {
+          if (err.code === err.PERMISSION_DENIED) {
+            setLocationStatus("denied");
+          } else {
+            setLocationStatus("error");
+          }
+          onCheckIn();
+        },
+        { timeout: 5000, enableHighAccuracy: true },
+      );
+    } else {
+      onCheckIn();
+    }
+  };
 
   useEffect(() => {
     if (!currentShift?.isActive || !currentShift?.endTime) {
@@ -34,15 +80,15 @@ export function AttendanceCard({
     }
     const updateRemaining = () => {
       const now = new Date();
-      const [endHour, endMinute] = currentShift.endTime.split(':').map(Number);
+      const [endHour, endMinute] = currentShift.endTime.split(":").map(Number);
       const end = new Date();
       end.setHours(endHour, endMinute, 0);
       const diff = end.getTime() - now.getTime();
       if (diff <= 0) {
-        setTimeRemaining('Shift ended');
+        setTimeRemaining("Shift ended");
       } else {
         const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (3600000)) / 60000);
+        const minutes = Math.floor((diff % 3600000) / 60000);
         setTimeRemaining(`${hours}h ${minutes}m remaining`);
       }
     };
@@ -57,20 +103,20 @@ export function AttendanceCard({
         <div
           className={`w-12 h-12 rounded-full flex items-center justify-center ${
             checkedIn
-              ? 'bg-primary/10 text-primary'
-              : 'bg-surface-container-high text-on-surface-variant'
+              ? "bg-primary/10 text-primary"
+              : "bg-surface-container-high text-on-surface-variant"
           }`}
         >
           <Clock className="w-6 h-6" />
         </div>
         <div>
           <h3 className="text-lg font-bold text-on-surface">
-            {checkedIn ? 'Sedang Bertugas' : 'Belum Check In'}
+            {checkedIn ? "Sedang Bertugas" : "Belum Check In"}
           </h3>
           <p className="text-sm text-on-surface-variant">
             {checkedIn && checkInTime
               ? `Check in: ${checkInTime}`
-              : 'Silakan check in untuk memulai'}
+              : "Silakan check in untuk memulai"}
           </p>
         </div>
       </div>
@@ -81,7 +127,7 @@ export function AttendanceCard({
             <span className="text-on-surface-variant">Shift hari ini:</span>
             <ShiftBadge
               shift={
-                currentShift.shiftName as 'Morning' | 'Afternoon' | 'Night'
+                currentShift.shiftName as "Morning" | "Afternoon" | "Night"
               }
             />
           </div>
@@ -96,8 +142,8 @@ export function AttendanceCard({
               </div>
               <div className="w-full bg-surface-container-highest h-1.5 rounded-full mt-1 overflow-hidden">
                 <div
-                  className="bg-primary h-full rounded-full transition-all duration-500"
-                  style={{ width: '60%' }}
+                  className="bg-primary h-full rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${shiftProgress}%` }}
                 />
               </div>
             </div>
@@ -108,11 +154,26 @@ export function AttendanceCard({
               Di luar jam shift
             </div>
           )}
+          {locationStatus !== "idle" && (
+            <div className="flex items-center gap-1 mt-2 text-xs" role="status">
+              {locationStatus === "captured" ? (
+                <>
+                  <MapPin className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-primary">Lokasi tercatat</span>
+                </>
+              ) : (
+                <>
+                  <MapPinOff className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="text-amber-600">Lokasi tidak tersedia — check-in tetap diproses</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
       {error && (
-        <div className="mb-4 p-3 bg-error/10 text-error text-sm rounded-lg flex items-center gap-2">
+        <div className="mb-4 p-3 bg-error/10 text-error text-sm rounded-lg flex items-center gap-2" role="alert" aria-live="polite">
           <AlertCircle className="w-4 h-4" />
           {error.message}
         </div>
@@ -120,28 +181,29 @@ export function AttendanceCard({
 
       <div className="grid grid-cols-2 gap-3">
         <button
-          onClick={onCheckIn}
+          onClick={handleCheckInClick}
           disabled={checkedIn || loading}
           className={`py-4 px-6 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
             checkedIn
-              ? 'bg-surface-container-low text-on-surface-variant cursor-not-allowed'
-              : 'bg-primary text-on-primary hover:opacity-90 active:scale-[0.98] shadow-lg shadow-primary/20'
-          } ${loading ? 'animate-pulse' : ''}`}
+              ? "bg-surface-container-low text-on-surface-variant cursor-not-allowed"
+              : "bg-primary text-on-primary hover:opacity-90 active:scale-[0.98] shadow-lg shadow-primary/20"
+          } ${loading ? "animate-pulse" : ""}`}
+          aria-label={checkedIn ? "Sudah check in" : "Check in"}
         >
           <LogIn className="w-5 h-5" />
-          {loading ? 'Memproses...' : 'Check In'}
+          {loading ? "Memproses..." : "Check In"}
         </button>
         <button
           onClick={onCheckOut}
           disabled={!checkedIn || loading}
           className={`py-4 px-6 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
             !checkedIn
-              ? 'bg-surface-container-low text-on-surface-variant cursor-not-allowed'
-              : 'bg-error text-on-error hover:opacity-90 active:scale-[0.98]'
-          } ${loading ? 'animate-pulse' : ''}`}
+              ? "bg-surface-container-low text-on-surface-variant cursor-not-allowed"
+              : "bg-error text-on-error hover:opacity-90 active:scale-[0.98]"
+          } ${loading ? "animate-pulse" : ""}`}
         >
           <LogOut className="w-5 h-5" />
-          {loading ? 'Memproses...' : 'Check Out'}
+          {loading ? "Memproses..." : "Check Out"}
         </button>
       </div>
 

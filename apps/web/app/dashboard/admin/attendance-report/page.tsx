@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { attendanceService } from "@/services/attendance.service";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -27,11 +27,11 @@ const STATUS_COLOR: Record<string, string> = {
   absent: "bg-error-container text-on-error-container border border-error/20",
 };
 
-// Mock data untuk outlet & user (nanti ganti dengan API)
 const outletOptions = [
   { id: "", name: "Semua Outlet" },
   { id: "seed-outlet-01", name: "Downtown Hub" },
 ];
+
 const userOptions = [
   { id: "", name: "Semua User" },
   { id: "driver-id", name: "Test Driver" },
@@ -48,7 +48,6 @@ export default function AttendanceReportPage() {
     limit: 10,
   });
 
-  // Ketika mengirim ke API, filter out undefined values
   const queryParams = {
     page: filters.page,
     limit: filters.limit,
@@ -58,10 +57,23 @@ export default function AttendanceReportPage() {
     ...(filters.endDate && { endDate: filters.endDate }),
   };
 
-  // Di useQuery, panggil dengan queryParams
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["attendance", "report", filters],
-    queryFn: () => attendanceService.getReport(queryParams),
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const [debouncedParams, setDebouncedParams] = useState(queryParams);
+
+  useEffect(() => {
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setDebouncedParams(queryParams);
+    }, 300);
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.outletId, filters.userId, filters.startDate, filters.endDate, filters.page]);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["attendance", "report", debouncedParams],
+    queryFn: () => attendanceService.getReport(debouncedParams),
   });
 
   const records = data?.data ?? [];
@@ -69,14 +81,7 @@ export default function AttendanceReportPage() {
 
   const handleExportCSV = () => {
     if (!records.length) return;
-    const headers = [
-      "Nama",
-      "Role",
-      "Tanggal",
-      "Check In",
-      "Check Out",
-      "Status",
-    ];
+    const headers = ["Nama", "Role", "Tanggal", "Check In", "Check Out", "Status"];
     const rows = records.map((att) => [
       att.user?.full_name ?? "-",
       att.user?.role ?? "-",
@@ -85,9 +90,7 @@ export default function AttendanceReportPage() {
       att.check_out_time ?? "-",
       STATUS_LABEL[att.status] ?? att.status,
     ]);
-    const csvContent = [headers, ...rows]
-      .map((row) => row.join(","))
-      .join("\n");
+    const csvContent = [headers, ...rows].map((row) => row.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -95,6 +98,10 @@ export default function AttendanceReportPage() {
     link.click();
     URL.revokeObjectURL(link.href);
   };
+
+  const onTimeCount = records.filter((r: any) => r.status === "on_time").length;
+  const lateCount = records.filter((r: any) => r.status === "late").length;
+  const absentCount = records.filter((r: any) => r.status === "absent").length;
 
   return (
     <div className="min-h-screen bg-background pb-24 lg:pb-0">
@@ -104,12 +111,8 @@ export default function AttendanceReportPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-on-surface">
-                Laporan Absensi
-              </h2>
-              <p className="text-on-surface-variant">
-                Lihat dan export data absensi karyawan
-              </p>
+              <h2 className="text-2xl font-bold text-on-surface">Laporan Absensi</h2>
+              <p className="text-on-surface-variant">Lihat dan export data absensi karyawan</p>
             </div>
             <button
               onClick={handleExportCSV}
@@ -127,18 +130,12 @@ export default function AttendanceReportPage() {
               <select
                 value={filters.outletId}
                 onChange={(e) =>
-                  setFilters((f) => ({
-                    ...f,
-                    outletId: e.target.value,
-                    page: 1,
-                  }))
+                  setFilters((f) => ({ ...f, outletId: e.target.value, page: 1 }))
                 }
                 className="w-full pl-9 pr-4 py-2 border border-outline-variant rounded-lg bg-surface focus:border-primary"
               >
                 {outletOptions.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {opt.name}
-                  </option>
+                  <option key={opt.id} value={opt.id}>{opt.name}</option>
                 ))}
               </select>
             </div>
@@ -152,9 +149,7 @@ export default function AttendanceReportPage() {
                 className="w-full pl-9 pr-4 py-2 border border-outline-variant rounded-lg bg-surface focus:border-primary"
               >
                 {userOptions.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {opt.name}
-                  </option>
+                  <option key={opt.id} value={opt.id}>{opt.name}</option>
                 ))}
               </select>
             </div>
@@ -164,11 +159,7 @@ export default function AttendanceReportPage() {
                 type="date"
                 value={filters.startDate}
                 onChange={(e) =>
-                  setFilters((f) => ({
-                    ...f,
-                    startDate: e.target.value,
-                    page: 1,
-                  }))
+                  setFilters((f) => ({ ...f, startDate: e.target.value, page: 1 }))
                 }
                 className="w-full pl-9 pr-4 py-2 border border-outline-variant rounded-lg bg-surface"
               />
@@ -179,19 +170,37 @@ export default function AttendanceReportPage() {
                 type="date"
                 value={filters.endDate}
                 onChange={(e) =>
-                  setFilters((f) => ({
-                    ...f,
-                    endDate: e.target.value,
-                    page: 1,
-                  }))
+                  setFilters((f) => ({ ...f, endDate: e.target.value, page: 1 }))
                 }
                 className="w-full pl-9 pr-4 py-2 border border-outline-variant rounded-lg bg-surface"
               />
             </div>
           </div>
 
-          {/* Tabel */}
-          <div className="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+          {/* Summary Row */}
+          {records.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div className="bg-surface-container-low p-4 rounded-xl text-center">
+                <p className="text-2xl font-bold text-primary">{pagination?.total ?? 0}</p>
+                <p className="text-xs text-on-surface-variant">Total Records</p>
+              </div>
+              <div className="bg-surface-container-low p-4 rounded-xl text-center">
+                <p className="text-2xl font-bold text-secondary">{onTimeCount}</p>
+                <p className="text-xs text-on-surface-variant">On Time</p>
+              </div>
+              <div className="bg-surface-container-low p-4 rounded-xl text-center">
+                <p className="text-2xl font-bold text-amber-600">{lateCount}</p>
+                <p className="text-xs text-on-surface-variant">Late</p>
+              </div>
+              <div className="bg-surface-container-low p-4 rounded-xl text-center">
+                <p className="text-2xl font-bold text-error">{absentCount}</p>
+                <p className="text-xs text-on-surface-variant">Absent</p>
+              </div>
+            </div>
+          )}
+
+          {/* Desktop Table */}
+          <div className="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm hidden md:block">
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead className="bg-surface-container-low border-b border-outline-variant sticky top-0 z-10">
@@ -209,47 +218,32 @@ export default function AttendanceReportPage() {
                     <tr>
                       <td colSpan={6} className="px-6 py-12 text-center">
                         <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
-                        <p className="mt-2 text-on-surface-variant">
-                          Memuat data...
-                        </p>
+                        <p className="mt-2 text-on-surface-variant">Memuat data...</p>
                       </td>
                     </tr>
                   )}
                   {!isLoading && records.length === 0 && (
                     <tr>
-                      <td
-                        colSpan={6}
-                        className="px-6 py-12 text-center text-on-surface-variant"
-                      >
+                      <td colSpan={6} className="px-6 py-12 text-center text-on-surface-variant">
                         Tidak ada data absensi untuk filter ini.
                       </td>
                     </tr>
                   )}
-                  {records.map((att) => (
+                  {records.map((att: any) => (
                     <tr
                       key={att.id}
                       className="border-b border-outline-variant hover:bg-surface-container-low transition-colors"
                     >
                       <td className="px-6 py-4">
-                        <p className="font-bold">
-                          {att.user?.full_name ?? "-"}
-                        </p>
-                        <p className="text-xs text-on-surface-variant">
-                          {att.user?.email}
-                        </p>
+                        <p className="font-bold">{att.user?.full_name ?? "-"}</p>
+                        <p className="text-xs text-on-surface-variant">{att.user?.email}</p>
                       </td>
                       <td className="px-6 py-4 capitalize">{att.user?.role}</td>
                       <td className="px-6 py-4">
-                        {new Date(att.attendance_date).toLocaleDateString(
-                          "id-ID",
-                        )}
+                        {new Date(att.attendance_date).toLocaleDateString("id-ID")}
                       </td>
-                      <td className="px-6 py-4 font-mono">
-                        {att.check_in_time ?? "-"}
-                      </td>
-                      <td className="px-6 py-4 font-mono">
-                        {att.check_out_time ?? "-"}
-                      </td>
+                      <td className="px-6 py-4 font-mono">{att.check_in_time ?? "-"}</td>
+                      <td className="px-6 py-4 font-mono">{att.check_out_time ?? "-"}</td>
                       <td className="px-6 py-4">
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-bold ${STATUS_COLOR[att.status]}`}
@@ -263,33 +257,100 @@ export default function AttendanceReportPage() {
               </table>
             </div>
 
-            {/* Pagination */}
             {pagination && pagination.total_pages > 1 && (
               <div className="px-6 py-4 flex justify-between items-center border-t border-outline-variant bg-surface-container-lowest">
                 <span className="text-sm text-on-surface-variant">
-                  Halaman {pagination.page} dari {pagination.total_pages} (total{" "}
-                  {pagination.total} data)
+                  Halaman {pagination.page} dari {pagination.total_pages} (total {pagination.total} data)
                 </span>
                 <div className="flex gap-2">
                   <button
-                    onClick={() =>
-                      setFilters((f) => ({ ...f, page: f.page - 1 }))
-                    }
+                    onClick={() => setFilters((f) => ({ ...f, page: f.page - 1 }))}
                     disabled={pagination.page <= 1}
                     className="p-2 rounded border disabled:opacity-30 hover:bg-surface-container-high transition-all"
+                    aria-label="Halaman sebelumnya"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() =>
-                      setFilters((f) => ({ ...f, page: f.page + 1 }))
-                    }
+                    onClick={() => setFilters((f) => ({ ...f, page: f.page + 1 }))}
                     disabled={pagination.page >= pagination.total_pages}
                     className="p-2 rounded border disabled:opacity-30 hover:bg-surface-container-high transition-all"
+                    aria-label="Halaman selanjutnya"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="block md:hidden space-y-3">
+            {isLoading && (
+              <div className="text-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
+                <p className="mt-2 text-on-surface-variant">Memuat data...</p>
+              </div>
+            )}
+            {!isLoading && records.length === 0 && (
+              <div className="text-center py-12 text-on-surface-variant">
+                Tidak ada data absensi untuk filter ini.
+              </div>
+            )}
+            {records.map((att: any) => (
+              <div key={att.id} className="bg-surface border border-outline-variant rounded-xl p-4 space-y-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="font-bold text-on-surface">{att.user?.full_name ?? "-"}</p>
+                    <p className="text-xs text-on-surface-variant">{att.user?.email}</p>
+                  </div>
+                  <span
+                    className={`px-2 py-1 rounded-full text-xs font-bold ${STATUS_COLOR[att.status] ?? ""}`}
+                  >
+                    {STATUS_LABEL[att.status] ?? att.status}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-outline">Role:</span>{" "}
+                    <span className="capitalize">{att.user?.role}</span>
+                  </div>
+                  <div>
+                    <span className="text-outline">Tanggal:</span>{" "}
+                    {new Date(att.attendance_date).toLocaleDateString("id-ID")}
+                  </div>
+                  <div>
+                    <span className="text-outline">Check In:</span>{" "}
+                    <span className="font-mono">{att.check_in_time ?? "-"}</span>
+                  </div>
+                  <div>
+                    <span className="text-outline">Check Out:</span>{" "}
+                    <span className="font-mono">{att.check_out_time ?? "-"}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {pagination && pagination.total_pages > 1 && (
+              <div className="flex justify-center items-center gap-2 pt-4">
+                <button
+                  onClick={() => setFilters((f) => ({ ...f, page: f.page - 1 }))}
+                  disabled={pagination.page <= 1}
+                  className="p-2 rounded border disabled:opacity-30 hover:bg-surface-container-high transition-all"
+                  aria-label="Halaman sebelumnya"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm text-on-surface-variant" aria-current="page">
+                  {pagination.page} / {pagination.total_pages}
+                </span>
+                <button
+                  onClick={() => setFilters((f) => ({ ...f, page: f.page + 1 }))}
+                  disabled={pagination.page >= pagination.total_pages}
+                  className="p-2 rounded border disabled:opacity-30 hover:bg-surface-container-high transition-all"
+                  aria-label="Halaman selanjutnya"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
               </div>
             )}
           </div>

@@ -2,13 +2,25 @@
 
 import { Attendance } from "@/types/attendance.type";
 
-interface AttendanceRecord {
+export interface AttendanceRecord {
   date: string;
   checkIn: string;
   checkOut: string;
   duration: string;
   status: "on-time" | "late" | "absent";
 }
+
+export const STATUS_STYLES: Record<string, string> = {
+  "on-time": "bg-primary/10 text-primary",
+  late: "bg-amber-100 text-amber-700",
+  absent: "bg-error/10 text-error",
+};
+
+export const STATUS_LABELS: Record<string, string> = {
+  "on-time": "Tepat Waktu",
+  late: "Terlambat",
+  absent: "Absen",
+};
 
 export function toLogRecord(a: Attendance): AttendanceRecord {
   const date = new Date(a.attendance_date);

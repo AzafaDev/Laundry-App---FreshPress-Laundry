@@ -1,25 +1,7 @@
 import { ChevronLeft, ChevronRight, CalendarX } from 'lucide-react';
 import type { Pagination } from '@/types/attendance.type';
-
-interface AttendanceRecord {
-  date: string;
-  checkIn: string;
-  checkOut: string;
-  duration: string;
-  status: 'on-time' | 'late' | 'absent';
-}
-
-const statusStyles: Record<AttendanceRecord['status'], string> = {
-  'on-time': 'bg-primary/10 text-primary',
-  late: 'bg-amber-100 text-amber-700',
-  absent: 'bg-error/10 text-error',
-};
-
-const statusLabels: Record<AttendanceRecord['status'], string> = {
-  'on-time': 'Tepat Waktu',
-  late: 'Terlambat',
-  absent: 'Absen',
-};
+import type { AttendanceRecord } from '@/utils/formatDate';
+import { STATUS_STYLES, STATUS_LABELS } from '@/utils/formatDate';
 
 interface AttendanceLogProps {
   records: AttendanceRecord[];
@@ -29,12 +11,11 @@ interface AttendanceLogProps {
 }
 
 export function AttendanceLog({ records, pagination, onPageChange, isLoading }: AttendanceLogProps) {
-  // Skeleton loading
   if (isLoading) {
     return (
-      <div className="space-y-3 animate-pulse">
+      <div className="space-y-3 animate-pulse" role="list" aria-label="Memuat riwayat absensi">
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="flex items-center justify-between p-4 bg-surface border border-outline-variant rounded-xl">
+          <div key={i} className="flex items-center justify-between p-4 bg-surface border border-outline-variant rounded-xl" role="listitem">
             <div className="space-y-2">
               <div className="h-4 w-32 bg-outline-variant rounded"></div>
               <div className="h-3 w-24 bg-outline-variant rounded"></div>
@@ -60,10 +41,11 @@ export function AttendanceLog({ records, pagination, onPageChange, isLoading }: 
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" role="list" aria-label="Riwayat absensi">
       {records.map((record, i) => (
         <div
           key={i}
+          role="listitem"
           className="flex items-center justify-between p-4 bg-surface-container-lowest border border-outline-variant rounded-xl hover:shadow-sm transition-shadow group"
         >
           <div>
@@ -75,9 +57,9 @@ export function AttendanceLog({ records, pagination, onPageChange, isLoading }: 
           <div className="text-right">
             <p className="text-xs text-on-surface-variant">{record.duration}</p>
             <span
-              className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${statusStyles[record.status]}`}
+              className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium mt-1 ${STATUS_STYLES[record.status]}`}
             >
-              {statusLabels[record.status]}
+              {STATUS_LABELS[record.status]}
             </span>
           </div>
         </div>
@@ -89,18 +71,18 @@ export function AttendanceLog({ records, pagination, onPageChange, isLoading }: 
             onClick={() => onPageChange(pagination.page - 1)}
             disabled={pagination.page <= 1}
             className="p-2 rounded-lg border border-outline-variant disabled:opacity-30 hover:bg-surface-container-low transition-all"
-            aria-label="Previous page"
+            aria-label="Halaman sebelumnya"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-sm text-on-surface-variant">
+          <span className="text-sm text-on-surface-variant" aria-current="page">
             Halaman {pagination.page} dari {pagination.total_pages}
           </span>
           <button
             onClick={() => onPageChange(pagination.page + 1)}
             disabled={pagination.page >= pagination.total_pages}
             className="p-2 rounded-lg border border-outline-variant disabled:opacity-30 hover:bg-surface-container-low transition-all"
-            aria-label="Next page"
+            aria-label="Halaman selanjutnya"
           >
             <ChevronRight className="w-4 h-4" />
           </button>

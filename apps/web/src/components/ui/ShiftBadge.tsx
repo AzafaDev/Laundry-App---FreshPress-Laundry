@@ -21,7 +21,7 @@ interface ShiftBadgeProps {
 export function ShiftBadge({ shift }: ShiftBadgeProps) {
   if (!shift) {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-1 bg-surface-container-high text-on-surface-variant text-xs rounded-full border border-outline-variant">
+      <span role="status" className="inline-flex items-center gap-1 px-2 py-1 bg-surface-container-high text-on-surface-variant text-xs rounded-full border border-outline-variant">
         <AlertCircle className="w-3.5 h-3.5" />
         Tidak ada shift aktif
       </span>
@@ -30,6 +30,7 @@ export function ShiftBadge({ shift }: ShiftBadgeProps) {
 
   return (
     <span
+      role="status"
       className={`inline-flex items-center gap-1 px-2 py-1 text-xs rounded-full border font-medium ${shiftColors[shift]}`}
     >
       <Clock className="w-3.5 h-3.5" />
