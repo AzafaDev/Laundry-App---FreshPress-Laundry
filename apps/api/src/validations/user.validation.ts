@@ -16,6 +16,9 @@ const passwordSchema = z
   .regex(/\d/, "Password harus mengandung angka.");
 
 // ── Body ──────────────────────────────────────────────────────────────────────
+// Admin-create payload. `password` is optional — leaving it blank triggers the
+// invite flow (verification email; user sets their own password on first
+// click).
 export const createUserSchema = z.object({
   full_name: z.string().min(2, "Nama minimal 2 karakter."),
   email: z.string().email("Format email tidak valid."),
@@ -23,7 +26,7 @@ export const createUserSchema = z.object({
     .string()
     .regex(/^[0-9+\-\s]{8,15}$/, "Format nomor telepon tidak valid."),
   role: userRoleSchema,
-  password: passwordSchema,
+  password: passwordSchema.optional(),
   is_verified: z.boolean().optional().default(true),
 });
 

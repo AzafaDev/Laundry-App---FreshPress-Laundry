@@ -57,6 +57,11 @@ router.get(
   OutletCtrl.listOutlets,
 );
 router.get(
+  "/admin/outlets/geocode",
+  requireRole("super_admin", "outlet_admin"),
+  OutletCtrl.searchAddress,
+);
+router.get(
   "/admin/outlets/:id",
   requireRole("super_admin", "outlet_admin"),
   OutletCtrl.getOutlet,

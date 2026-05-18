@@ -90,3 +90,22 @@ export const assignUserToOutlet = async (
     next(err);
   }
 };
+
+export const searchAddress = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const q = String(req.query.q ?? "").trim();
+    const limit = Math.min(Math.max(Number(req.query.limit ?? 5), 1), 10);
+    if (q.length < 3) {
+      res.json({ success: true, items: [] });
+      return;
+    }
+    const items = await OutletService.searchAddress(q, limit);
+    res.json({ success: true, items });
+  } catch (err) {
+    next(err);
+  }
+};

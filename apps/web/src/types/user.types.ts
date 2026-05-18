@@ -18,6 +18,15 @@ export interface User {
   updated_at?: string;
 }
 
+/**
+ * Returned by `POST /v1/admin/users`. Same fields as `User` plus an `invited`
+ * flag set to true when the server kicked off the email-invite flow (admin
+ * left password blank).
+ */
+export interface CreatedUser extends User {
+  invited: boolean;
+}
+
 export interface UserListPagination {
   page: number;
   limit: number;
@@ -43,7 +52,12 @@ export interface CreateUserPayload {
   email: string;
   phone: string;
   role: UserRole;
-  password: string;
+  /**
+   * Optional — when omitted (or empty), the server provisions a placeholder
+   * password hash, marks the user unverified, and sends an invite email
+   * with a verification link.
+   */
+  password?: string;
   is_verified?: boolean;
 }
 

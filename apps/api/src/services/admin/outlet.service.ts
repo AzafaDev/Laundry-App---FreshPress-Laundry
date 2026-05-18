@@ -1,7 +1,10 @@
 import { Prisma } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
-import { geocodeAddress } from "../../utils/geocode.util.js";
+import {
+  geocodeAddress,
+  searchAddress as searchAddressUtil,
+} from "../../utils/geocode.util.js";
 import type {
   CreateOutletInput,
   UpdateOutletInput,
@@ -189,3 +192,10 @@ export const assignUserToOutlet = async (outletId: string, userId: string) => {
 
   return { outlet_id: outletId, user_id: userId, shift_id: shift.id };
 };
+
+/**
+ * Returns up to `limit` candidate places matching the free-text query.
+ * Used by the address autocomplete in the outlet form.
+ */
+export const searchAddress = async (q: string, limit = 5) =>
+  searchAddressUtil(q, limit);

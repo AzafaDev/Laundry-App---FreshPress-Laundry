@@ -1,6 +1,7 @@
 import { axiosInstance } from "@/lib/axios";
 import type {
   User,
+  CreatedUser,
   UserListQuery,
   UserListResponse,
   CreateUserPayload,
@@ -30,8 +31,10 @@ export const userService = {
     return data.data;
   },
 
-  create: async (payload: CreateUserPayload): Promise<User> => {
-    const { data } = await axiosInstance.post<Envelope<User>>(
+  // Returns CreatedUser so callers can read the `invited` flag the server
+  // tacks on when no password was supplied.
+  create: async (payload: CreateUserPayload): Promise<CreatedUser> => {
+    const { data } = await axiosInstance.post<Envelope<CreatedUser>>(
       "/v1/admin/users",
       payload,
     );

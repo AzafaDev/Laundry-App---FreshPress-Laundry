@@ -1,12 +1,14 @@
 "use client";
 
-// Outlet create/edit form. Address is the source of truth — when the admin
-// finishes typing, we offer to geocode it (server-side via OpenCage) and drop
-// a pin. The admin can also click the map directly to override coordinates.
-import { useState, useEffect } from "react";
+// Outlet create/edit form. The address field is now an autocomplete: as the
+// admin types, we debounce-call the server-side OpenCage proxy and show up to
+// 5 matches. Picking a match fills the address text AND drops the pin on the
+// map. The map remains click/drag-to-reposition as well.
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { X, Store, MapPin } from "lucide-react";
+import { X, Store, MapPin, Search, Loader2 } from "lucide-react";
 import { useCreateOutlet, useUpdateOutlet } from "@/hooks/useOutlets";
+import { outletService, type GeocodeMatch } from "@/services/outlet.service";
 import type {
   CreateOutletPayload,
   Outlet,
@@ -39,6 +41,14 @@ export function OutletForm({ outlet, onClose }: Props) {
   });
   const [error, setError] = useState<string | null>(null);
 
+  // ── Autocomplete state ──────────────────────────────────────────────────────
+  const [matches, setMatches] = useState<GeocodeMatch[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showMatches, setShowMatches] = useState(false);
+  // Skip the next debounce trigger (used right after picking a suggestion so we
+  // don't re-search the formatted address we just inserted).
+  const skipNextSearchRef = useRef(false);
+
   useEffect(() => {
     if (outlet) {
       setForm({
@@ -51,6 +61,45 @@ export function OutletForm({ outlet, onClose }: Props) {
       });
     }
   }, [outlet]);
+
+  // Debounced geocode search. Fires 500 ms after the user stops typing.
+  useEffect(() => {
+    if (skipNextSearchRef.current) {
+      skipNextSearchRef.current = false;
+      return;
+    }
+    const q = form.address.trim();
+    if (q.length < 3) {
+      setMatches([]);
+      setSearching(false);
+      return;
+    }
+    const handle = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const items = await outletService.geocodeSearch(q, 5);
+        setMatches(items);
+        setShowMatches(true);
+      } catch {
+        setMatches([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 500);
+    return () => clearTimeout(handle);
+  }, [form.address]);
+
+  const pickMatch = (m: GeocodeMatch) => {
+    skipNextSearchRef.current = true;
+    setForm((prev) => ({
+      ...prev,
+      address: m.formatted,
+      latitude: m.latitude,
+      longitude: m.longitude,
+    }));
+    setShowMatches(false);
+    setMatches([]);
+  };
 
   const pending = create.isPending || update.isPending;
 
@@ -126,20 +175,64 @@ export function OutletForm({ outlet, onClose }: Props) {
           </Field>
 
           <Field label="Alamat">
+            {/* Autocomplete-enabled address field */}
             <div className="relative">
-              <MapPin className="absolute left-4 top-3 w-5 h-5 text-outline" />
-              <textarea
-                rows={2}
+              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-outline pointer-events-none" />
+              <input
+                type="text"
                 required
                 value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                placeholder="Jl. Bersih No. 124, Metro City"
-                className={`${inputClass} pl-12 resize-none`}
+                onChange={(e) =>
+                  setForm({ ...form, address: e.target.value })
+                }
+                onFocus={() => setShowMatches(matches.length > 0)}
+                // Delay so the click-on-suggestion can register before blur hides it
+                onBlur={() => setTimeout(() => setShowMatches(false), 150)}
+                placeholder="Mulai ketik alamat, contoh: Jalan Kopo Bandung"
+                className={`${inputClass} pl-12 pr-10`}
               />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {searching ? (
+                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4 text-outline" />
+                )}
+              </div>
+
+              {/* Suggestions dropdown */}
+              {showMatches && matches.length > 0 && (
+                <ul className="absolute z-10 left-0 right-0 mt-1 bg-white border border-outline-variant rounded-xl shadow-lg overflow-hidden max-h-72 overflow-y-auto">
+                  {matches.map((m, i) => (
+                    <li key={`${m.latitude},${m.longitude},${i}`}>
+                      <button
+                        type="button"
+                        // onMouseDown fires before the input's onBlur so the
+                        // suggestion isn't dismissed before the click lands.
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => pickMatch(m)}
+                        className="w-full text-left px-4 py-2.5 hover:bg-surface-container-low border-b border-outline-variant last:border-b-0 transition-colors"
+                      >
+                        <div className="flex items-start gap-2">
+                          <MapPin className="w-4 h-4 text-primary mt-1 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-sm text-on-surface truncate">
+                              {m.formatted}
+                            </p>
+                            <p className="text-xs text-on-surface-variant">
+                              {m.latitude.toFixed(5)}, {m.longitude.toFixed(5)}
+                              {m.confidence ? ` · score ${m.confidence}` : ""}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <p className="text-xs text-on-surface-variant mt-1 ml-1">
-              Server akan mengubah alamat ini menjadi koordinat saat disimpan,
-              atau Anda dapat memilih titik di peta di bawah.
+              Pilih salah satu hasil pencarian untuk langsung memindahkan pin di
+              peta, atau klik manual di peta untuk override.
             </p>
           </Field>
 
@@ -155,7 +248,7 @@ export function OutletForm({ outlet, onClose }: Props) {
             <p className="text-xs text-on-surface-variant mt-1 ml-1">
               {form.latitude != null && form.longitude != null
                 ? `Pin: ${form.latitude.toFixed(5)}, ${form.longitude.toFixed(5)}`
-                : "Klik peta untuk menentukan titik outlet."}
+                : "Belum ada pin — pilih dari hasil pencarian alamat di atas atau klik di peta."}
             </p>
           </Field>
 

@@ -1,6 +1,9 @@
+import crypto from "crypto";
 import { Prisma } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import { hashPassword } from "../../utils/hash.util.js";
+import { signEmailToken } from "../../utils/jwt.util.js";
+import { sendVerificationEmail } from "../../lib/email.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import type {
   CreateUserInput,
@@ -71,12 +74,29 @@ export const getUserById = async (id: string) => {
   return user;
 };
 
-/** Create a new user (admin creation flow — password is set directly). */
+/**
+ * Create a new user.
+ *
+ * Two modes:
+ *  - **Direct create**: admin supplies `password` → account is ready to log in
+ *    (is_verified defaults to true).
+ *  - **Invite**: admin leaves `password` blank → we stash a random placeholder
+ *    hash, mark `is_verified: false`, and send the standard verification email
+ *    so the user clicks the link, sets their own password, and is then verified
+ *    via the existing /v1/customer/auth/verify endpoint.
+ *
+ * The return shape includes an `invited` flag so the API consumer (the admin
+ * UI) can show the right confirmation copy.
+ */
 export const createUser = async (input: CreateUserInput) => {
   const existing = await prisma.user.findUnique({ where: { email: input.email } });
   if (existing) throw new AppError("Email sudah terdaftar.", 409);
 
-  const password_hash = await hashPassword(input.password);
+  const isInvite = !input.password;
+  const password_hash = await hashPassword(
+    isInvite ? crypto.randomBytes(24).toString("hex") : input.password!,
+  );
+
   const user = await prisma.user.create({
     data: {
       full_name: input.full_name,
@@ -84,11 +104,32 @@ export const createUser = async (input: CreateUserInput) => {
       phone: input.phone,
       role: input.role,
       password_hash,
-      is_verified: input.is_verified ?? true,
+      is_verified: isInvite ? false : (input.is_verified ?? true),
     },
     select: PUBLIC_USER_SELECT,
   });
-  return user;
+
+  if (isInvite) {
+    const token = signEmailToken(
+      { userId: user.id, email: user.email, purpose: "verify" },
+      "24h", // longer window for admin invites
+    );
+    try {
+      await sendVerificationEmail(user.email, token);
+    } catch (err) {
+      // If the SMTP transport fails we don't want to leave the admin guessing;
+      // bubble up a 502 so the UI can show "user created but email failed".
+      // The row stays in place — the admin can re-trigger via the existing
+      // resend-verification endpoint.
+      console.error("[admin.createUser] failed to send invite email:", err);
+      throw new AppError(
+        "User dibuat, tapi email invite gagal terkirim. Coba kirim ulang verifikasi.",
+        502,
+      );
+    }
+  }
+
+  return { ...user, invited: isInvite };
 };
 
 /** Patch an existing user. */
