@@ -1,128 +1,99 @@
-﻿// apps/web/src/components/home/Hero.tsx
-"use client";
+﻿"use client";
 
 import Link from "next/link";
-import { MapPin } from "lucide-react";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay, EffectFade } from "swiper/modules";
-import "swiper/css";
-import "swiper/css/effect-fade";
 import Image from "next/image";
+import { Star, Truck, HeadphonesIcon, MapPin } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 
-const slides = [
-  {
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuCW_6uxG6NVxTRRBmmciRFNZ1qMOWFLme8_50_-ame8pz98HPgrCetFRic7johkqbhZUZ1VAaNqw1cxFKPh9GrTssrSFZWJZf1GwDvkSViaJvHgPPx5hGG3ksixD4T0gYuLq_mJZykZybR015HIa6U40RQ9Lox2J6XP0ofCXIMAUl5jfdX5cXqjpSmtUlxPR-XFkdCrz_j6R6lvJ1jMFAXu0syHajnmaWD0eBWLSgweN1pPwwlc2B8kEglIE5jTBKHKEaM2fZhMPik",
-    headline: "Laundry Hari Ini, Bersih Esok Pagi.",
-    sub: "Nikmati kemudahan layanan cuci premium langsung dari pintu rumah Anda.",
-    cta: "Pesan Sekarang",
-  },
-  {
-    color: "bg-primary-container",
-    textColor: "text-on-primary-container",
-    headline: "Diskon 20% Pengguna Baru",
-    sub: "Gunakan kode FRESHFIRST untuk pesanan pertama Anda.",
-    cta: "Klaim Promo",
-    badge: "PROMO TERBATAS",
-  },
-  {
-    color: "bg-secondary",
-    textColor: "text-white",
-    headline: "Layanan Express 6 Jam Selesai",
-    sub: "Butuh pakaian bersih segera? Layanan kilat kami siap membantu Anda.",
-    cta: "Cek Layanan",
-  },
+const usps = [
+  { icon: Truck, label: "Gratis jemput & antar" },
+  { icon: HeadphonesIcon, label: "Dukungan 24/7" },
+  { icon: MapPin, label: "Lacak pesanan real-time" },
 ];
 
-const HeroCta = ({ label, className }: { label: string; className?: string }) => {
+export const Hero = () => {
   const user = useAuthStore((s) => s.user);
-  const href = user ? "/dashboard" : "/register";
-  return (
-    <Link
-      href={href}
-      className={className ?? "bg-primary text-on-primary px-8 py-4 rounded-lg text-xl font-semibold shadow-lg hover:scale-105 transition-transform inline-block"}
-    >
-      {label || "Pesan Sekarang"}
-    </Link>
-  );
-};
+  const ctaHref = user ? "/dashboard" : "/register";
 
-export const Hero = () => (
-  <section className="relative bg-surface-container-low ">
-    <Swiper
-      modules={[Autoplay, EffectFade]}
-      autoplay={{ delay: 5000, disableOnInteraction: false }}
-      effect="fade"
-      loop
-      className="h-[500px] md:h-[600px] w-full"
-      aria-label="Promo bergambar"
-    >
-      {slides.map((slide, i) => (
-        <SwiperSlide key={i}>
-          <div className={`relative h-full w-full ${slide.color || ""}`}>
-            {slide.image ? (
-              <>
-                <Image
-                  alt={`Slide ${i + 1}`}
-                  className="object-cover"
-                  fill
-                  priority={i === 0}
-                  src={slide.image}
-                />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-center px-6">
-                  <div className="max-w-3xl">
-                    <h1 className="text-white font-bold text-4xl md:text-6xl mb-4">
-                      Laundry Hari Ini, <br />
-                      <span className="text-inverse-primary">
-                        Bersih Esok Pagi.
-                      </span>
-                    </h1>
-                    <p className="text-white/90 text-lg mb-8">{slide.sub}</p>
-                    <HeroCta label={slide.cta} />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div
-                className={`absolute inset-0 flex items-center justify-center ${slide.color}`}
+  return (
+    <section className="bg-white overflow-hidden">
+      {/* Main hero */}
+      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-12 pb-0">
+        <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
+          {/* Left: text */}
+          <div className="flex-1 text-center lg:text-left">
+            {/* Trust badge */}
+            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-semibold mb-6">
+              <div className="flex">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-3.5 h-3.5 fill-primary text-primary" />
+                ))}
+              </div>
+              <span>200.000+ ulasan di seluruh Indonesia</span>
+            </div>
+
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-tight mb-5">
+              Laundry & Dry Cleaning{" "}
+              <span className="text-primary">Selesai 24 Jam</span>
+            </h1>
+
+            <p className="text-lg text-gray-500 mb-8">
+              Jemput dari rumah, cuci profesional oleh tenaga ahli kami, lalu
+              antar kembali ke depan pintu Anda.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
+              <Link
+                href={ctaHref}
+                className="bg-primary text-white px-8 py-4 rounded-xl text-base font-bold shadow-md hover:bg-primary-container hover:text-on-primary-container transition-all active:scale-95 text-center"
               >
-                <div className="max-w-3xl text-center px-6">
-                  {slide.badge && (
-                    <span className="bg-tertiary-container text-white px-4 py-2 rounded-full text-sm font-medium mb-6 inline-block">
-                      {slide.badge}
-                    </span>
-                  )}
-                  <h2
-                    className={`text-4xl md:text-6xl font-bold mb-4 ${slide.textColor || "text-white"}`}
-                  >
-                    {slide.headline}
-                  </h2>
-                  <p className="text-white/80 text-lg mb-8">{slide.sub}</p>
-                  <HeroCta
-                    label={slide.cta}
-                    className="bg-white text-secondary px-8 py-4 rounded-lg text-xl font-semibold shadow-lg hover:scale-105 transition-transform inline-block"
-                  />
+                Jadwalkan Penjemputan
+              </Link>
+              <a
+                href="#how-it-works"
+                className="border border-gray-300 text-gray-900 px-8 py-4 rounded-xl text-base font-semibold hover:bg-gray-50 transition-colors text-center"
+              >
+                Cara Kerja
+              </a>
+            </div>
+          </div>
+
+          {/* Right: hero image */}
+          <div className="flex-1 w-full relative">
+            <div className="relative h-72 sm:h-96 lg:h-[480px] w-full">
+              <Image
+                src="/images/slide-1.png"
+                alt="FreshPress Laundry Service"
+                fill
+                className="object-cover rounded-3xl shadow-xl"
+                priority
+              />
+              {/* Floating price card */}
+              <div className="absolute bottom-6 left-6 bg-white rounded-2xl shadow-lg px-5 py-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                  <span className="text-primary font-bold text-lg">✓</span>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">Mulai dari</p>
+                  <p className="text-gray-900 font-bold text-sm">Rp 10.000 / kg</p>
                 </div>
               </div>
-            )}
+            </div>
           </div>
-        </SwiperSlide>
-      ))}
-    </Swiper>
-
-    <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 z-20 hidden md:block">
-      <div className="bg-surface-container-low border border-outline rounded-2xl p-1 flex items-center ">
-        <MapPin className="ml-3 mr-2 text-outline w-5 h-5 flex-shrink-0" />
-        <input
-          className="flex-1 bg-transparent border-none focus:ring-0 text-base px-2 py-3"
-          placeholder="Cari outlet terdekat..."
-          type="text"
-        />
-        <button className="bg-primary text-white text-sm font-medium px-6 py-3 rounded-xl hover:opacity-90 transition-opacity flex-shrink-0">
-          Cari
-        </button>
+        </div>
       </div>
-    </div>
-  </section>
-);
+
+      {/* USP strip */}
+      <div className="bg-primary mt-10">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col sm:flex-row justify-center gap-6 sm:gap-12">
+          {usps.map(({ icon: Icon, label }) => (
+            <div key={label} className="flex items-center gap-2 text-white justify-center">
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              <span className="text-sm font-medium">{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};

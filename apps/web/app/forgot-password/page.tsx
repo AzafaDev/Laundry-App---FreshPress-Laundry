@@ -120,7 +120,7 @@ export default function ForgotPasswordPage() {
                       <span className="inline-block w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                       <>
-                        Kirim Instruksi
+                        Kirim
                         <ArrowRight className="w-[18px] h-[18px]" />
                       </>
                     )}
@@ -165,6 +165,7 @@ export default function ForgotPasswordPage() {
           <img
             alt="Modern laundry interior"
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcKijLWiR5tzSoaYaMvzjuyRIu23MSF9fAfYnkjpFFwDrQY6fJ1SNBt3ZdzeTr77Jc71EAGI-lq0Fvtssc7_5SuIj33RgsMZmpQt75OIi9GhRvDgCv1sczlJtJxMWQ58rIaVjUKP_oqQKwXNSyIikutGbIru-tXZyobepDLjfGQWeVL5iZwES0UDo_lVBLlqcMfENOmL_4oeJVxnIiSHqMUCQ4__ZjTcyaE03crnzfxl_aBRCJoUKExGgxv6pzZf8L5ZBrZJjBHD8"
+            loading="lazy"
             className="w-full h-full object-cover opacity-60 mix-blend-multiply"
           />
           <div className="absolute bottom-16 left-12 right-12">
