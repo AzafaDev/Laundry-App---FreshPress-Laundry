@@ -24,7 +24,7 @@ export const getUser = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const user = await UserService.getUserById(req.params.id);
+    const user = await UserService.getUserById(req.params.id as string);
     res.json({ success: true, data: user });
   } catch (err) {
     next(err);
@@ -50,7 +50,7 @@ export const updateUser = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const user = await UserService.updateUser(req.params.id, req.body);
+    const user = await UserService.updateUser(req.params.id as string, req.body);
     res.json({ success: true, data: user });
   } catch (err) {
     next(err);
@@ -64,7 +64,10 @@ export const deleteUser = async (
 ): Promise<void> => {
   try {
     if (!req.user) throw new AppError("Autentikasi diperlukan.", 401);
-    const user = await UserService.softDeleteUser(req.params.id, req.user.userId);
+    const user = await UserService.softDeleteUser(
+      req.params.id as string,
+      req.user.userId,
+    );
     res.json({ success: true, data: user, message: "User dihapus." });
   } catch (err) {
     next(err);

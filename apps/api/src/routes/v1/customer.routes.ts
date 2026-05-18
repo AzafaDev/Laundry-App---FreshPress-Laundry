@@ -11,7 +11,7 @@ import {
 
 const router = Router();
 
-// ── Zod Schemas ───────────────────────────────────────────────────────────────
+// Zod Schemas
 const registerSchema = z.object({
   full_name: z.string().min(2, "Nama minimal 2 karakter."),
   email: z.string().email("Format email tidak valid."),
@@ -59,7 +59,7 @@ const changePasswordSchema = z.object({
     .regex(/\d/, "Password harus mengandung angka."),
 });
 
-// ── Auth Routes ───────────────────────────────────────────────────────────────
+// Auth Routes
 router.post("/auth/register", authRateLimiter, validate(registerSchema), AuthCtrl.register);
 router.post("/auth/verify", authRateLimiter, validate(verifySchema), AuthCtrl.verifyEmail);
 router.post("/auth/resend-verification", authRateLimiter, validate(emailSchema), AuthCtrl.resendVerification);
@@ -67,7 +67,7 @@ router.post("/auth/login", loginRateLimiter, validate(loginSchema), AuthCtrl.log
 router.post("/auth/forgot-password", authRateLimiter, validate(emailSchema), AuthCtrl.forgotPassword);
 router.post("/auth/reset-password", authRateLimiter, validate(resetSchema), AuthCtrl.resetPassword);
 
-// ── Profile Routes (protected) ────────────────────────────────────────────────
+// Profile Routes (protected)
 router.get("/profile", authenticate, ProfileCtrl.getProfile);
 router.patch("/profile", authenticate, validate(updateProfileSchema), ProfileCtrl.updateProfile);
 router.patch("/profile/password", authenticate, validate(changePasswordSchema), ProfileCtrl.changePassword);

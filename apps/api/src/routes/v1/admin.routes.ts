@@ -22,24 +22,16 @@ const router = Router();
 // All admin routes require a valid Bearer token.
 router.use(authenticate);
 
-// ── Reports ───────────────────────────────────────────────────────────────────
+// Reports
 router.get(
   "/reports/attendance",
   requireRole("super_admin", "outlet_admin"),
   getAttendanceReport,
 );
 
-// ── Users (super_admin only) ──────────────────────────────────────────────────
-router.get(
-  "/admin/users",
-  requireRole("super_admin"),
-  UserCtrl.listUsers,
-);
-router.get(
-  "/admin/users/:id",
-  requireRole("super_admin"),
-  UserCtrl.getUser,
-);
+// Users (super_admin only)
+router.get("/admin/users", requireRole("super_admin"), UserCtrl.listUsers);
+router.get("/admin/users/:id", requireRole("super_admin"), UserCtrl.getUser);
 router.post(
   "/admin/users",
   requireRole("super_admin"),
@@ -58,7 +50,7 @@ router.delete(
   UserCtrl.deleteUser,
 );
 
-// ── Outlets (super_admin manages, outlet_admin can read) ──────────────────────
+// Outlets (super_admin manages, outlet_admin can read)
 router.get(
   "/admin/outlets",
   requireRole("super_admin", "outlet_admin"),
