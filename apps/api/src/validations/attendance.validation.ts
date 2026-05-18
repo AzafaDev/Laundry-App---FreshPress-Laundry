@@ -1,9 +1,22 @@
 import { z } from "zod";
 
-export const checkInSchema = z.object({});
+export const checkInSchema = z.object({
+  lat: z.coerce
+    .number()
+    .min(-90)
+    .max(90)
+    .optional()
+    .refine((v) => v === undefined || !isNaN(v), "Latitude tidak valid"),
+  lng: z.coerce
+    .number()
+    .min(-180)
+    .max(180)
+    .optional()
+    .refine((v) => v === undefined || !isNaN(v), "Latitude tidak valid"),
+});
 
 export const checkOutSchema = z.object({
-  attendanceId: z.string().uuid(),
+  attendanceId: z.string().uuid("ID absensi tidak valid"),
 });
 
 export const getMyLogsQuerySchema = z.object({
@@ -14,10 +27,30 @@ export const getMyLogsQuerySchema = z.object({
 });
 
 export const attendanceReportQuerySchema = z.object({
-  outletId: z.string().uuid().optional(),
-  userId: z.string().uuid().optional(),
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().date().optional(),
+  outletId: z.preprocess(
+    (val) =>
+      val === "" || val === null || val === undefined ? undefined : val,
+    z.string().uuid("Outlet ID tidak valid").optional(),
+  ),
+  userId: z.preprocess(
+    (val) =>
+      val === "" || val === null || val === undefined ? undefined : val,
+    z.string().uuid("User ID tidak valid").optional(),
+  ),
+  startDate: z.preprocess(
+    (val) =>
+      val === "" || val === null || val === undefined
+        ? undefined
+        : new Date(val as string),
+    z.date().optional(),
+  ),
+  endDate: z.preprocess(
+    (val) =>
+      val === "" || val === null || val === undefined
+        ? undefined
+        : new Date(val as string),
+    z.date().optional(),
+  ),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
