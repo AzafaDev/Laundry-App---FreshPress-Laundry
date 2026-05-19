@@ -109,3 +109,34 @@ export const searchAddress = async (
     next(err);
   }
 };
+
+export const listAssignments = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const items = await OutletService.listOutletAssignments(
+      req.params.id as string,
+    );
+    res.json({ success: true, items });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const unassignUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const result = await OutletService.unassignUserFromOutlet(
+      req.params.id as string,
+      req.params.userId as string,
+    );
+    res.json({ success: true, data: result, message: "User di-unassign." });
+  } catch (err) {
+    next(err);
+  }
+};

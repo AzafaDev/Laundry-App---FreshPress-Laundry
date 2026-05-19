@@ -9,16 +9,19 @@ import {
   ChevronLeft,
   ChevronRight,
   MapPin,
+  UserPlus,
 } from "lucide-react";
 import { useOutlets, useDeactivateOutlet } from "@/hooks/useOutlets";
 import type { Outlet } from "@/types/outlet.types";
 import { OutletForm } from "./OutletForm";
+import { AssignStaffModal } from "./AssignStaffModal";
 
 export function OutletAdminTable() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Outlet | null>(null);
+  const [assigningTo, setAssigningTo] = useState<Outlet | null>(null);
 
   const { data, isFetching, isError } = useOutlets({
     page,
@@ -128,6 +131,14 @@ export function OutletAdminTable() {
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
                       <button
+                        onClick={() => setAssigningTo(o)}
+                        className="p-2 rounded-md hover:bg-primary/10 text-primary"
+                        aria-label="Assign staff"
+                        title="Assign staff"
+                      >
+                        <UserPlus className="w-4 h-4" />
+                      </button>
+                      <button
                         onClick={() => setEditing(o)}
                         className="p-2 rounded-md hover:bg-surface-container-high text-on-surface-variant"
                         aria-label="Edit outlet"
@@ -188,6 +199,12 @@ export function OutletAdminTable() {
             setCreating(false);
             setEditing(null);
           }}
+        />
+      )}
+      {assigningTo && (
+        <AssignStaffModal
+          outlet={assigningTo}
+          onClose={() => setAssigningTo(null)}
         />
       )}
     </div>

@@ -199,3 +199,71 @@ export const assignUserToOutlet = async (outletId: string, userId: string) => {
  */
 export const searchAddress = async (q: string, limit = 5) =>
   searchAddressUtil(q, limit);
+
+/**
+ * List users currently assigned to an outlet. We look up UserShift rows joined
+ * with their Shift, filter by outlet_id and is_active=true, and de-dupe per user
+ * (a worker might have multiple shift entries on the same outlet).
+ */
+export const listOutletAssignments = async (outletId: string) => {
+  const outlet = await prisma.outlet.findUnique({ where: { id: outletId } });
+  if (!outlet) throw new AppError("Outlet tidak ditemukan.", 404);
+
+  const rows = await prisma.userShift.findMany({
+    where: {
+      is_active: true,
+      shift: { outlet_id: outletId },
+    },
+    include: {
+      user: {
+        select: {
+          id: true,
+          full_name: true,
+          email: true,
+          phone: true,
+          role: true,
+          is_verified: true,
+          avatar_url: true,
+          deleted_at: true,
+        },
+      },
+    },
+    orderBy: { shift_date: "desc" },
+  });
+
+  // De-dup by user.id, keeping the most recent shift_date as `assigned_at`.
+  const map = new Map<string, { user: typeof rows[number]["user"]; assigned_at: Date }>();
+  for (const r of rows) {
+    if (r.user.deleted_at) continue;
+    const existing = map.get(r.user.id);
+    if (!existing || existing.assigned_at < r.shift_date) {
+      map.set(r.user.id, { user: r.user, assigned_at: r.shift_date });
+    }
+  }
+  return Array.from(map.values()).map(({ user, assigned_at }) => ({
+    ...user,
+    assigned_at,
+  }));
+};
+
+/**
+ * Unassign: mark all UserShift rows for (outlet, user) as inactive. Keeps the
+ * audit trail rather than hard-deleting.
+ */
+export const unassignUserFromOutlet = async (
+  outletId: string,
+  userId: string,
+) => {
+  const outlet = await prisma.outlet.findUnique({ where: { id: outletId } });
+  if (!outlet) throw new AppError("Outlet tidak ditemukan.", 404);
+
+  await prisma.userShift.updateMany({
+    where: {
+      user_id: userId,
+      is_active: true,
+      shift: { outlet_id: outletId },
+    },
+    data: { is_active: false },
+  });
+  return { outlet_id: outletId, user_id: userId };
+};

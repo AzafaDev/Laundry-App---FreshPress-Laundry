@@ -4,7 +4,7 @@ import {
   useQueryClient,
   keepPreviousData,
 } from "@tanstack/react-query";
-import { outletService } from "@/services/outlet.service";
+import { outletService, type AssignedUser } from "@/services/outlet.service";
 import type {
   CreateOutletPayload,
   Outlet,
@@ -98,5 +98,26 @@ export const useAssignUserToOutlet = () => {
     mutationFn: ({ outletId, userId }: { outletId: string; userId: string }) =>
       outletService.assignUser(outletId, userId),
     onSuccess: () => qc.invalidateQueries({ queryKey: OUTLETS_KEY }),
+  });
+};
+
+// ── Outlet assignments (staff list per outlet) ───────────────────────────────
+
+export const useOutletAssignments = (outletId: string | null) =>
+  useQuery<AssignedUser[]>({
+    queryKey: ["admin", "outlets", "assignments", outletId],
+    queryFn: () => outletService.listAssignments(outletId!),
+    enabled: !!outletId,
+  });
+
+export const useUnassignUser = (outletId: string) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) =>
+      outletService.unassignUser(outletId, userId),
+    onSuccess: () =>
+      qc.invalidateQueries({
+        queryKey: ["admin", "outlets", "assignments", outletId],
+      }),
   });
 };

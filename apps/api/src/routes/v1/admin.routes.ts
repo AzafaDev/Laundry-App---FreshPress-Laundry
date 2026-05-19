@@ -83,6 +83,16 @@ router.delete(
   requireRole("super_admin"),
   OutletCtrl.deactivateOutlet,
 );
+router.get(
+  "/admin/outlets/:id/assignments",
+  requireRole("super_admin", "outlet_admin"),
+  OutletCtrl.listAssignments,
+);
+router.delete(
+  "/admin/outlets/:id/assignments/:userId",
+  requireRole("super_admin"),
+  OutletCtrl.unassignUser,
+);
 router.post(
   "/admin/outlets/:id/assignments",
   requireRole("super_admin"),
