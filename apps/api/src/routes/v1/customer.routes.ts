@@ -4,10 +4,14 @@ import * as AuthCtrl from "../../controllers/customer/auth.controller.js";
 import * as ProfileCtrl from "../../controllers/customer/profile.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
+import {
+  loginRateLimiter,
+  authRateLimiter,
+} from "../../middlewares/rate-limit.middleware.js";
 
 const router = Router();
 
-// ── Zod Schemas ───────────────────────────────────────────────────────────────
+// Zod Schemas
 const registerSchema = z.object({
   full_name: z.string().min(2, "Nama minimal 2 karakter."),
   email: z.string().email("Format email tidak valid."),
@@ -55,15 +59,15 @@ const changePasswordSchema = z.object({
     .regex(/\d/, "Password harus mengandung angka."),
 });
 
-// ── Auth Routes ───────────────────────────────────────────────────────────────
-router.post("/auth/register", validate(registerSchema), AuthCtrl.register);
-router.post("/auth/verify", validate(verifySchema), AuthCtrl.verifyEmail);
-router.post("/auth/resend-verification", validate(emailSchema), AuthCtrl.resendVerification);
-router.post("/auth/login", validate(loginSchema), AuthCtrl.login);
-router.post("/auth/forgot-password", validate(emailSchema), AuthCtrl.forgotPassword);
-router.post("/auth/reset-password", validate(resetSchema), AuthCtrl.resetPassword);
+// Auth Routes
+router.post("/auth/register", authRateLimiter, validate(registerSchema), AuthCtrl.register);
+router.post("/auth/verify", authRateLimiter, validate(verifySchema), AuthCtrl.verifyEmail);
+router.post("/auth/resend-verification", authRateLimiter, validate(emailSchema), AuthCtrl.resendVerification);
+router.post("/auth/login", loginRateLimiter, validate(loginSchema), AuthCtrl.login);
+router.post("/auth/forgot-password", authRateLimiter, validate(emailSchema), AuthCtrl.forgotPassword);
+router.post("/auth/reset-password", authRateLimiter, validate(resetSchema), AuthCtrl.resetPassword);
 
-// ── Profile Routes (protected) ────────────────────────────────────────────────
+// Profile Routes (protected)
 router.get("/profile", authenticate, ProfileCtrl.getProfile);
 router.patch("/profile", authenticate, validate(updateProfileSchema), ProfileCtrl.updateProfile);
 router.patch("/profile/password", authenticate, validate(changePasswordSchema), ProfileCtrl.changePassword);
