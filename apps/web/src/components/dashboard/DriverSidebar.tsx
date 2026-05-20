@@ -1,59 +1,96 @@
-import { BadgeCheck, LayoutDashboard, Truck, ReceiptText, Package, BarChart3 } from "lucide-react";
+"use client";
 
-const iconMap: Record<string, React.ReactNode> = {
-  badge: <BadgeCheck className="w-5 h-5" />,
-  dashboard: <LayoutDashboard className="w-5 h-5" />,
-  local_shipping: <Truck className="w-5 h-5" />,
-  receipt_long: <ReceiptText className="w-5 h-5" />,
-  inventory_2: <Package className="w-5 h-5" />,
-  analytics: <BarChart3 className="w-5 h-5" />,
-};
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  ReceiptText,
+  Package,
+  Store,
+  Clock,
+  Shirt,
+} from "lucide-react";
+import { useAuthStore } from "@/stores/authStore";
 
-export const DriverSidebar = () => (
-  <aside className="hidden lg:flex flex-col h-screen fixed left-0 top-0 p-4 w-72 bg-surface-container-low border-r border-outline-variant shadow-sm pt-20">
-    {/* Admin Info */}
-    <div className="px-2 mb-4">
-      <div className="flex items-center gap-3 p-4 rounded-xl bg-surface-bright border border-outline-variant">
-        <div className="w-12 h-12 rounded-lg bg-primary-container flex items-center justify-center text-on-primary">
-          <BadgeCheck className="w-6 h-6" />
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { href: "/dashboard/driver", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard/driver/orders", label: "Orders", icon: ReceiptText },
+  { href: "/dashboard/driver/inventory", label: "Inventory", icon: Package },
+  { href: "/dashboard/outlets", label: "Outlets", icon: Store },
+  { href: "/dashboard/driver/attendance", label: "Attendance", icon: Clock },
+];
+
+export function DriverSidebar() {
+  const pathname = usePathname();
+  const { user } = useAuthStore();
+
+  return (
+    <aside className="hidden lg:flex flex-col h-screen fixed left-0 top-0 w-72 bg-surface-container-low border-r border-outline-variant shadow-sm z-40">
+      {/* Brand */}
+      <div className="flex items-center gap-3 px-5 py-6">
+        <Shirt className="text-primary w-7 h-7" />
+        <span className="text-xl font-bold text-primary tracking-tight">
+          FreshPress
+        </span>
+      </div>
+
+      {/* User Profile */}
+      <div className="mx-4 p-4 bg-surface-container-high rounded-xl flex items-center gap-3 mb-2">
+        <div className="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-semibold flex-shrink-0">
+          {user?.full_name?.slice(0, 1).toUpperCase() ?? "D"}
         </div>
-        <div>
-          <p className="text-sm font-bold text-on-surface">Super Admin</p>
-          <p className="text-xs text-on-surface-variant">
-            admin@freshpress.com
-          </p>
+        <div className="flex flex-col min-w-0">
+          <span className="text-sm font-semibold text-on-surface truncate">
+            {user?.full_name ?? "Driver"}
+          </span>
+          <span className="text-xs text-on-surface-variant truncate">
+            {user?.role?.replace("_", " ") ?? "driver"}
+          </span>
         </div>
       </div>
-    </div>
 
-    <nav className="flex flex-col gap-2">
-      <SidebarItem icon="dashboard" label="Dashboard" />
-      <SidebarItem icon="local_shipping" label="Active Tasks" active />
-      <SidebarItem icon="receipt_long" label="Orders" />
-      <SidebarItem icon="inventory_2" label="Inventory" />
-      <SidebarItem icon="analytics" label="Reports" />
-    </nav>
-  </aside>
-);
+      <div className="mx-4 h-px bg-outline-variant my-3" />
 
-const SidebarItem = ({
-  icon,
-  label,
-  active,
-}: {
-  icon: string;
-  label: string;
-  active?: boolean;
-}) => (
-  <a
-    className={`flex items-center gap-3 p-4 rounded-lg transition-all ${
-      active
-        ? "bg-secondary-container text-on-secondary-container font-bold translate-x-1"
-        : "text-on-surface-variant hover:bg-surface-container-high"
-    }`}
-    href="#"
-  >
-    <span>{iconMap[icon]}</span>
-    <span className="text-sm font-medium">{label}</span>
-  </a>
-);
+      {/* Navigation */}
+      <nav className="flex-1 flex flex-col gap-0.5 px-3 overflow-y-auto">
+        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href || pathname?.endsWith(`/${href}`);
+
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                active
+                  ? "bg-primary-container/15 text-primary font-semibold shadow-sm"
+                  : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              }`}
+            >
+              <Icon className="w-5 h-5" />
+              <span>{label}</span>
+              {active && (
+                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+              )}
+            </Link>
+          );
+        })}
+      </nav>
+
+      {/* Bottom actions (optional) */}
+      <div className="p-3 mt-auto">
+        <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors">
+          Settings
+        </button>
+        <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-error hover:bg-error-container/30 rounded-lg transition-colors">
+          Sign Out
+        </button>
+      </div>
+    </aside>
+  );
+}
