@@ -1,67 +1,59 @@
 // apps/web/src/components/home/ProcessSection.tsx
-import Image from "next/image";
+
+const steps = [
+  {
+    number: "01",
+    title: "Pesan & Kemas",
+    desc: "Kemas pakaian Anda dan pilih waktu penjemputan yang sesuai melalui aplikasi atau website kami.",
+    color: "bg-primary/10 text-primary",
+  },
+  {
+    number: "02",
+    title: "Dijemput & Dicuci",
+    desc: "Kurir kami menjemput pakaian Anda dan membawanya ke fasilitas cuci profesional terdekat.",
+    color: "bg-secondary/10 text-secondary",
+  },
+  {
+    number: "03",
+    title: "Bersih & Diantar",
+    desc: "Pakaian Anda yang bersih dikemas rapi dan diantarkan kembali ke depan pintu Anda.",
+    color: "bg-tertiary/10 text-tertiary",
+  },
+];
 
 export const ProcessSection = () => (
-  <section className="bg-surface-container py-16 px-4 md:px-8">
+  <section id="how-it-works" className="bg-white py-20 px-4 md:px-8">
     <div className="max-w-7xl mx-auto">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-        {/* Gambar */}
-        <div className="relative h-64 sm:h-80 lg:h-96">
-          <Image
-            className="rounded-3xl shadow-xl object-cover"
-            src="/images/laundry-process.jpg"
-            alt="Petugas laundry melipat pakaian"
-            fill
-            sizes="(max-width: 1024px) 100vw, 50vw"
-          />
-        </div>
+      {/* Header */}
+      <div className="mb-14">
+        <span className="text-primary font-bold uppercase tracking-widest text-xs">
+          Cara Kerja
+        </span>
+        <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mt-2">
+          Serahkan urusan laundry pada kami.
+        </h2>
+        <p className="text-gray-500 mt-3">
+          Cukup tiga langkah mudah — pakaian Anda kembali bersih tanpa harus keluar rumah.
+        </p>
+      </div>
 
-        {/* Teks Langkah */}
-        <div className="space-y-6">
-          <span className="text-primary font-bold uppercase tracking-widest text-xs">
-            Bagaimana Kami Bekerja
-          </span>
-          <h2 className="text-3xl font-bold text-on-surface">
-            Tanpa Repot, <br />
-            Tanpa Menunggu.
-          </h2>
-          <p className="text-base text-on-surface-variant">
-            Kami mengintegrasikan teknologi logistik modern dengan keahlian
-            perawatan kain kelas dunia untuk memastikan pakaian Anda selalu
-            dalam kondisi terbaik.
-          </p>
-
-          <div className="space-y-4 pt-4">
-            {[
-              {
-                step: 1,
-                title: "Pesan & Jadwal",
-                desc: "Tentukan waktu penjemputan lewat aplikasi.",
-              },
-              {
-                step: 2,
-                title: "Penjemputan Cepat",
-                desc: "Kurir kami akan menjemput pakaian Anda dalam 30 menit.",
-              },
-              {
-                step: 3,
-                title: "Pantau Real-time",
-                desc: "Lihat status cucian Anda langsung dari genggaman.",
-              },
-            ].map((item) => (
-              <div key={item.step} className="flex gap-4 items-start">
-                <span className="bg-primary text-white w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 font-bold">
-                  {item.step}
-                </span>
-                <div>
-                  <h4 className="font-bold text-on-surface">{item.title}</h4>
-                  <p className="text-on-surface-variant text-sm">{item.desc}</p>
-                </div>
-              </div>
-            ))}
+      {/* Steps */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {steps.map((step) => (
+          <div key={step.number} className="flex flex-col items-start">
+            <div
+              className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-5 text-2xl font-extrabold ${step.color}`}
+            >
+              {step.number}
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">{step.title}</h3>
+            <p className="text-sm text-gray-500">{step.desc}</p>
           </div>
-        </div>
+        ))}
       </div>
     </div>
   </section>
 );
+
+
+

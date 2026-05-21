@@ -1,22 +1,44 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronLeft, Home, CalendarDays, User, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { useQuery } from "@tanstack/react-query";
+import {
+  Home,
+  CalendarDays,
+  User,
+  Clock,
+  MapPin,
+  Navigation,
+  AlertCircle,
+} from "lucide-react";
+import { WorkerSidebar } from "@/components/dashboard/WorkerSidebar";
+import { WorkerTopBar } from "@/components/dashboard/WorkerTopBar";
+import { BottomNav } from "@/components/layout/BottomNav";
 import { AttendanceCard } from "@/components/attendance/AttendanceCard";
 import { AttendanceLog } from "@/components/attendance/AttendanceLog";
 import { useAttendance } from "@/hooks/useAttendance";
 import { toLogRecord } from "@/utils/formatDate";
 import { useAuthStore } from "@/stores/authStore";
+import { useGeolocation } from "@/hooks/useGeolocation";
 
 export default function WorkerAttendancePage() {
   const [page, setPage] = useState(1);
   const att = useAttendance();
   const { user } = useAuthStore();
+  const { latitude, longitude, permissionDenied } = useGeolocation();
+  const [locationStatus, setLocationStatus] = useState<
+    "idle" | "checking" | "available" | "denied"
+  >("idle");
 
-  // Fetch paginated logs
+  useEffect(() => {
+    if (permissionDenied) setLocationStatus("denied");
+    else if (latitude && longitude) setLocationStatus("available");
+    else if (!permissionDenied && !latitude) setLocationStatus("checking");
+  }, [latitude, longitude, permissionDenied]);
+
   const {
     data: paginatedLogs,
     isLoading: logsLoading,
@@ -31,15 +53,16 @@ export default function WorkerAttendancePage() {
   const pagination = paginatedLogs?.pagination ?? att.pagination;
 
   const handleCheckIn = async () => {
+    if (locationStatus !== "available") {
+      toast.error("Aktifkan akses lokasi untuk check-in", { icon: "📍" });
+      return;
+    }
     try {
       await att.checkInAsync();
-      toast.success("✅ Check-in berhasil! Selamat bekerja.");
       att.refetch();
       refetchLogs();
     } catch (error: any) {
-      const message =
-        error?.response?.data?.message || error?.message || "Gagal check-in";
-      toast.error(message);
+      toast.error(error?.response?.data?.message || "Gagal check-in");
     }
   };
 
@@ -50,99 +73,120 @@ export default function WorkerAttendancePage() {
     }
     try {
       await att.checkOutAsync(att.attendanceId);
-      toast.success("✅ Check-out berhasil. Istirahat yang cukup!");
       att.refetch();
       refetchLogs();
     } catch (error: any) {
-      const message =
-        error?.response?.data?.message || error?.message || "Gagal check-out";
-      toast.error(message);
+      toast.error(error?.response?.data?.message || "Gagal check-out");
     }
   };
 
   return (
-    <div className="min-h-screen bg-background text-on-background pb-24 lg:pb-0">
-      {/* Header with breadcrumb */}
-      <header className="sticky top-0 z-50 w-full px-4 h-16 bg-surface border-b border-outline-variant flex items-center gap-2 shadow-sm">
-        <Link
-          href="/dashboard/worker/station"
-          className="p-1 hover:bg-surface-container-low rounded-lg transition-colors"
-          aria-label="Kembali ke station"
-        >
-          <ChevronLeft className="w-6 h-6 text-on-surface-variant" />
-        </Link>
-        <div className="flex-1">
+    <div className="min-h-screen bg-background pb-24 lg:pb-0">
+      <WorkerSidebar />
+      <WorkerTopBar />
+      <main className="lg:pl-72 p-4 md:p-8">
+        <div className="max-w-2xl mx-auto space-y-6">
+          {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-xs text-on-surface-variant">
-            <Link href="/dashboard" className="hover:text-primary">
-              <Home className="w-4 h-4 inline mr-1" />
-              Dashboard
+            <Link
+              href="/dashboard/worker"
+              className="hover:text-primary flex items-center gap-1"
+            >
+              <Home className="w-4 h-4" /> Dashboard
             </Link>
             <span>/</span>
             <span className="text-primary font-medium">Absensi Worker</span>
           </div>
-          <h1 className="text-xl font-bold text-on-surface">Absensi Worker</h1>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-on-surface-variant">
-          <CalendarDays className="w-4 h-4" />
-          <span>
-            {new Date().toLocaleDateString("id-ID", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-          </span>
-        </div>
-      </header>
 
-      <main className="max-w-2xl mx-auto p-4 space-y-8">
-        {/* Welcome banner */}
-        <div className="bg-gradient-to-r from-primary/5 to-primary-container/10 p-4 rounded-xl border border-primary/20">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center">
-              <User className="w-5 h-5 text-on-primary-container" />
+          {/* Welcome Banner with Location Status */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`p-4 rounded-xl border ${
+              locationStatus === "available"
+                ? "bg-primary/5 border-primary/20"
+                : locationStatus === "denied"
+                  ? "bg-error/5 border-error/20"
+                  : "bg-surface-container-low border-outline-variant"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center">
+                <User className="w-5 h-5 text-on-primary-container" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-on-surface-variant">
+                  Selamat datang,
+                </p>
+                <p className="text-lg font-bold text-on-surface">
+                  {user?.full_name || "Worker"}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-xs">
+                {locationStatus === "available" && (
+                  <>
+                    <MapPin className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-primary">Lokasi aktif</span>
+                  </>
+                )}
+                {locationStatus === "denied" && (
+                  <>
+                    <AlertCircle className="w-3.5 h-3.5 text-error" />
+                    <span className="text-error">Lokasi ditolak</span>
+                  </>
+                )}
+                {locationStatus === "checking" && (
+                  <>
+                    <Navigation className="w-3.5 h-3.5 text-outline animate-pulse" />
+                    <span className="text-outline">Mendeteksi...</span>
+                  </>
+                )}
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-on-surface-variant">Selamat datang,</p>
-              <p className="text-lg font-bold text-on-surface">
-                {user?.full_name || "Worker"}
-              </p>
-            </div>
-          </div>
-          {att.currentShift && (
-            <div className="mt-3 flex items-center gap-2 text-xs text-primary">
-              <Clock className="w-3.5 h-3.5" />
-              <span>
-                Shift: {att.currentShift.shiftName} (
-                {att.currentShift.startTime} - {att.currentShift.endTime})
-              </span>
-            </div>
-          )}
-        </div>
+            {att.currentShift && (
+              <div className="mt-3 flex items-center gap-2 text-xs text-primary bg-primary/10 py-1.5 px-3 rounded-full inline-flex">
+                <Clock className="w-3.5 h-3.5" />
+                <span>
+                  Shift: {att.currentShift.shiftName} (
+                  {att.currentShift.startTime} - {att.currentShift.endTime})
+                </span>
+              </div>
+            )}
+          </motion.div>
 
-        <AttendanceCard
-          checkedIn={att.checkedIn}
-          checkInTime={att.checkInTime}
-          checkOutTime={att.checkOutTime}
-          currentShift={att.currentShift}
-          onCheckIn={handleCheckIn}
-          onCheckOut={handleCheckOut}
-          loading={att.isCheckingIn || att.isCheckingOut}
-          error={att.error}
-        />
-
-        <section>
-          <h2 className="text-lg font-bold text-on-surface mb-4 flex items-center gap-2">
-            <CalendarDays className="w-5 h-5 text-primary" />
-            Riwayat Absensi
-          </h2>
-          <AttendanceLog
-            records={logRecords}
-            pagination={pagination}
-            onPageChange={(newPage) => setPage(newPage)}
-            isLoading={logsLoading || att.isLoading}
+          {/* Attendance Card */}
+          <AttendanceCard
+            checkedIn={att.checkedIn}
+            checkInTime={att.checkInTime}
+            checkOutTime={att.checkOutTime}
+            currentShift={att.currentShift}
+            onCheckIn={handleCheckIn}
+            onCheckOut={handleCheckOut}
+            loading={att.isCheckingIn || att.isCheckingOut}
+            error={att.error}
           />
-        </section>
+
+          {/* Riwayat Absensi */}
+          <section>
+            <h2 className="text-lg font-bold text-on-surface mb-4 flex items-center gap-2">
+              <CalendarDays className="w-5 h-5 text-primary" />
+              Riwayat Absensi
+              {pagination?.total && (
+                <span className="text-xs text-on-surface-variant ml-2">
+                  ({pagination.total} catatan)
+                </span>
+              )}
+            </h2>
+            <AttendanceLog
+              records={logRecords}
+              pagination={pagination}
+              onPageChange={(newPage) => setPage(newPage)}
+              isLoading={logsLoading || att.isLoading}
+            />
+          </section>
+        </div>
       </main>
+      <BottomNav />
     </div>
   );
 }

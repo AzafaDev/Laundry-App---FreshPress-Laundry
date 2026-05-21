@@ -6,26 +6,27 @@ import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/home/Hero";
 import { ServiceList } from "@/components/home/ServiceList";
 import { ProcessSection } from "@/components/home/ProcessSection";
-import { useGeolocation } from "@/hooks/useGeolocation";
+import { BenefitsSection } from "@/components/home/BenefitsSection";
+import { TestimonialsSection } from "@/components/home/TestimonialsSection";
+import { FAQSection } from "@/components/home/FAQSection";
+import { FooterCTA } from "@/components/home/FooterCTA";
 
 export default function Home() {
-  const { permissionDenied } = useGeolocation();
-
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-white overflow-x-hidden">
       <Navbar />
-      {permissionDenied && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 text-center text-sm text-amber-700" role="alert">
-          Akses lokasi ditolak. Beberapa fitur seperti pencarian outlet terdekat mungkin terbatas.
-        </div>
-      )}
       <main className="pb-20 lg:pb-0">
         <Hero />
-        <ServiceList />
+        <ServiceList id="services" />
         <ProcessSection />
+        <BenefitsSection />
+        <TestimonialsSection id="testimonials" />
+        <FAQSection id="faq" />
+        <FooterCTA />
       </main>
       <Footer />
       <BottomNav />
     </div>
   );
 }
+
