@@ -141,7 +141,8 @@ function LoginContent() {
   };
 
   const getDashboardPath = (role: string): string => {
-    if (role === "super_admin" || role === "outlet_admin") return "/dashboard/admin";
+    if (role === "super_admin") return "/dashboard/admin";
+    if (role === "outlet_admin") return "/dashboard/outlet";
     if (role === "driver") return "/dashboard/driver";
     if (role === "worker") return "/dashboard/worker";
     return "/dashboard";

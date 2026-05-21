@@ -50,20 +50,20 @@ router.delete(
   UserCtrl.deleteUser,
 );
 
-// Outlets (super_admin manages, outlet_admin can read)
+// Outlets (super_admin only)
 router.get(
   "/admin/outlets",
-  requireRole("super_admin", "outlet_admin"),
+  requireRole("super_admin"),
   OutletCtrl.listOutlets,
 );
 router.get(
   "/admin/outlets/geocode",
-  requireRole("super_admin", "outlet_admin"),
+  requireRole("super_admin"),
   OutletCtrl.searchAddress,
 );
 router.get(
   "/admin/outlets/:id",
-  requireRole("super_admin", "outlet_admin"),
+  requireRole("super_admin"),
   OutletCtrl.getOutlet,
 );
 router.post(
@@ -85,7 +85,7 @@ router.delete(
 );
 router.get(
   "/admin/outlets/:id/assignments",
-  requireRole("super_admin", "outlet_admin"),
+  requireRole("super_admin"),
   OutletCtrl.listAssignments,
 );
 router.delete(
