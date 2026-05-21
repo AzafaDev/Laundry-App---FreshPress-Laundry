@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { z } from "zod";
 import * as AuthCtrl from "../../controllers/customer/auth.controller.js";
 import * as ProfileCtrl from "../../controllers/customer/profile.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";

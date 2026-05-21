@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const envSchema = z.object({
   PORT: z.string().default("8080"),
+  API_URL: z.string().default("http://localhost:8080"),
   DATABASE_URL: z.string(),
   JWT_SECRET: z.string(),
   JWT_REFRESH_SECRET: z.string(),

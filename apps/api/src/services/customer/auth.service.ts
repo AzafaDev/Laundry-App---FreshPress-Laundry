@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { OAuth2Client } from "google-auth-library";
 import { prisma } from "../../lib/prisma.js";
 import { hashPassword, comparePassword } from "../../utils/hash.util.js";
 import {
@@ -11,6 +12,7 @@ import {
   sendResetPasswordEmail,
 } from "../../lib/email.js";
 import { AppError } from "../../middlewares/error.middleware.js";
+import { env } from "../../config/env.js";
 import {
   VERIFICATION_TOKEN_EXPIRY_MS,
   RESET_PASSWORD_TOKEN_EXPIRY_MS,
@@ -157,4 +159,78 @@ export const resetPassword = async (token: string, newPassword: string) => {
   });
 
   return { message: "Password berhasil diubah. Silakan login." };
+};
+
+/* ------------------------------------------------------------------ */
+/*  Google OAuth                                                        */
+/* ------------------------------------------------------------------ */
+
+const getGoogleCallbackUrl = () =>
+  `${env.API_URL}/api/v1/customer/auth/google/callback`;
+
+export const getGoogleAuthUrl = (): string => {
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+    throw new AppError("Google OAuth belum dikonfigurasi.", 501);
+  }
+  const client = new OAuth2Client(
+    env.GOOGLE_CLIENT_ID,
+    env.GOOGLE_CLIENT_SECRET,
+    getGoogleCallbackUrl(),
+  );
+  return client.generateAuthUrl({
+    access_type: "offline",
+    scope: ["openid", "email", "profile"],
+    prompt: "select_account",
+  });
+};
+
+export const googleLogin = async (code: string) => {
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+    throw new AppError("Google OAuth belum dikonfigurasi.", 501);
+  }
+  const client = new OAuth2Client(
+    env.GOOGLE_CLIENT_ID,
+    env.GOOGLE_CLIENT_SECRET,
+    getGoogleCallbackUrl(),
+  );
+
+  const { tokens } = await client.getToken(code);
+  if (!tokens.id_token) throw new AppError("Token Google tidak valid.", 400);
+
+  const ticket = await client.verifyIdToken({
+    idToken: tokens.id_token,
+    audience: env.GOOGLE_CLIENT_ID,
+  });
+  const payload = ticket.getPayload();
+  if (!payload?.email) throw new AppError("Tidak ada email dari Google.", 400);
+
+  let user = await prisma.user.findUnique({ where: { email: payload.email } });
+
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        email: payload.email,
+        full_name: payload.name ?? payload.email,
+        phone: "",
+        password_hash: await hashPassword(crypto.randomBytes(16).toString("hex")),
+        role: "customer",
+        is_verified: true,
+        avatar_url: payload.picture ?? null,
+      },
+    });
+  } else if (!user.is_verified) {
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { is_verified: true },
+    });
+  }
+
+  const accessToken = signAccessToken({
+    userId: user.id,
+    role: user.role,
+    email: user.email,
+  });
+
+  const { password_hash: _, ...safeUser } = user;
+  return { accessToken, user: safeUser };
 };
