@@ -12,6 +12,7 @@
     "@tanstack/react-query": "^5.100.10",
     "axios": "^1.16.0",
     "date-fns": "^4.1.0",
+    "framer-motion": "^12.39.0",
     "geolib": "^3.3.14",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.14.0",
