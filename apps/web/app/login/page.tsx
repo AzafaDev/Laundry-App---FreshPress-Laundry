@@ -98,6 +98,14 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const { setAuth } = useAuthStore();
 
+  // Tampilkan error dari Google OAuth redirect
+  const googleError = searchParams.get("error");
+
+  const handleGoogleLogin = () => {
+    const apiBase = process.env.NEXT_PUBLIC_URL ?? "http://localhost:8080/api";
+    window.location.href = `${apiBase}/v1/customer/auth/google`;
+  };
+
   /* ---------- validasi ---------- */
   const validate = (): boolean => {
     const errs: LoginErrors = {};
@@ -211,9 +219,9 @@ function LoginContent() {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
-              {errors.server && (
+              {(errors.server || googleError) && (
                 <div className="bg-error-container/30 border border-error/30 text-error text-sm px-4 py-3 rounded-xl" role="alert">
-                  {errors.server}
+                  {errors.server ?? googleError}
                 </div>
               )}
               <InputField
@@ -293,6 +301,7 @@ function LoginContent() {
             {/* Google Login */}
             <button
               type="button"
+              onClick={handleGoogleLogin}
               className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-outline-variant rounded-xl bg-surface hover:bg-surface-container-low transition-colors active:scale-[0.99]"
             >
               <img

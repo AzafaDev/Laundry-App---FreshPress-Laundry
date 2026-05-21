@@ -120,7 +120,7 @@ export const Navbar = () => {
                   href="/register"
                   className="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-primary/90 transition-colors"
                 >
-                  Pesan Sekarang
+                  Daftar
                 </Link>
               </>
             )}
