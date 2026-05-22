@@ -111,13 +111,13 @@ export const Navbar = () => {
             ) : (
               <>
                 <Link
-                  href="/login"
+                  href="/customer/login"
                   className="text-gray-700 text-sm font-medium hover:text-primary transition-colors"
                 >
                   Masuk
                 </Link>
                 <Link
-                  href="/register"
+                  href="/customer/register"
                   className="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-primary/90 transition-colors"
                 >
                   Daftar
