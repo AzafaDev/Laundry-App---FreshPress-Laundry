@@ -9,375 +9,630 @@ datasource db {
   provider = "postgresql"
 }
 
-// ==================== ENUMS ====================
-
-enum UserRole {
-  customer
+enum EmployeeRole {
   super_admin
   outlet_admin
-  worker
+  washing_worker
+  ironing_worker
+  packing_worker
   driver
 }
 
-enum PickupRequestStatus {
-  waiting_driver
-  driver_assigned
-  picked_up
+enum StationType {
+  washing
+  ironing
+  packing
+}
+
+enum OrderStatus {
+  waiting_pickup_driver
+  laundry_to_outlet
+  laundry_arrived_outlet
+  washing
+  ironing
+  packing
+  waiting_payment
+  ready_for_delivery
+  delivery_to_customer
+  received_by_customer
+  completed
   cancelled
-}
-
-enum LaundryPaymentStatus {
-  unpaid
-  paid
-  failed
-}
-
-enum LaundryOrderStatus {
-  menunggu_penjemputan_driver
-  laundry_sedang_menuju_outlet
-  laundry_telah_sampai_outlet
-  laundry_sedang_dicuci
-  laundry_sedang_disetrika
-  laundry_sedang_di_packing
-  menunggu_pembayaran
-  laundry_siap_diantar
-  laundry_sedang_dikirim_menuju_customer
-  laundry_telah_diterima_customer
-  dibatalkan
-}
-
-enum PaymentMethod {
-  card
-  bank_transfer
-  wallet
 }
 
 enum PaymentStatus {
   pending
-  success
+  paid
   failed
   refunded
+  expired
 }
 
-enum ComplaintType {
-  lost
-  damaged
-  mismatch
-  other
+enum PaymentMethod {
+  gateway
 }
 
-enum ComplaintStatus {
-  open
-  in_review
-  resolved
-  rejected
+enum DriverTaskType {
+  pickup
+  delivery
 }
 
-enum AttendanceStatus {
-  on_time
-  late
-  absent
+enum DriverTaskStatus {
+  available
+  in_progress
+  completed
+  cancelled
 }
 
-enum BypassRequestStatus {
+enum BypassStatus {
   pending
   approved
   rejected
 }
 
-// ==================== MODELS ====================
-
-model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  password_hash String
-  full_name     String
-  phone         String
-  avatar_url    String?
-  role          UserRole
-  is_verified   Boolean   @default(false)
-  deleted_at    DateTime? // soft-delete marker; null = active
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-
-  addresses               UserAddress[]
-  pickup_requests         PickupRequest[]  @relation("CustomerPickupRequests")
-  laundry_orders          LaundryOrder[]   @relation("CustomerLaundryOrders")
-  created_orders          LaundryOrder[]   @relation("OutletAdminOrders")
-  station_processes       StationProcess[]
-  bypass_requests         BypassRequest[]  @relation("WorkerBypassRequests")
-  resolved_bypasses       BypassRequest[]  @relation("AdminResolvedBypasses")
-  attendances             Attendance[]
-  payments                Payment[]
-  complaints              Complaint[]
-  notifications           Notification[]
-  user_shifts             UserShift[]
-  driver_pickup_requests  PickupRequest[]  @relation("DriverAssigned")
-  related_pickup_requests PickupRequest[]  @relation("PickupRequestRelatedUser")
+enum ComplaintStatus {
+  open
+  in_progress
+  resolved
+  rejected
 }
 
-model UserAddress {
-  id            String   @id @default(uuid())
-  user_id       String
-  label         String? // e.g., Home, Office, etc
-  receiver_name String
-  phone         String
-  province      String
-  city          String
-  district      String
-  postal_code   String
-  full_address  String
-  courier_note  String?  @db.Text
-  latitude      Float?
-  longitude     Float?
-  is_main       Boolean  @default(false)
-  created_at    DateTime @default(now())
-
-  user            User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  pickup_requests PickupRequest[]
-
-  @@index([user_id])
+enum VerificationType {
+  email_verification
+  reset_password
 }
+
+// ─────────────────────────────────────────
+// AUTH — CUSTOMERS
+// ─────────────────────────────────────────
+
+model Customer {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  full_name    String    @db.VarChar(100)
+  email        String    @unique @db.VarChar(255)
+  password_hash String?  @db.VarChar(255)
+  phone        String?   @db.VarChar(20)
+  avatar_url   String?   @db.VarChar(500)
+  is_verified  Boolean   @default(false)
+  is_active    Boolean   @default(true)
+  last_login_at DateTime? @db.Timestamptz
+  deleted_at   DateTime? @db.Timestamptz
+  created_at   DateTime  @default(now()) @db.Timestamptz
+  updated_at   DateTime  @default(now()) @updatedAt @db.Timestamptz
+
+  // Relations
+  social_accounts SocialAccount[]
+  email_tokens    EmailToken[]
+  addresses       CustomerAddress[]
+  orders          Order[]
+  complaints      Complaint[]
+  notifications   Notification[]
+
+  @@index([email])
+  @@index([is_verified])
+  @@index([deleted_at])
+  @@map("customers")
+}
+
+model SocialAccount {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customer_id  String   @db.Uuid
+  provider     String   @db.VarChar(50)
+  provider_uid String   @db.VarChar(255)
+  created_at   DateTime @default(now()) @db.Timestamptz
+
+  // Relations
+  customer Customer @relation(fields: [customer_id], references: [id])
+
+  @@unique([provider, provider_uid])
+  @@index([customer_id])
+  @@map("social_accounts")
+}
+
+model EmailToken {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customer_id String           @db.Uuid
+  token       String           @unique @db.VarChar(255)
+  type        VerificationType
+  is_used     Boolean          @default(false)
+  expires_at  DateTime         @db.Timestamptz
+  created_at  DateTime         @default(now()) @db.Timestamptz
+
+  // Relations
+  customer Customer @relation(fields: [customer_id], references: [id])
+
+  @@index([token])
+  @@index([customer_id, type])
+  @@index([expires_at])
+  @@map("email_tokens")
+}
+
+model RefreshToken {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_type  String    @db.VarChar(20)
+  user_id    String    @db.Uuid
+  token      String    @unique @db.VarChar(500)
+  expires_at DateTime  @db.Timestamptz
+  revoked_at DateTime? @db.Timestamptz
+  created_at DateTime  @default(now()) @db.Timestamptz
+
+  @@index([user_type, user_id])
+  @@index([token])
+  @@index([expires_at])
+  @@map("refresh_tokens")
+}
+
+// ─────────────────────────────────────────
+// AUTH — EMPLOYEES
+// ─────────────────────────────────────────
+
+model Employee {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  full_name     String       @db.VarChar(100)
+  email         String       @unique @db.VarChar(255)
+  password_hash String       @db.VarChar(255)
+  phone         String?      @db.VarChar(20)
+  avatar_url    String?      @db.VarChar(500)
+  role          EmployeeRole
+  outlet_id     String?      @db.Uuid
+  is_active     Boolean      @default(true)
+  is_occupied   Boolean      @default(false)
+  last_login_at DateTime?    @db.Timestamptz
+  deleted_at    DateTime?    @db.Timestamptz
+  created_at    DateTime     @default(now()) @db.Timestamptz
+  updated_at    DateTime     @default(now()) @updatedAt @db.Timestamptz
+
+  // Relations
+  outlet                 Outlet?         @relation(fields: [outlet_id], references: [id])
+  shifts                 EmployeeShift[]
+  process_logs            ProcessLog[]
+  bypass_requests_made     BypassRequest[] @relation("BypassRequestedBy")
+  bypass_requests_reviewed BypassRequest[] @relation("BypassReviewedBy")
+  driver_tasks            DriverTask[]
+  complaints             Complaint[]
+  attendances            Attendance[]
+  orders_created          Order[]
+  notifications          Notification[]
+
+  @@index([email])
+  @@index([role])
+  @@index([outlet_id])
+  @@index([is_occupied])
+  @@index([deleted_at])
+  @@map("employees")
+}
+
+// ─────────────────────────────────────────
+// OUTLETS
+// ─────────────────────────────────────────
 
 model Outlet {
-  id             String   @id @default(uuid())
-  name           String
-  address        String
-  latitude       Float?
-  longitude      Float?
-  max_service_km Float?
-  is_active      Boolean  @default(true)
-  created_at     DateTime @default(now())
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String    @db.VarChar(100)
+  address           String
+  province          String    @db.VarChar(100)
+  city              String    @db.VarChar(100)
+  district          String    @db.VarChar(100)
+  postal_code       String?   @db.VarChar(10)
+  latitude          Decimal   @db.Decimal(10, 8)
+  longitude         Decimal   @db.Decimal(11, 8)
+  service_radius_km Decimal   @default(10.0) @db.Decimal(5, 2)
+  phone             String?   @db.VarChar(20)
+  opening_time      DateTime? @db.Time
+  closing_time      DateTime? @db.Time
+  is_active         Boolean   @default(true)
+  deleted_at        DateTime? @db.Timestamptz
+  created_at        DateTime  @default(now()) @db.Timestamptz
+  updated_at        DateTime  @default(now()) @updatedAt @db.Timestamptz
 
-  pickup_requests PickupRequest[]
-  laundry_orders  LaundryOrder[]
-  stations        Station[]
-  shifts          Shift[]
+  // Relations
+  employees      Employee[]
+  employee_shifts EmployeeShift[]
+  orders         Order[]
+  attendances    Attendance[]
+
+  @@index([latitude, longitude])
+  @@index([is_active])
+  @@index([deleted_at])
+  @@map("outlets")
 }
 
-model Shift {
-  id         String @id @default(uuid())
-  outlet_id  String
-  name       String // Morning, Afternoon, Night
-  start_time String // Format: "HH:MM:SS" or use DateTime? Prisma has no Time type, store as String
-  end_time   String
+// ─────────────────────────────────────────
+// SHIFTS
+// ─────────────────────────────────────────
 
-  outlet      Outlet      @relation(fields: [outlet_id], references: [id], onDelete: Cascade)
-  user_shifts UserShift[]
+model WorkShift {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique @db.VarChar(50)
+  start_time  DateTime @db.Time
+  end_time    DateTime @db.Time
+  description String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamptz
 
-  @@index([outlet_id])
+  // Relations
+  employee_shifts EmployeeShift[]
+
+  @@map("work_shifts")
 }
 
-model UserShift {
-  user_id    String
-  shift_id   String
-  shift_date DateTime @db.Date
+model EmployeeShift {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employee_id String   @db.Uuid
+  shift_id   String   @db.Uuid
+  outlet_id  String   @db.Uuid
+  day_of_week Int
   is_active  Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
 
-  user  User  @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  shift Shift @relation(fields: [shift_id], references: [id], onDelete: Cascade)
+  // Relations
+  employee Employee  @relation(fields: [employee_id], references: [id])
+  shift    WorkShift @relation(fields: [shift_id], references: [id])
+  outlet   Outlet    @relation(fields: [outlet_id], references: [id])
 
-  @@id([user_id, shift_id, shift_date])
+  @@unique([employee_id, shift_id, day_of_week])
+  @@index([outlet_id, shift_id, day_of_week])
+  @@map("employee_shifts")
 }
 
-model PickupRequest {
-  id                   String              @id @default(uuid())
-  customer_id          String
-  address_id           String
-  assigned_outlet_id   String?
-  assigned_driver_id   String?
-  requested_time       DateTime
-  scheduled_date       DateTime            @db.Date
-  scheduled_time_start String? // Time as String
-  scheduled_time_end   String?
-  status               PickupRequestStatus @default(waiting_driver)
-  created_at           DateTime            @default(now())
+// ─────────────────────────────────────────
+// CUSTOMER ADDRESSES
+// ─────────────────────────────────────────
 
-  customer      User          @relation("CustomerPickupRequests", fields: [customer_id], references: [id])
-  address       UserAddress   @relation(fields: [address_id], references: [id])
-  outlet        Outlet?       @relation(fields: [assigned_outlet_id], references: [id])
-  driver        User?         @relation("DriverAssigned", fields: [assigned_driver_id], references: [id])
-  laundry_order LaundryOrder? @relation
-  user          User?         @relation("PickupRequestRelatedUser", fields: [userId], references: [id])
-  userId        String?
+model CustomerAddress {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  customer_id String   @db.Uuid
+  label       String   @db.VarChar(50)
+  address     String
+  province    String   @db.VarChar(100)
+  city        String   @db.VarChar(100)
+  district    String   @db.VarChar(100)
+  postal_code String?  @db.VarChar(10)
+  latitude    Decimal  @db.Decimal(10, 8)
+  longitude   Decimal  @db.Decimal(11, 8)
+  is_primary  Boolean  @default(false)
+  created_at  DateTime @default(now()) @db.Timestamptz
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  // Relations
+  customer Customer @relation(fields: [customer_id], references: [id])
+  orders   Order[]
 
   @@index([customer_id])
-  @@index([assigned_outlet_id])
-  @@index([assigned_driver_id])
-  @@index([status])
+  @@index([customer_id, is_primary])
+  @@index([latitude, longitude])
+  @@map("customer_addresses")
 }
 
-model LaundryOrder {
-  id                String               @id @default(uuid())
-  order_number      String               @unique
-  pickup_request_id String               @unique
-  outlet_id         String
-  customer_id       String
-  outlet_admin_id   String // who created the order
-  total_weight_kg   Float?
-  payment_status    LaundryPaymentStatus @default(unpaid)
-  order_status      LaundryOrderStatus
-  confirmed_at      DateTime? // customer confirms receipt
-  delivered_at      DateTime?
-  created_at        DateTime             @default(now())
-  updated_at        DateTime             @updatedAt
+// ─────────────────────────────────────────
+// LAUNDRY ITEMS
+// ─────────────────────────────────────────
 
-  pickup_request    PickupRequest    @relation(fields: [pickup_request_id], references: [id])
-  outlet            Outlet           @relation(fields: [outlet_id], references: [id])
-  customer          User             @relation("CustomerLaundryOrders", fields: [customer_id], references: [id])
-  outlet_admin      User             @relation("OutletAdminOrders", fields: [outlet_admin_id], references: [id])
-  order_items       OrderItem[]
-  station_processes StationProcess[]
-  bypass_requests   BypassRequest[]
-  payment           Payment?
-  complaints        Complaint[]
+model LaundryItem {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String    @unique @db.VarChar(100)
+  description String?
+  unit        String    @default("pcs") @db.VarChar(20)
+  base_price  Decimal   @db.Decimal(10, 2)
+  is_active   Boolean   @default(true)
+  deleted_at  DateTime? @db.Timestamptz
+  created_at  DateTime  @default(now()) @db.Timestamptz
+  updated_at  DateTime  @default(now()) @updatedAt @db.Timestamptz
 
+  // Relations
+  order_items OrderItem[]
+
+  @@index([is_active])
+  @@index([deleted_at])
+  @@map("laundry_items")
+}
+
+// ─────────────────────────────────────────
+// ORDERS
+// ─────────────────────────────────────────
+
+model Order {
+  id                        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoice_number            String      @unique @db.VarChar(50)
+  customer_id               String      @db.Uuid
+  outlet_id                 String      @db.Uuid
+  pickup_address_id         String      @db.Uuid
+  status                    OrderStatus @default(waiting_pickup_driver)
+  pickup_schedule           DateTime    @db.Timestamptz
+  total_weight_kg           Decimal?    @db.Decimal(6, 2)
+  total_price               Decimal?    @db.Decimal(12, 2)
+  notes                     String?
+  payment_deadline          DateTime?   @db.Timestamptz
+  auto_confirm_at           DateTime?   @db.Timestamptz
+  created_by_outlet_admin_id String?    @db.Uuid
+  deleted_at                DateTime?   @db.Timestamptz
+  created_at                DateTime    @default(now()) @db.Timestamptz
+  updated_at                DateTime    @default(now()) @updatedAt @db.Timestamptz
+
+  // Relations
+  customer        Customer             @relation(fields: [customer_id], references: [id])
+  outlet          Outlet               @relation(fields: [outlet_id], references: [id])
+  pickup_address  CustomerAddress      @relation(fields: [pickup_address_id], references: [id])
+  created_by_admin Employee?            @relation(fields: [created_by_outlet_admin_id], references: [id])
+  order_items      OrderItem[]
+  status_histories OrderStatusHistory[]
+  process_logs     ProcessLog[]
+  bypass_requests  BypassRequest[]
+  driver_tasks     DriverTask[]
+  payment         Payment?
+  complaints      Complaint[]
+
+  @@index([invoice_number])
+  @@index([customer_id])
   @@index([outlet_id])
-  @@index([customer_id])
-  @@index([order_status])
+  @@index([status])
+  @@index([pickup_schedule])
+  @@index([payment_deadline])
+  @@index([created_at])
+  @@map("orders")
 }
 
 model OrderItem {
-  id                String   @id @default(uuid())
-  order_id          String
-  item_name         String // e.g., Kaos, Celana Panjang
-  expected_quantity Int // from outlet admin
-  current_quantity  Int? // verified by worker
-  price_per_item    Float
-  created_at        DateTime @default(now())
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id        String   @db.Uuid
+  laundry_item_id String   @db.Uuid
+  quantity        Int
+  price_at_order  Decimal  @db.Decimal(10, 2)
+  created_at      DateTime @default(now()) @db.Timestamptz
 
-  order LaundryOrder @relation(fields: [order_id], references: [id], onDelete: Cascade)
-
-  @@index([order_id])
-}
-
-model Station {
-  id             String @id @default(uuid())
-  outlet_id      String
-  name           String // washing|ironing|packing
-  sequence_order Int
-
-  outlet            Outlet           @relation(fields: [outlet_id], references: [id], onDelete: Cascade)
-  station_processes StationProcess[]
-  bypassRequests    BypassRequest[]
-
-  @@index([outlet_id])
-}
-
-model StationProcess {
-  id                String    @id @default(uuid())
-  order_id          String
-  station_id        String
-  worker_id         String // who processed this station
-  items_input       Json? // array of {item_name, quantity}
-  is_completed      Boolean   @default(false)
-  is_bypassed       Boolean   @default(false)
-  bypass_request_id String?   @unique
-  started_at        DateTime? @default(now())
-  completed_at      DateTime?
-
-  order          LaundryOrder    @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  station        Station         @relation(fields: [station_id], references: [id])
-  worker         User            @relation(fields: [worker_id], references: [id])
-  bypass_request BypassRequest?  @relation("StationProcessToBypassRequest", fields: [bypass_request_id], references: [id])
-  inverse_bypass BypassRequest?  @relation("BypassRequestToProcess")
-  bypassRequests BypassRequest[] @relation("StationProcessBypassRequests")
+  // Relations
+  order       Order       @relation(fields: [order_id], references: [id])
+  laundry_item LaundryItem @relation(fields: [laundry_item_id], references: [id])
 
   @@index([order_id])
-  @@index([station_id])
-  @@index([worker_id])
+  @@index([laundry_item_id])
+  @@map("order_items")
 }
+
+// ─────────────────────────────────────────
+// ORDER STATUS HISTORY
+// ─────────────────────────────────────────
+
+model OrderStatusHistory {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id        String       @db.Uuid
+  old_status      OrderStatus?
+  new_status      OrderStatus
+  changed_by_type String       @db.VarChar(20)
+  changed_by_id   String?      @db.Uuid
+  note            String?
+  created_at      DateTime     @default(now()) @db.Timestamptz
+
+  // Relations
+  order Order @relation(fields: [order_id], references: [id])
+
+  @@index([order_id])
+  @@index([created_at])
+  @@map("order_status_histories")
+}
+
+// ─────────────────────────────────────────
+// STATION PROCESSING
+// ─────────────────────────────────────────
+
+model ProcessLog {
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id          String      @db.Uuid
+  station           StationType
+  employee_id       String      @db.Uuid
+  input_items       Json
+  is_bypassed       Boolean     @default(false)
+  bypass_request_id String?     @db.Uuid
+  started_at        DateTime?   @db.Timestamptz
+  completed_at      DateTime?   @db.Timestamptz
+  notes             String?
+  created_at        DateTime    @default(now()) @db.Timestamptz
+
+  // Relations
+  order         Order          @relation(fields: [order_id], references: [id])
+  employee      Employee       @relation(fields: [employee_id], references: [id])
+  bypass_request BypassRequest? @relation(fields: [bypass_request_id], references: [id])
+
+  @@unique([order_id, station])
+  @@index([order_id])
+  @@index([employee_id])
+  @@index([station])
+  @@index([completed_at])
+  @@map("process_logs")
+}
+
+// ─────────────────────────────────────────
+// BYPASS REQUESTS
+// ─────────────────────────────────────────
 
 model BypassRequest {
-  id                   String              @id @default(uuid())
-  order_id             String
-  station_id           String
-  worker_id            String
-  resolved_by_admin_id String?
-  reason               String
-  admin_note           String?
-  status               BypassRequestStatus @default(pending)
-  requested_at         DateTime            @default(now())
-  resolved_at          DateTime?
+  id                      String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id                String        @db.Uuid
+  station                 StationType
+  requested_by            String        @db.Uuid
+  expected_items          Json
+  actual_items            Json
+  discrepancy_description String
+  photo_evidence          String[]
+  status                  BypassStatus  @default(pending)
+  reviewed_by             String?       @db.Uuid
+  admin_notes             String?
+  resolved_at             DateTime?     @db.Timestamptz
+  created_at              DateTime      @default(now()) @db.Timestamptz
 
-  order            LaundryOrder     @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  station          Station          @relation(fields: [station_id], references: [id])
-  worker           User             @relation("WorkerBypassRequests", fields: [worker_id], references: [id])
-  resolved_by      User?            @relation("AdminResolvedBypasses", fields: [resolved_by_admin_id], references: [id])
-  station_process  StationProcess?  @relation("BypassRequestToProcess", fields: [stationProcessId], references: [id])
-  inverse_process  StationProcess?  @relation("StationProcessToBypassRequest")
-  stationProcesses StationProcess[] @relation("StationProcessBypassRequests")
-  stationProcessId String?          @unique
+  // Relations
+  order       Order        @relation(fields: [order_id], references: [id])
+  requester   Employee     @relation("BypassRequestedBy", fields: [requested_by], references: [id])
+  reviewer    Employee?    @relation("BypassReviewedBy", fields: [reviewed_by], references: [id])
+  process_logs ProcessLog[]
 
   @@index([order_id])
   @@index([status])
+  @@index([reviewed_by])
+  @@index([station])
+  @@map("bypass_requests")
 }
 
-model Attendance {
-  id              String           @id @default(uuid())
-  user_id         String
-  attendance_date DateTime         @db.Date
-  check_in_time   String? // Time as String
-  check_out_time  String? // Time as String
-  check_in_lat    Float? // ← TAMBAH
-  check_in_lng    Float? // ← TAMBAH
-  status          AttendanceStatus @default(absent)
-  total_hours     Float?
-  created_at      DateTime         @default(now())
+// ─────────────────────────────────────────
+// DRIVER TASKS
+// ─────────────────────────────────────────
 
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+model DriverTask {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id     String           @db.Uuid
+  driver_id    String?          @db.Uuid
+  task_type    DriverTaskType
+  status       DriverTaskStatus @default(available)
+  taken_at     DateTime?        @db.Timestamptz
+  completed_at DateTime?        @db.Timestamptz
+  created_at   DateTime         @default(now()) @db.Timestamptz
+  updated_at   DateTime         @default(now()) @updatedAt @db.Timestamptz
 
-  @@unique([user_id, attendance_date])
-  @@index([user_id])
+  // Relations
+  order  Order     @relation(fields: [order_id], references: [id])
+  driver Employee? @relation(fields: [driver_id], references: [id])
+
+  @@unique([order_id, task_type])
+  @@index([order_id])
+  @@index([driver_id])
+  @@index([status])
+  @@index([task_type])
+  @@map("driver_tasks")
 }
+
+// ─────────────────────────────────────────
+// PAYMENTS
+// ─────────────────────────────────────────
 
 model Payment {
-  id                     String         @id @default(uuid())
-  order_id               String         @unique
-  customer_id            String
-  amount                 Float
-  payment_method         PaymentMethod?
-  gateway_transaction_id String?
-  status                 PaymentStatus  @default(pending)
-  paid_at                DateTime?
-  created_at             DateTime       @default(now())
+  id                     String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id               String        @unique @db.Uuid
+  amount                 Decimal       @db.Decimal(12, 2)
+  payment_method         PaymentMethod @default(gateway)
+  gateway_name           String?       @db.VarChar(50)
+  gateway_transaction_id String?       @db.VarChar(255)
+  gateway_response       Json?
+  payment_link           String?
+  status                 PaymentStatus @default(pending)
+  expired_at             DateTime?     @db.Timestamptz
+  paid_at                DateTime?     @db.Timestamptz
+  created_at             DateTime      @default(now()) @db.Timestamptz
+  updated_at             DateTime      @default(now()) @updatedAt @db.Timestamptz
 
-  order    LaundryOrder @relation(fields: [order_id], references: [id])
-  customer User         @relation(fields: [customer_id], references: [id])
+  // Relations
+  order Order @relation(fields: [order_id], references: [id])
 
-  @@index([customer_id])
+  @@index([order_id])
+  @@index([gateway_transaction_id])
   @@index([status])
+  @@index([expired_at])
+  @@map("payments")
 }
 
-model Complaint {
-  id          String          @id @default(uuid())
-  order_id    String
-  customer_id String
-  type        ComplaintType
-  description String          @db.Text
-  file_url    String?
-  status      ComplaintStatus @default(open)
-  created_at  DateTime        @default(now())
-  resolved_at DateTime?
+// ─────────────────────────────────────────
+// ATTENDANCE
+// ─────────────────────────────────────────
 
-  order    LaundryOrder @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  customer User         @relation(fields: [customer_id], references: [id])
+model Attendance {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employee_id        String    @db.Uuid
+  outlet_id          String    @db.Uuid
+  date               DateTime  @db.Date
+  check_in_time       DateTime? @db.Timestamptz
+  check_in_latitude   Decimal?  @db.Decimal(10, 8)
+  check_in_longitude  Decimal?  @db.Decimal(11, 8)
+  check_out_time      DateTime? @db.Timestamptz
+  check_out_latitude  Decimal?  @db.Decimal(10, 8)
+  check_out_longitude Decimal?  @db.Decimal(11, 8)
+  notes              String?
+  created_at         DateTime  @default(now()) @db.Timestamptz
+  updated_at         DateTime  @default(now()) @updatedAt @db.Timestamptz
+
+  // Relations
+  employee Employee @relation(fields: [employee_id], references: [id])
+  outlet   Outlet   @relation(fields: [outlet_id], references: [id])
+
+  @@unique([employee_id, date])
+  @@index([outlet_id])
+  @@index([date])
+  @@map("attendances")
+}
+
+// ─────────────────────────────────────────
+// COMPLAINTS
+// ─────────────────────────────────────────
+
+model Complaint {
+  id                       String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id                 String          @db.Uuid
+  customer_id              String          @db.Uuid
+  complaint_type           String          @db.VarChar(50)
+  description              String
+  photo_urls               String[]
+  status                   ComplaintStatus @default(open)
+  expected_resolution_date DateTime?       @db.Date
+  resolved_by              String?         @db.Uuid
+  resolution_notes         String?
+  resolved_at              DateTime?       @db.Timestamptz
+  created_at               DateTime        @default(now()) @db.Timestamptz
+  updated_at               DateTime        @default(now()) @updatedAt @db.Timestamptz
+
+  // Relations
+  order    Order     @relation(fields: [order_id], references: [id])
+  customer Customer  @relation(fields: [customer_id], references: [id])
+  resolver Employee? @relation(fields: [resolved_by], references: [id])
 
   @@index([order_id])
   @@index([customer_id])
+  @@index([status])
+  @@map("complaints")
 }
 
+// ─────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────
+
 model Notification {
-  id         String   @id @default(uuid())
-  user_id    String
-  title      String
-  message    String
-  data       Json? // additional payload
-  is_read    Boolean  @default(false)
-  created_at DateTime @default(now())
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_type         String   @db.VarChar(20)
+  user_id           String   @db.Uuid
+  title             String   @db.VarChar(255)
+  body              String
+  type              String?  @db.VarChar(50)
+  related_entity_id String?  @db.Uuid
+  is_read           Boolean  @default(false)
+  created_at        DateTime @default(now()) @db.Timestamptz
 
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  // Note: user_id is polymorphic (customer or employee).
+  // Relations below are optional convenience links — use only if user_type is known.
+  customer Customer? @relation(fields: [user_id], references: [id], map: "notifications_customer_fk")
+  employee Employee? @relation(fields: [user_id], references: [id], map: "notifications_employee_fk")
 
-  @@index([user_id])
+  @@index([user_type, user_id])
+  @@index([is_read])
   @@index([created_at])
+  @@map("notifications")
+}
+
+// ─────────────────────────────────────────
+// ACTIVITY LOGS
+// ─────────────────────────────────────────
+
+model ActivityLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_type   String   @db.VarChar(20)
+  user_id     String   @db.Uuid
+  action      String   @db.VarChar(100)
+  entity_type String?  @db.VarChar(50)
+  entity_id   String?  @db.Uuid
+  old_values  Json?
+  new_values  Json?
+  ip_address  String?  @db.Inet
+  user_agent  String?
+  created_at  DateTime @default(now()) @db.Timestamptz
+
+  @@index([user_type, user_id])
+  @@index([entity_type])
+  @@index([created_at])
+  @@map("activity_logs")
 }
