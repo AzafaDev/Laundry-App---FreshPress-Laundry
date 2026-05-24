@@ -9,7 +9,6 @@ import {
   Home,
   CalendarDays,
   User,
-  Clock,
   MapPin,
   Navigation,
   AlertCircle,
@@ -19,15 +18,17 @@ import { WorkerTopBar } from "@/components/dashboard/WorkerTopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { AttendanceCard } from "@/components/attendance/AttendanceCard";
 import { AttendanceLog } from "@/components/attendance/AttendanceLog";
+import { ShiftCard } from "@/components/attendance/ShiftCard";
 import { useAttendance } from "@/hooks/useAttendance";
 import { toLogRecord } from "@/utils/formatDate";
 import { useAuthStore } from "@/stores/authStore";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
 export default function WorkerAttendancePage() {
   const [page, setPage] = useState(1);
   const att = useAttendance();
-  const { user } = useAuthStore();
+  const { user } = useEmployeeAuthStore();
   const { latitude, longitude, permissionDenied } = useGeolocation();
   const [locationStatus, setLocationStatus] = useState<
     "idle" | "checking" | "available" | "denied"
@@ -143,23 +144,15 @@ export default function WorkerAttendancePage() {
                 )}
               </div>
             </div>
-            {att.currentShift && (
-              <div className="mt-3 flex items-center gap-2 text-xs text-primary bg-primary/10 py-1.5 px-3 rounded-full inline-flex">
-                <Clock className="w-3.5 h-3.5" />
-                <span>
-                  Shift: {att.currentShift.shiftName} (
-                  {att.currentShift.startTime} - {att.currentShift.endTime})
-                </span>
-              </div>
-            )}
           </motion.div>
+
+          <ShiftCard currentShift={att.currentShift ?? null} />
 
           {/* Attendance Card */}
           <AttendanceCard
             checkedIn={att.checkedIn}
             checkInTime={att.checkInTime}
             checkOutTime={att.checkOutTime}
-            currentShift={att.currentShift}
             onCheckIn={handleCheckIn}
             onCheckOut={handleCheckOut}
             loading={att.isCheckingIn || att.isCheckingOut}
@@ -171,7 +164,7 @@ export default function WorkerAttendancePage() {
             <h2 className="text-lg font-bold text-on-surface mb-4 flex items-center gap-2">
               <CalendarDays className="w-5 h-5 text-primary" />
               Riwayat Absensi
-              {pagination?.total && (
+              {pagination?.total !== undefined && pagination.total > 0 && (
                 <span className="text-xs text-on-surface-variant ml-2">
                   ({pagination.total} catatan)
                 </span>

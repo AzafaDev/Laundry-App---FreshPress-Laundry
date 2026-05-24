@@ -6,7 +6,7 @@ export type AttendanceStatusFilter = "on_time" | "late"; // untuk filter admin r
 export interface Attendance {
   id: string;
   user_id: string;
-  attendance_date: string;
+  date: string;
   check_in_time: string | null;
   check_out_time: string | null;
   status: AttendanceStatus;

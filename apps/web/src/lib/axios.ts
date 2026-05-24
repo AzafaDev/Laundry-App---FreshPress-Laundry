@@ -47,8 +47,26 @@ const clearAuthByType = (type: "employee" | "customer") => {
   }
 };
 
+const PUBLIC_ENDPOINTS = [
+  "/v1/customer/auth/login",
+  "/v1/customer/auth/register",
+  "/v1/customer/auth/verify",
+  "/v1/customer/auth/forgot-password",
+  "/v1/customer/auth/reset-password",
+  "/v1/employee/auth/login",
+  "/v1/employee/auth/refresh",
+];
+
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    const isPublic = PUBLIC_ENDPOINTS.some((endpoint) =>
+      config.url?.includes(endpoint),
+    );
+
+    if (isPublic) {
+      return config;
+    }
+
     const { token, type } = getTokens();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -68,18 +86,17 @@ axiosInstance.interceptors.response.use(
       _retry?: boolean;
     };
 
+    const isPublic = PUBLIC_ENDPOINTS.some((endpoint) =>
+      originalRequest.url?.includes(endpoint),
+    );
+
     if (error.response?.status !== 401 || originalRequest._retry) {
-      const { type } = getTokens();
-      if (error.response?.status === 401 && type === "customer") {
-        clearAuthByType("customer");
-      }
       return Promise.reject(error);
     }
 
     const { type } = getTokens();
 
-    if (type !== "employee") {
-      clearAuthByType("customer");
+    if (type !== "employee" || isPublic) {
       return Promise.reject(error);
     }
 

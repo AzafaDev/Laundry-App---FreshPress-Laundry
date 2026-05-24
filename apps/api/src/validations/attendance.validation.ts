@@ -20,8 +20,20 @@ export const checkOutSchema = z.object({
 });
 
 export const getMyLogsQuerySchema = z.object({
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: z.preprocess(
+    (val) =>
+      val === "" || val === null || val === undefined
+        ? undefined
+        : new Date(val as string),
+    z.date().optional(),
+  ),
+  endDate: z.preprocess(
+    (val) =>
+      val === "" || val === null || val === undefined
+        ? undefined
+        : new Date(val as string),
+    z.date().optional(),
+  ),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 });

@@ -125,7 +125,7 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
 
   await storeRefreshToken(payload.userId, newRefreshToken, expiresAt);
 
-  res.cookie("refreshToken", refreshToken, {
+  res.cookie("refreshToken", newRefreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",

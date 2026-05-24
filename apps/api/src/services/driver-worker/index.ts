@@ -30,14 +30,17 @@ export const attendanceService = {
 
     if (body?.lat !== undefined && body.lng !== undefined) {
       const within = await isWithinRadius(outletId, body.lat, body.lng);
-      if (!within) {
-        throw new AppError(
-          "Anda harus berada di sekitar outlet untuk check-in",
-          403,
-        );
-      }
+      // if (!within) {
+      //   throw new AppError(
+      //     "Anda harus berada di sekitar outlet untuk check-in",
+      //     403,
+      //   );
+      // }
     } else {
-      throw new AppError("Lokasi tidak tersedia. Aktifkan GPS untuk check-in", 400);
+      throw new AppError(
+        "Lokasi tidak tersedia. Aktifkan GPS untuk check-in",
+        400,
+      );
     }
 
     const shift = await getEmployeeShiftForToday(employeeId, new Date());
@@ -134,8 +137,8 @@ export const attendanceService = {
     endDate?: Date,
   ) {
     const where: any = { employee_id: employeeId };
-    if (startDate) where.data = { gte: startDate };
-    if (endDate) where.data = { ...where.data, lte: endDate };
+    if (startDate) where.date = { gte: startDate };
+    if (endDate) where.date = { ...where.date, lte: endDate };
 
     const skip = (page - 1) * limit;
     const [logs, total] = await Promise.all([

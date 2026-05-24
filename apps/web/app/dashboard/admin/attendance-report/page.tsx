@@ -336,7 +336,7 @@ export default function AttendanceReportPage() {
                       </td>
                       <td className="px-6 py-4 capitalize">{att.user?.role}</td>
                       <td className="px-6 py-4">
-                        {new Date(att.attendance_date).toLocaleDateString(
+                        {new Date(att.date).toLocaleDateString(
                           "id-ID",
                         )}
                       </td>

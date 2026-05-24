@@ -61,15 +61,13 @@ export const getMyLogs = async (
     const { page, limit, startDate, endDate } = getMyLogsQuerySchema.parse(
       req.query,
     );
-    const start = startDate ? new Date(startDate) : undefined;
-    const end = endDate ? new Date(endDate) : undefined;
 
     const result = await attendanceService.getMyAttendanceLogs(
       employeeId,
       page,
       limit,
-      start,
-      end,
+      startDate,
+      endDate,
     );
 
     res.json({ success: true, ...result });

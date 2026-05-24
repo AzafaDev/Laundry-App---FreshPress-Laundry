@@ -56,7 +56,7 @@ export default function OutletAdminAttendanceReportPage() {
     const rows = records.map((att) => [
       att.user?.full_name ?? "-",
       att.user?.email ?? "-",
-      format(new Date(att.attendance_date), "dd MMM yyyy", { locale: id }),
+      format(new Date(att.date), "dd MMM yyyy", { locale: id }),
       att.check_in_time ?? "-",
       att.check_out_time ?? "-",
       STATUS_LABEL[att.status] ?? att.status,
@@ -191,7 +191,7 @@ export default function OutletAdminAttendanceReportPage() {
                     <p className="text-xs text-on-surface-variant">{att.user?.email}</p>
                   </td>
                   <td className="px-6 py-4">
-                    {format(new Date(att.attendance_date), "dd MMM yyyy", { locale: id })}
+                    {format(new Date(att.date), "dd MMM yyyy", { locale: id })}
                   </td>
                   <td className="px-6 py-4 font-mono">{att.check_in_time ?? "-"}</td>
                   <td className="px-6 py-4 font-mono">{att.check_out_time ?? "-"}</td>

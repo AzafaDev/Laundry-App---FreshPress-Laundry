@@ -1,19 +1,14 @@
 // apps/web/src/hooks/useAttendance.ts
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  attendanceService,
-  type CurrentShift,
-} from "@/services/attendance.service";
+import { attendanceService } from "@/services/attendance.service";
 import { useSocket } from "./useSocket";
+import { formatTime } from "@/utils/formatDate";
 import { useGeolocation } from "./useGeolocation";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
-import type {
-  AttendanceReportParams,
-  AttendanceStatusFilter,
-} from "@/types/attendance.type";
+import type { AttendanceReportParams } from "@/types/attendance.type";
 
 // --- Hook untuk employee (check-in/out, my logs, current shift) ---
 export function useAttendance() {
@@ -67,9 +62,9 @@ export function useAttendance() {
       }
       return attendanceService.checkIn({ lat: latitude, lng: longitude });
     },
-    onMutate: () => toast.loading("Merekam check-in...", { id: "attendance" }),
+onMutate: () => toast.loading("Merekam check-in...", { id: "attendance" }),
     onSuccess: (data) => {
-      toast.success(`Check-in berhasil pukul ${data.check_in_time}`, {
+      toast.success(`Check-in berhasil pukul ${formatTime(data.check_in_time)}`, {
         id: "attendance",
       });
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
