@@ -4,7 +4,7 @@ import { Router } from "express";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import { requireRole } from "../../middlewares/role.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
-import { getAttendanceReport } from "../../controllers/admin/report.controller.js";
+import { getAttendanceReport, exportAttendanceReport } from "../../controllers/admin/report.controller.js";
 import * as UserCtrl from "../../controllers/admin/user.controller.js";
 import * as OutletCtrl from "../../controllers/admin/outlet.controller.js";
 import {
@@ -27,6 +27,11 @@ router.get(
   "/reports/attendance",
   requireRole("super_admin", "outlet_admin"),
   getAttendanceReport,
+);
+router.get(
+  "/reports/attendance/export",
+  requireRole("super_admin", "outlet_admin"),
+  exportAttendanceReport,
 );
 
 // Users (super_admin only)

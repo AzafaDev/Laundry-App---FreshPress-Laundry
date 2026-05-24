@@ -73,12 +73,17 @@ export const attendanceService = {
       },
     });
 
+    // Socket emit dengan employee name
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { full_name: true },
+    });
+
     emitToRole("outlet_admin", "attendance:checkin", {
       employeeId,
+      employeeName: employee?.full_name,
       outletId,
-      checkInTime,
-      location:
-        body?.lat && body.lng ? { lat: body.lat, lng: body.lng } : undefined,
+      checkInTime: now.toLocaleTimeString("id-ID"),
       attendanceId: attendance.id,
     });
 
@@ -108,10 +113,17 @@ export const attendanceService = {
       },
     });
 
+    // Get employee name for socket emit
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { full_name: true },
+    });
+
     emitToRole("outlet_admin", "attendance:checkout", {
       employeeId,
+      employeeName: employee?.full_name,
       outletId: attendance.outlet_id,
-      checkOutTime: now,
+      checkOutTime: now.toLocaleTimeString("id-ID"),
       attendanceId,
     });
 
@@ -181,8 +193,8 @@ export const attendanceService = {
       where.outlet_id = outletId;
     }
 
-    if (startDate) where.data = { gte: startDate };
-    if (endDate) where.data = { ...where.data, lte: endDate };
+    if (startDate) where.date = { gte: startDate };
+    if (endDate) where.date = { ...where.date, lte: endDate };
 
     const skip = (page - 1) * limit;
     const [logs, total] = await Promise.all([
@@ -195,6 +207,7 @@ export const attendanceService = {
               full_name: true,
               email: true,
               role: true,
+              outlet_id: true,
             },
           },
           outlet: {
@@ -224,7 +237,14 @@ export const attendanceService = {
             status = isLateFlag ? "late" : "on_time";
           }
         }
-        return { ...log, status };
+        // Map employee to user for frontend compatibility
+        return {
+          ...log,
+          status,
+          user: log.employee,
+          user_id: log.employee_id,
+          attendance_date: log.date.toISOString(),
+        };
       }),
     );
 

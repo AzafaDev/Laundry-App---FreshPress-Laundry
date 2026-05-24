@@ -5,7 +5,7 @@ export type AttendanceStatusFilter = "on_time" | "late"; // untuk filter admin r
 
 export interface Attendance {
   id: string;
-  user_id: string; // tetap karena dari backend masih user_id (polymorphic)
+  user_id: string;
   attendance_date: string;
   check_in_time: string | null;
   check_out_time: string | null;
@@ -16,12 +16,17 @@ export interface Attendance {
     full_name: string;
     email: string;
     role: string;
+    outlet_id?: string;
     user_shifts?: Array<{
       shift: {
         name: string;
         outlet: { name: string };
       };
     }>;
+  };
+  outlet?: {
+    id: string;
+    name: string;
   };
 }
 
