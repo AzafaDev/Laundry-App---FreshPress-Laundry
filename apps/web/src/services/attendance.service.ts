@@ -1,7 +1,6 @@
 // apps/web/src/services/attendance.service.ts
 
 import { axiosInstance } from "@/lib/axios";
-import { useLocationStore } from "@/stores/locationStore";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import {
   Attendance,
@@ -25,12 +24,12 @@ const getEmployeeToken = () => {
 };
 
 export const attendanceService = {
-  checkIn: async (): Promise<Attendance> => {
-    const { latitude, longitude } = useLocationStore.getState();
+  checkIn: async (coordinates?: { lat: number; lng: number }): Promise<Attendance> => {
     const payload: Record<string, any> = {};
-    if (latitude != null) payload.lat = latitude;
-    if (longitude != null) payload.lng = longitude;
-
+    if (coordinates) {
+      payload.lat = coordinates.lat;
+      payload.lng = coordinates.lng;
+    }
     const { data } = await axiosInstance.post<{
       success: true;
       data: Attendance;

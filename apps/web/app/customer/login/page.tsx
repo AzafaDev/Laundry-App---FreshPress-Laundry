@@ -336,7 +336,7 @@ function CustomerLoginContent() {
               </span>
             </button>
 
-            {/* Footer Link */}
+            {/* Footer Link untuk customer */}
             <p className="text-center mt-6 text-base text-on-surface-variant">
               Belum punya akun?{" "}
               <Link
@@ -344,6 +344,14 @@ function CustomerLoginContent() {
                 className="text-primary font-bold hover:underline"
               >
                 Daftar di sini
+              </Link>
+            </p>
+
+            {/* Tautan untuk employee */}
+            <p className="text-center text-sm text-on-surface-variant mt-2">
+              Login sebagai karyawan?{" "}
+              <Link href="/employee/login" className="text-primary font-bold hover:underline">
+                Klik di sini
               </Link>
             </p>
           </div>

@@ -35,12 +35,9 @@ export const attendanceService = {
           "Anda harus berada di sekitar outlet untuk check-in",
           403,
         );
-      } else {
-        throw new AppError(
-          "Lokasi tidak tersedia. Aktifkan GPS untuk check-in",
-          400,
-        );
       }
+    } else {
+      throw new AppError("Lokasi tidak tersedia. Aktifkan GPS untuk check-in", 400);
     }
 
     const shift = await getEmployeeShiftForToday(employeeId, new Date());

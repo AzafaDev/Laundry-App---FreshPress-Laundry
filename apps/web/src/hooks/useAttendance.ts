@@ -6,6 +6,7 @@ import {
   type CurrentShift,
 } from "@/services/attendance.service";
 import { useSocket } from "./useSocket";
+import { useGeolocation } from "./useGeolocation";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
@@ -18,6 +19,7 @@ import type {
 export function useAttendance() {
   const queryClient = useQueryClient();
   const { on, emit } = useSocket();
+  const { latitude, longitude, permissionDenied } = useGeolocation();
 
   // Pastikan employee sudah login (opsional, untuk validasi)
   const { accessToken, user } = useEmployeeAuthStore();
@@ -59,7 +61,12 @@ export function useAttendance() {
   });
 
   const checkInMutation = useMutation({
-    mutationFn: attendanceService.checkIn,
+    mutationFn: async () => {
+      if (!latitude || !longitude) {
+        throw new Error("Lokasi tidak tersedia. Aktifkan GPS untuk check-in.");
+      }
+      return attendanceService.checkIn({ lat: latitude, lng: longitude });
+    },
     onMutate: () => toast.loading("Merekam check-in...", { id: "attendance" }),
     onSuccess: (data) => {
       toast.success(`Check-in berhasil pukul ${data.check_in_time}`, {
