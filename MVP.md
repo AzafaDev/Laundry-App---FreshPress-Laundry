@@ -9,7 +9,7 @@ Laundry Web App adalah sebuah aplikasi e-commerce yang memiliki fungsi agar cust
 Pada aplikasi ini terdapat 4 jenis pengguna, diantaranya customer yang akan melaundry, worker dan admin sebagai pengelola outlet laundry, serta driver yang bertugas untuk melakukan pengambilan ataupun pengiriman laundry. 
 Ketika ada pesanan baru, maka secara otomatis sistem akan meneruskan pemesanan tersebut ke lokasi outlet terdekat dengan alamat customer. Admin yang bertugas pada outlet tersebut, bertanggung jawab untuk memproses pesanan hingga selesai. 
 · Membuat aplikasi berbasis web dengan mobile first approach.
-· Aplikasi memiliki 5 jenis role, yaitu customer, super admin, outlet admin, worker dan driver.
+· Aplikasi memiliki 7 jenis pengguna, yaitu customer, super admin, outlet admin, washing worker, ironing worker, packing worker, dan driver.
 · Saat landing page di akses, user akan diminta untuk memberikan izin mendapatkan lokasi (longitude dan latitude) pada saat pertama kali mengakses web.
 · User dapat melakukan request pickup laundry, tracking order process dan juga pembayaran.
 · Pesanan yang masuk secara otomatis akan diteruskan ke outlet admin yang sedang melakukan shift pada outlet yang lokasinya paling dekat dengan customer. Disisi lain, driver juga dapat mengambil tiap request pickup yang masuk. 
@@ -70,6 +70,10 @@ o Status ketika laundry sudah siap diantar
 o Status ketika pembayaran telah berhasil dan laundry sedang dikirim ke alamat customer
 · Laundry Telah Diterima Customer
 o Status ketika laundry telah sampai ke customer
+· Laundry Selesai
+o Status ketika customer telah mengkonfirmasi penerimaan laundry dan pesanan selesai
+· Laundry Dibatalkan
+o Status ketika pesanan dibatalkan
 Features
 Feature 1
 Homepage / Landing Page (10 Point)
@@ -288,7 +292,7 @@ Laundry Web App adalah sebuah aplikasi e-commerce yang memiliki fungsi agar cust
 Pada aplikasi ini terdapat 4 jenis pengguna, diantaranya customer yang akan melaundry, worker dan admin sebagai pengelola outlet laundry, serta driver yang bertugas untuk melakukan pengambilan ataupun pengiriman laundry.
 Ketika ada pesanan baru, maka secara otomatis sistem akan meneruskan pemesanan tersebut ke lokasi outlet terdekat dengan alamat customer. Admin yang bertugas pada outlet tersebut, bertanggung jawab untuk memproses pesanan hingga selesai.
 Membuat aplikasi berbasis web dengan mobile first approach.
-Aplikasi memiliki 5 jenis role, yaitu customer, super admin, outlet admin, worker dan driver.
+Aplikasi memiliki 7 jenis pengguna, yaitu customer, super admin, outlet admin, washing worker, ironing worker, packing worker, dan driver.
 Saat landing page di akses, user akan diminta untuk memberikan izin mendapatkan lokasi (longitude dan latitude) pada saat pertama kali mengakses web.
 User dapat melakukan request pickup laundry, tracking order process dan juga pembayaran.
 Pesanan yang masuk secara otomatis akan diteruskan ke outlet admin yang sedang melakukan shift pada outlet yang lokasinya paling dekat dengan customer. Disisi lain, driver juga dapat mengambil tiap request pickup yang masuk.
@@ -349,6 +353,10 @@ Laundry Sedang Dikirim Menuju Customer
 Status ketika pembayaran telah berhasil dan laundry sedang dikirim ke alamat customer
 Laundry Telah Diterima Customer
 Status ketika laundry telah sampai ke customer
+Laundry Selesai
+Status ketika customer telah mengkonfirmasi penerimaan laundry dan pesanan selesai
+Laundry Dibatalkan
+Status ketika pesanan dibatalkan
 Features
 Feature 1
 Homepage / Landing Page (10 Point)
@@ -567,7 +575,7 @@ Laundry Web App adalah sebuah aplikasi e-commerce yang memiliki fungsi agar cust
 Pada aplikasi ini terdapat 4 jenis pengguna, diantaranya customer yang akan melaundry, worker dan admin sebagai pengelola outlet laundry, serta driver yang bertugas untuk melakukan pengambilan ataupun pengiriman laundry.
 Ketika ada pesanan baru, maka secara otomatis sistem akan meneruskan pemesanan tersebut ke lokasi outlet terdekat dengan alamat customer. Admin yang bertugas pada outlet tersebut, bertanggung jawab untuk memproses pesanan hingga selesai.
 Membuat aplikasi berbasis web dengan mobile first approach.
-Aplikasi memiliki 5 jenis role, yaitu customer, super admin, outlet admin, worker dan driver.
+Aplikasi memiliki 7 jenis pengguna, yaitu customer, super admin, outlet admin, washing worker, ironing worker, packing worker, dan driver.
 Saat landing page di akses, user akan diminta untuk memberikan izin mendapatkan lokasi (longitude dan latitude) pada saat pertama kali mengakses web.
 User dapat melakukan request pickup laundry, tracking order process dan juga pembayaran.
 Pesanan yang masuk secara otomatis akan diteruskan ke outlet admin yang sedang melakukan shift pada outlet yang lokasinya paling dekat dengan customer. Disisi lain, driver juga dapat mengambil tiap request pickup yang masuk.
@@ -628,6 +636,10 @@ Laundry Sedang Dikirim Menuju Customer
 Status ketika pembayaran telah berhasil dan laundry sedang dikirim ke alamat customer
 Laundry Telah Diterima Customer
 Status ketika laundry telah sampai ke customer
+Laundry Selesai
+Status ketika customer telah mengkonfirmasi penerimaan laundry dan pesanan selesai
+Laundry Dibatalkan
+Status ketika pesanan dibatalkan
 Features
 Feature 1
 Homepage / Landing Page (10 Point)
