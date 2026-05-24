@@ -1,4 +1,4 @@
-# TASK DIVISION FINAL – LAUNDRY WEB APP (LENGKAP)
+# TASK DIVISION FINAL – LAUNDRY WEB APP (LENGKAP) – REVISI SESUAI BRD
 
 ## Sprint 1 – Foundation, Auth & Base Dashboards (Day 1-4)
 
@@ -19,7 +19,7 @@
 
 | Owner | Deliverable | Libraries |
 | ----- | ----------- | --------- |
-| A     | Edit profile, upload + validate photo (max 1MB), update email with re-verify | cloudinary, multer, nodemailer, zod, @tanstack/react-query |
+| A     | Edit profile, upload + validate photo (max 1MB, **ekstensi .jpg/.jpeg/.png/.gif**), update email with re-verify | cloudinary, multer, nodemailer, zod, @tanstack/react-query |
 | A     | Address CRUD, geocode to coordinates (OpenCage), **simpan kota/kabupaten untuk ongkir (RajaOngkir)**, map picker UI | opencage-api-client, react-leaflet, leaflet, @prisma/client, zod, @tanstack/react-query |
 | B     | Outlet admin: CRUD shift, assign shift ke worker/driver, validasi shift aktif saat absensi & proses order | @prisma/client, zod, express |
 | B     | View + filter all orders, order tracking by status/worker/date (super admin lihat semua outlet, outlet admin lihat outletnya saja) | @prisma/client, date-fns, @tanstack/react-query, zustand, tailwindcss |
@@ -35,10 +35,10 @@
 | ----- | ----------- | --------- |
 | A     | Pickup request: select address + schedule, **cari outlet terdekat dengan jarak ≤ service_radius_km**, jika tidak ada dalam radius → error, assign driver via socket | geolib, socket.io-client, @prisma/client, zod, @tanstack/react-query, react-leaflet |
 | A     | Order list with pagination + search, realtime status tracking UI | socket.io-client, @tanstack/react-query, date-fns, zustand |
-| B     | Create order from pickup request: input kg + item quantities, generate invoice | @prisma/client, zod, date-fns, @tanstack/react-query |
-| B     | Bypass flow: worker requests bypass → admin approves/rejects with PIN, log reason | bcrypt, @prisma/client, socket.io-client, zod |
+| B     | Create order from pickup request: input kg + item quantities, generate invoice, status berubah menjadi `order_created` | @prisma/client, zod, date-fns, @tanstack/react-query |
+| B     | Bypass flow: worker requests bypass **dengan foto bukti (max 2MB, .jpg/.png)** → admin approves/rejects with PIN, log reason | bcrypt, @prisma/client, socket.io-client, zod, multer, cloudinary |
 | C     | Worker: re-input item quantities, validate vs previous station, block if mismatch, request bypass – **hanya bisa memproses order jika role-nya cocok dengan station** | @prisma/client, zod, socket.io-client, @tanstack/react-query |
-| C     | Packing station: check payment status, auto-create delivery request when all stations done | @prisma/client, socket.io, date-fns |
+| C     | Packing station: **check payment status. Jika lunas → ubah status ke `ready_for_delivery` dan auto-create delivery request. Jika belum lunas → ubah status ke `waiting_payment` (tidak membuat delivery request).** | @prisma/client, socket.io, date-fns |
 
 ---
 
@@ -47,9 +47,10 @@
 | Owner  | Deliverable | Libraries |
 | ------ | ----------- | --------- |
 | A      | Midtrans Snap payment integration + webhook handler, **integrasi RajaOngkir hitung ongkir (kota outlet → kota alamat customer), tambahkan ke total tagihan** | midtrans-client, express, @prisma/client, crypto, axios |
-| A      | Saat packing selesai: jika status waiting_payment, kirim 1 notifikasi (email + in-app) ke customer | nodemailer, socket.io |
-| A      | Auto-confirm order: cron tiap jam cek order dengan status delivery_to_customer > 48 jam, ubah jadi completed | node-cron, @prisma/client, date-fns |
-| A      | Complaint submission (with photo), order confirmation UI, responsive polish | cloudinary, multer, @prisma/client, zod, tailwindcss |
+| A      | **NOTIFIKASI PERINGATAN PEMBAYARAN PERIODIK:** Buat cron job berjalan setiap 6 jam untuk mengecek order dengan status `order_created`, `washing`, `ironing`, `packing` yang pembayarannya masih `unpaid`. Kirim notifikasi email + in-app ke customer (peringatan bahwa batas pembayaran adalah sampai packing selesai). | node-cron, nodemailer, socket.io, @prisma/client |
+| A      | Saat packing selesai: jika status `waiting_payment`, kirim 1 notifikasi (email + in-app) ke customer | nodemailer, socket.io |
+| A      | Auto-confirm order: cron tiap jam cek order dengan status `delivery_to_customer` > 48 jam, ubah jadi `completed` | node-cron, @prisma/client, date-fns |
+| A      | Complaint submission (with photo, max 2MB, .jpg/.png), order confirmation UI, responsive polish | cloudinary, multer, @prisma/client, zod, tailwindcss |
 | B      | Sales report: income per day/month/year, filter by outlet + date, export PDF/CSV | recharts, papaparse, pdf-lib, @prisma/client, date-fns |
 | B      | Employee performance report: total jobs per worker/driver, filter by outlet + date, export PDF/CSV, responsive polish | recharts, papaparse, pdf-lib, @prisma/client, date-fns, tailwindcss |
 | C      | Worker job history (per jenis worker), driver pickup/delivery history, responsive polish | @tanstack/react-query, date-fns, tailwindcss |
@@ -58,7 +59,7 @@
 
 ---
 
-## Catatan Implementasi (Ringkasan)
+## Catatan Implementasi (Ringkasan) – Revisi
 
 - **Driver** hanya bisa pegang satu order aktif (pickup/delivery) – validasi di backend.
 - **Shift management** – worker/driver hanya proses order jika shift aktif dan sudah absen.
@@ -66,7 +67,12 @@
 - **Radius layanan outlet** – jika tidak ada outlet dalam radius, customer tidak bisa request pickup.
 - **Ongkos kirim** – dihitung dengan RajaOngkir (berdasarkan kota), ditambahkan ke total tagihan saat payment, pendapatan ongkir masuk ke outlet.
 - **Geolokasi landing page** – minta izin lokasi saat pertama akses (tidak wajib disimpan).
-- **Auto-confirm order** – cron tiap jam untuk status delivery_to_customer > 48 jam.
-- **Activity log** – middleware otomatis mencatat semua operasi CREATE, UPDATE, DELETE.
-- **Validasi file** – foto profil max 1MB, ekstensi .jpg/.jpeg/.png/.gif.
+- **Auto-confirm order** – cron tiap jam untuk status `delivery_to_customer` > 48 jam.
+- **Notifikasi peringatan pembayaran** – cron setiap 6 jam untuk order unpaid dengan status sebelum packing selesai (FR-09.2).
+- **Packing station** – hanya buat delivery request jika pembayaran sudah lunas; jika belum lunas, ubah ke `waiting_payment`.
+- **Bypass request** – wajib menyertakan foto bukti (max 2MB, .jpg/.png).
+- **Validasi file foto profil** – max 1MB, ekstensi .jpg/.jpeg/.png/.gif.
+- **Activity log** – middleware otomatis mencatat semua operasi CREATE, UPDATE, DELETE, serta perubahan status order dan bypass.
+- **Kode bersih** – setiap file maksimal 200 baris, setiap fungsi maksimal 15 baris.
 
+---
