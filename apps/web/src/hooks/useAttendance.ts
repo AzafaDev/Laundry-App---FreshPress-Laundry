@@ -122,6 +122,14 @@ export function useAttendance() {
     },
     fetchNextLogs: (page: number) =>
       attendanceService.getMyLogs({ page, limit: 20 }),
+    fetchLogs: async (params: {
+      page?: number;
+      limit?: number;
+      startDate?: string;
+      endDate?: string;
+    }) => {
+      return attendanceService.getMyLogs(params);
+    },
   };
 }
 

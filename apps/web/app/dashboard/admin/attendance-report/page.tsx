@@ -39,7 +39,7 @@ const outletOptions = [
 ];
 
 const userOptions = [
-  { id: "", name: "Semua User" },
+  { id: "", name: "Semua Karyawan" },
   { id: "driver-id", name: "Test Driver" },
   { id: "worker-id", name: "Test Worker" },
 ];
@@ -47,7 +47,7 @@ const userOptions = [
 export default function AttendanceReportPage() {
   const [filters, setFilters] = useState({
     outletId: undefined as string | undefined,
-    userId: undefined as string | undefined,
+    employeeId: undefined as string | undefined,
     startDate: undefined as string | undefined,
     endDate: undefined as string | undefined,
     page: 1,
@@ -59,7 +59,7 @@ export default function AttendanceReportPage() {
     page: filters.page,
     limit: filters.limit,
     ...(filters.outletId && { outletId: filters.outletId }),
-    ...(filters.userId && { userId: filters.userId }),
+    ...(filters.employeeId && { employeeId: filters.employeeId }),
     ...(filters.startDate && { startDate: filters.startDate }),
     ...(filters.endDate && { endDate: filters.endDate }),
   };
@@ -110,7 +110,7 @@ export default function AttendanceReportPage() {
   const resetFilters = () => {
     setFilters({
       outletId: undefined,
-      userId: undefined,
+      employeeId: undefined,
       startDate: undefined,
       endDate: undefined,
       page: 1,
@@ -183,11 +183,11 @@ export default function AttendanceReportPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
               <select
-                value={filters.userId}
+                value={filters.employeeId}
                 onChange={(e) =>
                   setFilters((f) => ({
                     ...f,
-                    userId: e.target.value || undefined,
+                    employeeId: e.target.value || undefined,
                     page: 1,
                   }))
                 }
@@ -244,7 +244,7 @@ export default function AttendanceReportPage() {
                 : `Menampilkan ${records.length} dari ${pagination?.total || 0} data`}
             </span>
             {filters.outletId ||
-            filters.userId ||
+            filters.employeeId ||
             filters.startDate ||
             filters.endDate ? (
               <span className="text-primary flex items-center gap-1">

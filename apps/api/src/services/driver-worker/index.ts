@@ -5,6 +5,7 @@ import {
   getEmployeeOutlet,
   getEmployeeShiftForToday,
   isLate,
+  isWithinRadius,
 } from "./attendanceHelper.js";
 
 export const attendanceService = {
@@ -26,6 +27,21 @@ export const attendanceService = {
     }
 
     const outletId = await getEmployeeOutlet(employeeId);
+
+    if (body?.lat !== undefined && body.lng !== undefined) {
+      const within = await isWithinRadius(outletId, body.lat, body.lng);
+      if (!within) {
+        throw new AppError(
+          "Anda harus berada di sekitar outlet untuk check-in",
+          403,
+        );
+      } else {
+        throw new AppError(
+          "Lokasi tidak tersedia. Aktifkan GPS untuk check-in",
+          400,
+        );
+      }
+    }
 
     const shift = await getEmployeeShiftForToday(employeeId, new Date());
     if (!shift) {
