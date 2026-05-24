@@ -10,7 +10,7 @@ export const getAttendanceReport = async (
 ): Promise<void> => {
   try {
     // ✅ Ubah destructuring userId → employeeId
-    const { outletId, employeeId, startDate, endDate, page, limit } =
+    const { outletId, employeeId, status, startDate, endDate, page, limit } =
       attendanceReportQuerySchema.parse(req.query);
 
     const start = startDate ? new Date(startDate) : undefined;
@@ -20,6 +20,7 @@ export const getAttendanceReport = async (
     const result = await attendanceService.getAttendanceReport(
       outletId,
       employeeId,
+      status,
       start,
       end,
       page,

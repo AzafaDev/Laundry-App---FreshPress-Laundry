@@ -151,6 +151,7 @@ export const attendanceService = {
   async getAttendanceReport(
     outletId: string | undefined,
     employeeId: string | undefined,
+    status: "on_time" | "late" | undefined,
     startDate: Date | undefined,
     endDate: Date | undefined,
     page: number,
@@ -211,8 +212,13 @@ export const attendanceService = {
       }),
     );
 
+    let filteredLogs = logsWithStatus;
+    if (status) {
+      filteredLogs = logsWithStatus.filter((log) => log.status === status);
+    }
+
     return {
-      data: logsWithStatus,
+      data: filteredLogs,
       pagination: {
         page,
         limit,
