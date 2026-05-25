@@ -12,7 +12,7 @@ export const checkInSchema = z.object({
     .min(-180)
     .max(180)
     .optional()
-    .refine((v) => v === undefined || !isNaN(v), "Latitude tidak valid"),
+    .refine((v) => v === undefined || !isNaN(v), "Longitude tidak valid"),
 });
 
 export const checkOutSchema = z.object({
@@ -20,23 +20,38 @@ export const checkOutSchema = z.object({
 });
 
 export const getMyLogsQuerySchema = z.object({
-  startDate: z.string().datetime().optional(),
-  endDate: z.string().datetime().optional(),
+  startDate: z.preprocess(
+    (val) =>
+      val === "" || val === null || val === undefined
+        ? undefined
+        : new Date(val as string),
+    z.date().optional(),
+  ),
+  endDate: z.preprocess(
+    (val) =>
+      val === "" || val === null || val === undefined
+        ? undefined
+        : new Date(val as string),
+    z.date().optional(),
+  ),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
 });
 
+// ✅ Ubah userId → employeeId
 export const attendanceReportQuerySchema = z.object({
   outletId: z.preprocess(
     (val) =>
       val === "" || val === null || val === undefined ? undefined : val,
     z.string().uuid("Outlet ID tidak valid").optional(),
   ),
-  userId: z.preprocess(
+  employeeId: z.preprocess(
+    // <-- perubahan di sini
     (val) =>
       val === "" || val === null || val === undefined ? undefined : val,
-    z.string().uuid("User ID tidak valid").optional(),
+    z.string().uuid("Employee ID tidak valid").optional(),
   ),
+  status: z.enum(["on_time", "late"]).optional(),
   startDate: z.preprocess(
     (val) =>
       val === "" || val === null || val === undefined

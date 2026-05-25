@@ -1,15 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { WorkerSidebar } from "@/components/dashboard/WorkerSidebar";
-import { WorkerTopBar } from "@/components/dashboard/WorkerTopBar";
+import Link from "next/link";
+import { CalendarDays, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { DriverSidebar } from "@/components/dashboard/DriverSidebar";
+import { DriverTopBar } from "@/components/dashboard/DriverTopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useQuery } from "@tanstack/react-query";
 import { toLogRecord } from "@/utils/formatDate";
 import { AttendanceLog } from "@/components/attendance/AttendanceLog";
 
-export default function WorkerHistoryPage() {
+export default function DriverHistoryPage() {
   const [page, setPage] = useState(1);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -37,13 +39,13 @@ export default function WorkerHistoryPage() {
 
   return (
     <div className="min-h-screen bg-background pb-24 lg:pb-0">
-      <WorkerSidebar />
-      <WorkerTopBar />
+      <DriverSidebar />
+      <DriverTopBar />
       <main className="lg:pl-72 p-4 md:p-8">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h1 className="text-2xl font-bold text-on-surface">
-              Riwayat Absensi Worker
+              Riwayat Absensi Driver
             </h1>
             <div className="flex flex-wrap gap-2">
               <input

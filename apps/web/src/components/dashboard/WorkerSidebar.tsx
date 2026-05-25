@@ -26,7 +26,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/worker/station", label: "Station", icon: ClipboardList },
   { href: "/dashboard/worker/packing", label: "Packing", icon: Package },
   { href: "/dashboard/worker/attendance", label: "Attendance", icon: Clock },
-  { href: "/dashboard/worker/history", label: "History", icon: BarChart3 },
+  { href: "/dashboard/worker/history", label: "Riwayat", icon: BarChart3 },
 ];
 
 export function WorkerSidebar({ onClose }: { onClose?: () => void }) {

@@ -55,6 +55,12 @@ const NAV: NavItem[] = [
     icon: BarChart3,
     roles: ["super_admin", "outlet_admin"],
   },
+  {
+    href: "/dashboard/outlet-admin/attendance-report",
+    label: "Attendance Report",
+    icon: BarChart3,
+    roles: ["outlet_admin"],
+  },
 ];
 
 export function AdminSidebar() {

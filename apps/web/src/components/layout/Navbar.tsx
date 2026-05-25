@@ -23,7 +23,6 @@ export const Navbar = () => {
   const navLinks = [
     { label: "Cara Kerja", href: "/#how-it-works" },
     { label: "Harga & Layanan", href: "/#services" },
-    { label: "Orders", href: isAuthenticated ? "/dashboard/orders" : "/login" },
   ];
 
   return (
@@ -170,14 +169,14 @@ export const Navbar = () => {
             ) : (
               <>
                 <Link
-                  href="/login"
+                  href="/customer/login"
                   onClick={() => setMobileOpen(false)}
                   className="block px-3 py-2.5 text-primary hover:bg-primary/5 rounded-lg text-sm font-medium"
                 >
                   Masuk
                 </Link>
                 <Link
-                  href="/register"
+                  href="/customer/register"
                   onClick={() => setMobileOpen(false)}
                   className="block px-3 py-2.5 bg-primary text-white rounded-lg text-sm font-medium text-center"
                 >

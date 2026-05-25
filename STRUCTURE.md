@@ -188,10 +188,9 @@ apps/web/
 
 ### A. ERD untuk Customer (Orang A) — tabel yang relevan:
 
-- `User` (role = customer)
-- `UserAddress`
-- `PickupRequest`
-- `LaundryOrder`
+- `Customer`
+- `CustomerAddress`
+- `Order`
 - `OrderItem` (baca saja)
 - `Payment`
 - `Complaint`
@@ -199,24 +198,24 @@ apps/web/
 
 ### B. ERD untuk Admin (Orang B) — tabel yang relevan:
 
-- `User` (semua role)
+- `Employee` (semua role)
+- `Customer`
 - `Outlet`
-- `Shift`
-- `UserShift`
-- `LaundryOrder` (full akses)
+- `WorkShift`
+- `EmployeeShift`
+- `Order` (full akses)
 - `OrderItem`
-- `Station`
-- `StationProcess`
+- `ProcessLog`
 - `BypassRequest`
 - `Complaint`
 - `Notification`
 
 ### C. ERD untuk Driver & Worker (Orang C) — tabel yang relevan:
 
-- `User` (role = driver, worker)
-- `PickupRequest` (untuk driver)
-- `LaundryOrder` (baca/tulis status)
-- `StationProcess`
+- `Employee` (role = driver, worker)
+- `Order` (baca/tulis status)
+- `DriverTask`
+- `ProcessLog`
 - `BypassRequest` (membuat request)
 - `Attendance`
 - `Notification`

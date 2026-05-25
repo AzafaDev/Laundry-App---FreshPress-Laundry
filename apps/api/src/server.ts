@@ -1,3 +1,5 @@
+import "dotenv/config";
+import cookieParser from "cookie-parser";
 import express, { type Application } from "express";
 import cors from "cors";
 import http from "http";
@@ -22,6 +24,7 @@ const limiter = rateLimit({
 app.use(limiter);
 
 app.use(express.json({ limit: "2mb" }));
+app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
 app.get("/health", (_req, res) => {

@@ -9,6 +9,7 @@ import {
   Store,
   Clock,
   Shirt,
+  ScrollText,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -24,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/driver/inventory", label: "Inventory", icon: Package },
   { href: "/dashboard/outlets", label: "Outlets", icon: Store },
   { href: "/dashboard/driver/attendance", label: "Attendance", icon: Clock },
+  { href: "/dashboard/driver/history", label: "Riwayat", icon: ScrollText },
 ];
 
 export function DriverSidebar() {
