@@ -1,9 +1,12 @@
-export type AttendanceStatus = 'on_time' | 'late' | 'absent';
+// apps/web/src/types/attendance.type.ts
+
+export type AttendanceStatus = "on_time" | "late" | "absent";
+export type AttendanceStatusFilter = "on_time" | "late"; // untuk filter admin report
 
 export interface Attendance {
   id: string;
   user_id: string;
-  attendance_date: string;
+  date: string;
   check_in_time: string | null;
   check_out_time: string | null;
   status: AttendanceStatus;
@@ -13,12 +16,17 @@ export interface Attendance {
     full_name: string;
     email: string;
     role: string;
+    outlet_id?: string;
     user_shifts?: Array<{
       shift: {
         name: string;
         outlet: { name: string };
       };
     }>;
+  };
+  outlet?: {
+    id: string;
+    name: string;
   };
 }
 
@@ -34,9 +42,11 @@ export interface AttendanceLogsResponse {
   pagination: Pagination;
 }
 
+// Ubah userId -> employeeId untuk konsistensi dengan backend
 export interface AttendanceReportParams {
   outletId?: string;
-  userId?: string;
+  employeeId?: string; // dulu userId
+  status?: AttendanceStatusFilter;
   startDate?: string;
   endDate?: string;
   page?: number;

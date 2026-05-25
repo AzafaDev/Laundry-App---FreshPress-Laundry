@@ -11,7 +11,7 @@ import {
   ChevronDown,
   ShieldAlert,
 } from "lucide-react";
-import { useAuthStore } from "@/stores/authStore";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
 export function DriverTopBar({
   onToggleSidebar,
@@ -20,7 +20,7 @@ export function DriverTopBar({
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { user, clearAuth } = useAuthStore();
+  const { user, clearAuth } = useEmployeeAuthStore();
   const router = useRouter();
 
   // Tutup dropdown saat klik di luar komponen
@@ -105,13 +105,6 @@ export function DriverTopBar({
             {/* Dropdown Menu */}
             {dropdownOpen && (
               <div className="absolute right-0 top-full mt-2 w-52 bg-surface border border-outline-variant rounded-xl shadow-lg overflow-hidden z-50">
-                {!user?.is_verified && (
-                  <div className="px-4 py-2 bg-amber-50 border-b border-amber-200">
-                    <p className="text-xs text-amber-700 font-medium">
-                      ⚠️ Akun belum terverifikasi
-                    </p>
-                  </div>
-                )}
                 <Link
                   href="/profile"
                   onClick={() => setDropdownOpen(false)}

@@ -13,11 +13,15 @@ export const checkIn = async (
   next: NextFunction,
 ) => {
   try {
-    const userId = req.user?.userId;
-    if (!userId) throw new AppError("Unauthorized", 401);
+    const employeeId = req.user?.userId;
+    if (!employeeId) throw new AppError("Unauthorized", 401);
 
     const { lat, lng } = checkInSchema.parse(req.body);
-    const attendance = await attendanceService.checkIn(userId, { lat, lng });
+    const attendance = await attendanceService.checkIn(employeeId, {
+      lat,
+      lng,
+    });
+
     res.status(201).json({ success: true, data: attendance });
   } catch (error) {
     next(error);
@@ -30,11 +34,15 @@ export const checkOut = async (
   next: NextFunction,
 ) => {
   try {
-    const userId = req.user?.userId;
-    if (!userId) throw new AppError("Unauthorized", 401);
+    const employeeId = req.user?.userId;
+    if (!employeeId) throw new AppError("Unauthorized", 401);
 
     const { attendanceId } = checkOutSchema.parse(req.body);
-    const attendance = await attendanceService.checkOut(attendanceId, userId);
+    const attendance = await attendanceService.checkOut(
+      attendanceId,
+      employeeId,
+    );
+
     res.json({ success: true, data: attendance });
   } catch (error) {
     next(error);
@@ -47,22 +55,21 @@ export const getMyLogs = async (
   next: NextFunction,
 ) => {
   try {
-    const userId = req.user?.userId;
-    if (!userId) throw new AppError("Unauthorized", 401);
+    const employeeId = req.user?.userId;
+    if (!employeeId) throw new AppError("Unauthorized", 401);
 
     const { page, limit, startDate, endDate } = getMyLogsQuerySchema.parse(
       req.query,
     );
-    const start = startDate ? new Date(startDate) : undefined;
-    const end = endDate ? new Date(endDate) : undefined;
 
     const result = await attendanceService.getMyAttendanceLogs(
-      userId,
+      employeeId,
       page,
       limit,
-      start,
-      end,
+      startDate,
+      endDate,
     );
+
     res.json({ success: true, ...result });
   } catch (error) {
     next(error);
@@ -75,10 +82,10 @@ export const checkTodayAttendance = async (
   next: NextFunction,
 ) => {
   try {
-    const userId = req.user?.userId;
-    if (!userId) throw new AppError("Unauthorized", 401);
+    const employeeId = req.user?.userId;
+    if (!employeeId) throw new AppError("Unauthorized", 401);
 
-    const result = await attendanceService.checkTodayAttendance(userId);
+    const result = await attendanceService.checkTodayAttendance(employeeId);
     res.json({ success: true, data: result });
   } catch (error) {
     next(error);
@@ -91,10 +98,10 @@ export const getCurrentShift = async (
   next: NextFunction,
 ) => {
   try {
-    const userId = req.user?.userId;
-    if (!userId) throw new AppError("Unauthorized", 401);
+    const employeeId = req.user?.userId;
+    if (!employeeId) throw new AppError("Unauthorized", 401);
 
-    const shift = await attendanceService.getCurrentShift(userId);
+    const shift = await attendanceService.getCurrentShift(employeeId);
     res.json({ success: true, data: shift });
   } catch (error) {
     next(error);

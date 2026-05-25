@@ -15,10 +15,10 @@ import {
   Calendar,
   Loader2,
   RefreshCw,
-  FileSpreadsheet,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import { axiosInstance } from "@/lib/axios";
 
 const STATUS_LABEL: Record<string, string> = {
   on_time: "Tepat Waktu",
@@ -32,6 +32,12 @@ const STATUS_COLOR: Record<string, string> = {
   absent: "bg-error-container text-on-error-container border border-error/20",
 };
 
+const statusOptions = [
+  { value: "", label: "Semua Status" },
+  { value: "on_time", label: "Tepat Waktu" },
+  { value: "late", label: "Terlambat" },
+];
+
 // Mock data untuk outlet & user (nanti ganti dengan API)
 const outletOptions = [
   { id: "", name: "Semua Outlet" },
@@ -39,7 +45,7 @@ const outletOptions = [
 ];
 
 const userOptions = [
-  { id: "", name: "Semua User" },
+  { id: "", name: "Semua Karyawan" },
   { id: "driver-id", name: "Test Driver" },
   { id: "worker-id", name: "Test Worker" },
 ];
@@ -47,7 +53,8 @@ const userOptions = [
 export default function AttendanceReportPage() {
   const [filters, setFilters] = useState({
     outletId: undefined as string | undefined,
-    userId: undefined as string | undefined,
+    employeeId: undefined as string | undefined,
+    status: "" as "" | "on_time" | "late",
     startDate: undefined as string | undefined,
     endDate: undefined as string | undefined,
     page: 1,
@@ -59,7 +66,8 @@ export default function AttendanceReportPage() {
     page: filters.page,
     limit: filters.limit,
     ...(filters.outletId && { outletId: filters.outletId }),
-    ...(filters.userId && { userId: filters.userId }),
+    ...(filters.employeeId && { employeeId: filters.employeeId }),
+    ...(filters.status && { status: filters.status }),
     ...(filters.startDate && { startDate: filters.startDate }),
     ...(filters.endDate && { endDate: filters.endDate }),
   };
@@ -72,45 +80,43 @@ export default function AttendanceReportPage() {
   const records = data?.data ?? [];
   const pagination = data?.pagination;
 
-  const handleExportCSV = () => {
-    if (!records.length) {
-      toast.error("Tidak ada data untuk diekspor");
-      return;
+  const handleExportCSV = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (filters.outletId) params.append("outletId", filters.outletId);
+      if (filters.employeeId) params.append("employeeId", filters.employeeId);
+      if (filters.status) params.append("status", filters.status);
+      if (filters.startDate) params.append("startDate", filters.startDate);
+      if (filters.endDate) params.append("endDate", filters.endDate);
+
+      const response = await axiosInstance.get(
+        `/v1/reports/attendance/export?${params.toString()}`,
+        { responseType: "blob" },
+      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `attendance_report_${new Date().toISOString().slice(0, 10)}.csv`,
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("Ekspor berhasil");
+    } catch (err: any) {
+      const message =
+        err.response?.data?.message || "Gagal mengekspor data";
+      toast.error(message);
     }
-
-    const headers = [
-      "Nama",
-      "Role",
-      "Tanggal",
-      "Check In",
-      "Check Out",
-      "Status",
-    ];
-    const rows = records.map((att) => [
-      att.user?.full_name ?? "-",
-      att.user?.role ?? "-",
-      new Date(att.attendance_date).toLocaleDateString("id-ID"),
-      att.check_in_time ?? "-",
-      att.check_out_time ?? "-",
-      STATUS_LABEL[att.status] ?? att.status,
-    ]);
-
-    const csvContent = [headers, ...rows]
-      .map((row) => row.join(","))
-      .join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `attendance_report_${new Date().toISOString().slice(0, 19)}.csv`;
-    link.click();
-    URL.revokeObjectURL(link.href);
-    toast.success("Ekspor CSV berhasil");
   };
 
   const resetFilters = () => {
     setFilters({
       outletId: undefined,
-      userId: undefined,
+      employeeId: undefined,
+      status: "",
       startDate: undefined,
       endDate: undefined,
       page: 1,
@@ -183,11 +189,11 @@ export default function AttendanceReportPage() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
               <select
-                value={filters.userId}
+                value={filters.employeeId}
                 onChange={(e) =>
                   setFilters((f) => ({
                     ...f,
-                    userId: e.target.value || undefined,
+                    employeeId: e.target.value || undefined,
                     page: 1,
                   }))
                 }
@@ -196,6 +202,27 @@ export default function AttendanceReportPage() {
                 {userOptions.map((opt) => (
                   <option key={opt.id} value={opt.id}>
                     {opt.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
+              <select
+                value={filters.status}
+                onChange={(e) =>
+                  setFilters((f) => ({
+                    ...f,
+                    status: e.target.value as "" | "on_time" | "late",
+                    page: 1,
+                  }))
+                }
+                className="w-full pl-9 pr-4 py-2.5 border border-outline-variant rounded-lg bg-surface focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
+              >
+                {statusOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
@@ -243,10 +270,11 @@ export default function AttendanceReportPage() {
                 ? "Tidak ada data"
                 : `Menampilkan ${records.length} dari ${pagination?.total || 0} data`}
             </span>
-            {filters.outletId ||
-            filters.userId ||
-            filters.startDate ||
-            filters.endDate ? (
+{filters.outletId ||
+             filters.employeeId ||
+             filters.status ||
+             filters.startDate ||
+             filters.endDate ? (
               <span className="text-primary flex items-center gap-1">
                 <Filter className="w-3 h-3" /> Filter aktif
               </span>
@@ -259,6 +287,7 @@ export default function AttendanceReportPage() {
               <table className="w-full text-left">
                 <thead className="bg-surface-container-low border-b border-outline-variant sticky top-0 z-10">
                   <tr>
+                    <th className="px-6 py-4 text-sm font-bold">Outlet</th>
                     <th className="px-6 py-4 text-sm font-bold">Nama</th>
                     <th className="px-6 py-4 text-sm font-bold">Role</th>
                     <th className="px-6 py-4 text-sm font-bold">Tanggal</th>
@@ -270,7 +299,7 @@ export default function AttendanceReportPage() {
                 <tbody>
                   {isLoading && (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center">
+                      <td colSpan={7} className="px-6 py-12 text-center">
                         <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
                         <p className="mt-2 text-on-surface-variant">
                           Memuat data...
@@ -281,7 +310,7 @@ export default function AttendanceReportPage() {
                   {!isLoading && records.length === 0 && (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="px-6 py-12 text-center text-on-surface-variant"
                       >
                         Tidak ada data absensi untuk filter ini.
@@ -296,6 +325,7 @@ export default function AttendanceReportPage() {
                       transition={{ delay: idx * 0.03 }}
                       className="border-b border-outline-variant hover:bg-surface-container-low transition-colors"
                     >
+                      <td className="px-6 py-4">{att.outlet?.name ?? "-"}</td>
                       <td className="px-6 py-4">
                         <p className="font-bold">
                           {att.user?.full_name ?? "-"}
@@ -306,7 +336,7 @@ export default function AttendanceReportPage() {
                       </td>
                       <td className="px-6 py-4 capitalize">{att.user?.role}</td>
                       <td className="px-6 py-4">
-                        {new Date(att.attendance_date).toLocaleDateString(
+                        {new Date(att.date).toLocaleDateString(
                           "id-ID",
                         )}
                       </td>
