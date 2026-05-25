@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -17,41 +16,40 @@ import { WorkerSidebar } from "@/components/dashboard/WorkerSidebar";
 import { WorkerTopBar } from "@/components/dashboard/WorkerTopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { AttendanceCard } from "@/components/attendance/AttendanceCard";
-import { AttendanceLog } from "@/components/attendance/AttendanceLog";
+import { AttendanceSummary } from "@/components/attendance/AttendanceSummary";
 import { ShiftCard } from "@/components/attendance/ShiftCard";
 import { useAttendance } from "@/hooks/useAttendance";
 import { toLogRecord } from "@/utils/formatDate";
-import { useAuthStore } from "@/stores/authStore";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { attendanceService } from "@/services/attendance.service";
 
 export default function WorkerAttendancePage() {
-  const [page, setPage] = useState(1);
   const att = useAttendance();
   const { user } = useEmployeeAuthStore();
   const { latitude, longitude, permissionDenied } = useGeolocation();
-  const [locationStatus, setLocationStatus] = useState<
-    "idle" | "checking" | "available" | "denied"
-  >("idle");
 
-  useEffect(() => {
-    if (permissionDenied) setLocationStatus("denied");
-    else if (latitude && longitude) setLocationStatus("available");
-    else if (!permissionDenied && !latitude) setLocationStatus("checking");
-  }, [latitude, longitude, permissionDenied]);
+  const locationStatus =
+    permissionDenied
+      ? "denied"
+      : latitude && longitude
+      ? "available"
+      : "checking";
 
-  const {
-    data: paginatedLogs,
-    isLoading: logsLoading,
-    refetch: refetchLogs,
-  } = useQuery({
-    queryKey: ["attendance", "logs", page],
-    queryFn: () => att.fetchNextLogs(page),
+  const { data: recentLogs, isLoading: recentLoading } = useQuery({
+    queryKey: ["attendance", "recent", "worker"],
+    queryFn: () => attendanceService.getMyLogs({ page: 1, limit: 5 }),
+    staleTime: 1000 * 60 * 2,
+    refetchOnWindowFocus: true,
+  });
+
+  const { refetch: refetchLogs } = useQuery({
+    queryKey: ["attendance", "logs"],
+    queryFn: () => att.fetchNextLogs(1),
     enabled: !!att.fetchNextLogs,
   });
 
-  const logRecords = (paginatedLogs?.data ?? att.records).map(toLogRecord);
-  const pagination = paginatedLogs?.pagination ?? att.pagination;
+  const recentRecords = (recentLogs?.data ?? []).map(toLogRecord);
 
   const handleCheckIn = async () => {
     if (locationStatus !== "available") {
@@ -62,8 +60,9 @@ export default function WorkerAttendancePage() {
       await att.checkInAsync();
       att.refetch();
       refetchLogs();
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Gagal check-in");
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Gagal check-in");
     }
   };
 
@@ -76,8 +75,9 @@ export default function WorkerAttendancePage() {
       await att.checkOutAsync(att.attendanceId);
       att.refetch();
       refetchLogs();
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Gagal check-out");
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Gagal check-out");
     }
   };
 
@@ -163,18 +163,12 @@ export default function WorkerAttendancePage() {
           <section>
             <h2 className="text-lg font-bold text-on-surface mb-4 flex items-center gap-2">
               <CalendarDays className="w-5 h-5 text-primary" />
-              Riwayat Absensi
-              {pagination?.total !== undefined && pagination.total > 0 && (
-                <span className="text-xs text-on-surface-variant ml-2">
-                  ({pagination.total} catatan)
-                </span>
-              )}
+              Riwayat Terbaru
             </h2>
-            <AttendanceLog
-              records={logRecords}
-              pagination={pagination}
-              onPageChange={(newPage) => setPage(newPage)}
-              isLoading={logsLoading || att.isLoading}
+            <AttendanceSummary
+              records={recentRecords}
+              viewAllHref="/dashboard/worker/history"
+              isLoading={recentLoading || att.isLoading}
             />
           </section>
         </div>

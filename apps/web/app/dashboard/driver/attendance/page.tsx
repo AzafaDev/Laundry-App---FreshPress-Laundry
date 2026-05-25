@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Home,
@@ -13,11 +12,12 @@ import {
 import toast from "react-hot-toast";
 import { useQuery } from "@tanstack/react-query";
 import { AttendanceCard } from "@/components/attendance/AttendanceCard";
-import { AttendanceLog } from "@/components/attendance/AttendanceLog";
+import { AttendanceSummary } from "@/components/attendance/AttendanceSummary";
 import { ShiftCard } from "@/components/attendance/ShiftCard";
 import { useAttendance } from "@/hooks/useAttendance";
 import { toLogRecord } from "@/utils/formatDate";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { attendanceService } from "@/services/attendance.service";
 import { motion } from "framer-motion";
 import { DriverSidebar } from "@/components/dashboard/DriverSidebar";
 import { DriverTopBar } from "@/components/dashboard/DriverTopBar";
@@ -25,32 +25,31 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
 export default function DriverAttendancePage() {
-  const [page, setPage] = useState(1);
   const att = useAttendance();
   const { user } = useEmployeeAuthStore();
   const { latitude, longitude, permissionDenied } = useGeolocation();
-  const [locationStatus, setLocationStatus] = useState<
-    "idle" | "checking" | "available" | "denied"
-  >("idle");
 
-  useEffect(() => {
-    if (permissionDenied) setLocationStatus("denied");
-    else if (latitude && longitude) setLocationStatus("available");
-    else if (!permissionDenied && !latitude) setLocationStatus("checking");
-  }, [latitude, longitude, permissionDenied]);
+  const locationStatus =
+    permissionDenied
+      ? "denied"
+      : latitude && longitude
+      ? "available"
+      : "checking";
 
-  const {
-    data: paginatedLogs,
-    isLoading: logsLoading,
-    refetch: refetchLogs,
-  } = useQuery({
-    queryKey: ["attendance", "logs", page],
-    queryFn: () => att.fetchNextLogs(page),
+  const { data: recentLogs, isLoading: recentLoading } = useQuery({
+    queryKey: ["attendance", "recent", "driver"],
+    queryFn: () => attendanceService.getMyLogs({ page: 1, limit: 5 }),
+    staleTime: 1000 * 60 * 2,
+    refetchOnWindowFocus: true,
+  });
+
+  const { refetch: refetchLogs } = useQuery({
+    queryKey: ["attendance", "logs"],
+    queryFn: () => att.fetchNextLogs(1),
     enabled: !!att.fetchNextLogs,
   });
 
-  const logRecords = (paginatedLogs?.data ?? att.records).map(toLogRecord);
-  const pagination = paginatedLogs?.pagination ?? att.pagination;
+  const recentRecords = (recentLogs?.data ?? []).map(toLogRecord);
 
   const handleCheckIn = async () => {
     if (locationStatus !== "available") {
@@ -153,18 +152,12 @@ export default function DriverAttendancePage() {
           <section>
             <h2 className="text-lg font-bold text-on-surface mb-4 flex items-center gap-2">
               <CalendarDays className="w-5 h-5 text-primary" />
-              Riwayat Absensi
-              {pagination?.total !== undefined && pagination.total > 0 && (
-                <span className="text-xs text-on-surface-variant ml-2">
-                  ({pagination.total} catatan)
-                </span>
-              )}
+              Riwayat Terbaru
             </h2>
-            <AttendanceLog
-              records={logRecords}
-              pagination={pagination}
-              onPageChange={(newPage) => setPage(newPage)}
-              isLoading={logsLoading || att.isLoading}
+            <AttendanceSummary
+              records={recentRecords}
+              viewAllHref="/dashboard/driver/history"
+              isLoading={recentLoading || att.isLoading}
             />
           </section>
         </div>
