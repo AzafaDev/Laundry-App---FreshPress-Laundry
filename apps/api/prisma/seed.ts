@@ -195,6 +195,19 @@ async function main() {
     },
   });
 
+  // 24-hour shift for demo purposes
+  const fullDayShift = await prisma.workShift.upsert({
+    where: { name: "FullDay" },
+    update: {},
+    create: {
+      name: "FullDay",
+      start_time: new Date("1970-01-01T00:00:00Z"),
+      end_time: new Date("1970-01-01T23:59:59Z"),
+      description: "24 jam - Untuk demo check-in/check-out anytime",
+      is_active: true,
+    },
+  });
+
   // ========== 4. Assign shift untuk karyawan asli (hanya Morning) ==========
   const assignShift = async (
     employeeId: string,
@@ -379,6 +392,40 @@ async function main() {
         );
     }
     console.log(`   ✅ ${employee.full_name} -> ${created} record attendance`);
+  }
+
+  // ========== 8. Demo accounts with FullDay shift (for demo purposes) ==========
+  console.log("\n🎭 Membuat akun demo dengan shift 24 jam...");
+  const demoRoles = ["driver", "washing_worker", "ironing_worker", "packing_worker"];
+  const roleNames = {
+    driver: "Driver Demo",
+    washing_worker: "Washing Worker Demo",
+    ironing_worker: "Ironing Worker Demo",
+    packing_worker: "Packing Worker Demo",
+  };
+
+  for (const role of demoRoles) {
+    const email = `${role}.full_day@freshpress.com`;
+    const fullName = roleNames[role as keyof typeof roleNames];
+    const demoEmployee = await prisma.employee.upsert({
+      where: { email },
+      update: {},
+      create: {
+        email,
+        full_name: fullName,
+        phone: `081234567890`,
+        password_hash: defaultPassword,
+        role: role as any,
+        outlet_id: outlet1.id,
+        is_active: true,
+        is_occupied: false,
+      },
+    });
+    // Assign FullDay shift for all days
+    for (let day = 1; day <= 5; day++) {
+      await assignShift(demoEmployee.id, fullDayShift.id, outlet1.id, day);
+    }
+    console.log(`   ✅ Created ${fullName} (${email})`);
   }
 
   console.log(

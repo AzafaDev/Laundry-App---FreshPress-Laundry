@@ -132,6 +132,9 @@ onMutate: () => toast.loading("Merekam check-in...", { id: "attendance" }),
     }) => {
       return attendanceService.getMyLogs(params);
     },
+    getRecentLogs: async (limit = 5) => {
+      return attendanceService.getMyLogs({ page: 1, limit });
+    },
   };
 }
 
