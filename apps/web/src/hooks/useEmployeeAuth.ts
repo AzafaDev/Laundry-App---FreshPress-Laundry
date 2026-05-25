@@ -41,7 +41,7 @@ export const useEmployeeAuth = () => {
     },
     onError: (error: any) => {
       // Error akan ditangani di komponen
-      console.error(
+      console.log(
         "Login employee gagal:",
         error?.response?.data?.message || error.message,
       );

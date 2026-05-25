@@ -7,8 +7,7 @@ import {
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { formatTime } from "@/utils/formatDate";
 
 interface AttendanceCardProps {
@@ -80,7 +79,7 @@ export function AttendanceCard({
         </motion.div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2 sm:gap-3">
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
