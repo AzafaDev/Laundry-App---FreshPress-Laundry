@@ -18,6 +18,8 @@ interface AttendanceCardProps {
   onCheckOut: () => void;
   loading?: boolean;
   error?: Error | null;
+  canCheckIn?: boolean;
+  canCheckOut?: boolean;
 }
 
 export function AttendanceCard({
@@ -28,6 +30,8 @@ export function AttendanceCard({
   onCheckOut,
   loading = false,
   error = null,
+  canCheckIn = true,
+  canCheckOut = true,
 }: AttendanceCardProps) {
   return (
     <motion.div
@@ -84,9 +88,9 @@ export function AttendanceCard({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={onCheckIn}
-          disabled={checkedIn || loading}
+          disabled={checkedIn || loading || !canCheckIn}
           className={`py-4 px-6 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
-            checkedIn
+            checkedIn || !canCheckIn
               ? "bg-surface-container-high text-on-surface-variant cursor-not-allowed"
               : "bg-primary text-on-primary hover:opacity-90 shadow-lg shadow-primary/20"
           } ${loading ? "animate-pulse" : ""}`}
@@ -99,9 +103,9 @@ export function AttendanceCard({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={onCheckOut}
-          disabled={!checkedIn || loading}
+          disabled={!checkedIn || loading || !canCheckOut}
           className={`py-4 px-5 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
-            !checkedIn
+            !checkedIn || !canCheckOut
               ? "bg-surface-container-high text-on-surface-variant cursor-not-allowed"
               : "bg-error text-on-error hover:opacity-90"
           } ${loading ? "animate-pulse" : ""}`}

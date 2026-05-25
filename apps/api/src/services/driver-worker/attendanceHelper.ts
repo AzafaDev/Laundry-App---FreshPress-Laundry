@@ -8,23 +8,20 @@ export async function getEmployeeOutlet(employeeId: string): Promise<string> {
     where: { id: employeeId },
     select: { outlet_id: true },
   });
-
   if (!employee) {
     throw new AppError("Employee tidak ditemukan.", 404);
   }
-
   if (!employee.outlet_id) {
     throw new AppError("Employee tidak memiliki outlet terdaftar.", 400);
   }
-
   return employee.outlet_id;
 }
 
-export async function getEmployeeShiftForToday(
+export async function getEmployeeShiftForDate(
   employeeId: string,
-  now: Date,
+  date: Date,
 ): Promise<{ shiftName: string; startTime: Date; endTime: Date } | null> {
-  const jsDay = now.getDay();
+  const jsDay = date.getDay();
   const dbDay = jsDay === 0 ? 7 : jsDay;
 
   const employeeShift = await prisma.employeeShift.findFirst({
@@ -33,9 +30,7 @@ export async function getEmployeeShiftForToday(
       day_of_week: dbDay,
       is_active: true,
     },
-    include: {
-      shift: true, // work_shifts
-    },
+    include: { shift: true },
   });
 
   if (!employeeShift || !employeeShift.shift) {
@@ -43,44 +38,40 @@ export async function getEmployeeShiftForToday(
   }
 
   const shift = employeeShift.shift;
+  const startHour = shift.start_time.getHours();
+  const startMinute = shift.start_time.getMinutes();
+  const startSecond = shift.start_time.getSeconds();
+  const endHour = shift.end_time.getHours();
+  const endMinute = shift.end_time.getMinutes();
+  const endSecond = shift.end_time.getSeconds();
 
-  const startUTCHours = shift.start_time.getUTCHours();
-  const startUTCMinutes = shift.start_time.getUTCMinutes();
-  const startUTCSeconds = shift.start_time.getUTCSeconds();
+  let startTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), startHour, startMinute, startSecond);
+  let endTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), endHour, endMinute, endSecond);
 
-  const endUTCHours = shift.end_time.getUTCHours();
-  const endUTCMinutes = shift.end_time.getUTCMinutes();
-  const endUTCSeconds = shift.end_time.getUTCSeconds();
-
-  const startTime = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    startUTCHours,
-    startUTCMinutes,
-    startUTCSeconds,
-  );
-
-  const endTime = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    endUTCHours,
-    endUTCMinutes,
-    endUTCSeconds,
-  );
+  if (endTime <= startTime) {
+    endTime.setDate(endTime.getDate() + 1);
+  }
 
   return { shiftName: shift.name, startTime, endTime };
+}
+
+export function canCheckIn(now: Date, shiftStart: Date, shiftEnd: Date, toleranceMinutes = 15): boolean {
+  const allowedStart = new Date(shiftStart.getTime() - toleranceMinutes * 60000);
+  return now >= allowedStart && now <= shiftEnd;
+}
+
+export function canCheckOut(now: Date, shiftEnd: Date): boolean {
+  return now >= shiftEnd;
 }
 
 export function isLate(
   checkInTime: Date,
   shiftStartTime: Date,
-  lateThresholMinutes: number = 30,
+  lateThresholdMinutes: number = 30,
 ): boolean {
   const diffMinutes =
     (checkInTime.getTime() - shiftStartTime.getTime()) / (1000 * 60);
-  return diffMinutes > lateThresholMinutes;
+  return diffMinutes > lateThresholdMinutes;
 }
 
 export async function isWithinRadius(
@@ -92,15 +83,12 @@ export async function isWithinRadius(
     where: { id: outletId },
     select: { latitude: true, longitude: true },
   });
-
   if (!outlet || outlet.latitude === null || outlet.longitude === null) {
     return false;
   }
-
   const distance = getDistance(
     { latitude: userLat, longitude: userLng },
     { latitude: Number(outlet.latitude), longitude: Number(outlet.longitude) },
   );
-
   return distance <= CHECKIN_RADIUS_METERS;
 }

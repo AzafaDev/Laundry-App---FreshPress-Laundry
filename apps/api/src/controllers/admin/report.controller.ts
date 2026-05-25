@@ -11,14 +11,19 @@ export const getAttendanceReport = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    // ✅ Ubah destructuring userId → employeeId
-    const { outletId, employeeId, status, startDate, endDate, page, limit } =
+    let { outletId, employeeId, status, startDate, endDate, page, limit } =
       attendanceReportQuerySchema.parse(req.query);
+
+    if (req.user?.role === "outlet_admin") {
+      if (!req.user.outletId) {
+        throw new AppError("Outlet admin tidak memiliki outlet terdaftar.", 403);
+      }
+      outletId = req.user.outletId;
+    }
 
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
 
-    // ✅ Kirim employeeId (bukan userId)
     const result = await attendanceService.getAttendanceReport(
       outletId,
       employeeId,

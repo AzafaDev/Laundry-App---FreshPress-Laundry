@@ -1,4 +1,5 @@
 import "dotenv/config";
+process.env.TZ = "Asia/Jakarta";
 import cookieParser from "cookie-parser";
 import express, { type Application } from "express";
 import cors from "cors";

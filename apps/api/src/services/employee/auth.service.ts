@@ -52,12 +52,14 @@ export const loginEmployee = async (
     userId: employee.id,
     role: employee.role,
     email: employee.email,
+    outletId: employee.outlet_id,
   });
 
   const refreshToken = signRefreshToken({
     userId: employee.id,
     role: employee.role,
     email: employee.email,
+    outletId: employee.outlet_id,
   });
 
   const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
@@ -84,7 +86,7 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
     throw new AppError("Refresh token tidak ditemukan", 401);
   }
 
-  let payload: { userId: string; role: string; email: string };
+  let payload: { userId: string; role: string; email: string; outletId?: string | null };
   try {
     payload = verifyRefreshToken(refreshToken);
   } catch (error) {
@@ -111,12 +113,14 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
     userId: payload.userId,
     role: payload.role,
     email: payload.email,
+    outletId: payload.outletId,
   });
 
   const newRefreshToken = signRefreshToken({
     userId: payload.userId,
     role: payload.role,
     email: payload.email,
+    outletId: payload.outletId,
   });
 
   const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "7d";

@@ -257,7 +257,7 @@ model WorkShift {
 
 model EmployeeShift {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  employee_id String   @db.Uuid
+  employee_id String  @db.Uuid
   shift_id   String   @db.Uuid
   outlet_id  String   @db.Uuid
   day_of_week Int
@@ -271,6 +271,7 @@ model EmployeeShift {
   outlet   Outlet    @relation(fields: [outlet_id], references: [id])
 
   @@unique([employee_id, shift_id, day_of_week])
+  @@unique([employee_id, day_of_week])
   @@index([outlet_id, shift_id, day_of_week])
   @@map("employee_shifts")
 }

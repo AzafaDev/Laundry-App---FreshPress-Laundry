@@ -1,24 +1,23 @@
 import { io, Socket } from "socket.io-client";
+import { useAuthStore } from "@/stores/authStore";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:8080";
 
 let socket: Socket | null = null;
 
+function getToken(): string {
+  const employeeToken = useEmployeeAuthStore.getState().accessToken;
+  if (employeeToken) return employeeToken;
+  const customerToken = useAuthStore.getState().accessToken;
+  return customerToken ?? "";
+}
+
 export function getSocket(): Socket {
   if (socket?.connected) return socket;
 
-  const raw =
-    typeof window !== "undefined"
-      ? localStorage.getItem("freshpress-auth")
-      : null;
-  let token = "";
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw);
-      token = parsed?.state?.accessToken ?? "";
-    } catch {}
-  }
+  const token = getToken();
 
   socket = io(SOCKET_URL, {
     auth: { token },
@@ -48,4 +47,9 @@ export function disconnectSocket() {
     socket.disconnect();
     socket = null;
   }
+}
+
+export function reconnectSocket() {
+  disconnectSocket();
+  return getSocket();
 }

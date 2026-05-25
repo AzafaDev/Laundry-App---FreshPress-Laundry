@@ -17,12 +17,6 @@ export interface Attendance {
     email: string;
     role: string;
     outlet_id?: string;
-    user_shifts?: Array<{
-      shift: {
-        name: string;
-        outlet: { name: string };
-      };
-    }>;
   };
   outlet?: {
     id: string;

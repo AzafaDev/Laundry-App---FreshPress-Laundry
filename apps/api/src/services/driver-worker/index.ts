@@ -1,17 +1,44 @@
 import { prisma } from "../../lib/prisma.js";
-import { emitToRole } from "../../lib/socket.js";
+import { emitToRoom, emitToUser, emitToRole } from "../../lib/socket.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import {
   getEmployeeOutlet,
-  getEmployeeShiftForToday,
+  getEmployeeShiftForDate,
+  canCheckIn,
+  canCheckOut,
   isLate,
   isWithinRadius,
 } from "./attendanceHelper.js";
 
+function getTodayUTC(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+}
+
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatLocalTime(date: Date | null): string | null {
+  if (!date) return null;
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+}
+
+interface CheckInBody {
+  lat?: number;
+  lng?: number;
+}
+
 export const attendanceService = {
-  async checkIn(employeeId: string, body?: { lat?: number; lng?: number }) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  async checkIn(employeeId: string, body?: CheckInBody) {
+    const now = new Date();
+    const today = getTodayUTC();
 
     const existing = await prisma.attendance.findUnique({
       where: {
@@ -22,70 +49,66 @@ export const attendanceService = {
       },
     });
 
-    if (existing && existing.check_in_time) {
-      throw new AppError("Anda sudah melakukan check-in hari ini", 400);
+    if (existing) {
+      if (existing.check_out_time) {
+        throw new AppError("Anda sudah check-out hari ini, tidak dapat check-in lagi.", 400);
+      }
+      if (existing.check_in_time) {
+        throw new AppError("Anda sudah melakukan check-in hari ini.", 400);
+      }
     }
 
-    const outletId = await getEmployeeOutlet(employeeId);
-
-    if (body?.lat !== undefined && body.lng !== undefined) {
-      const within = await isWithinRadius(outletId, body.lat, body.lng);
-      // if (!within) {
-      //   throw new AppError(
-      //     "Anda harus berada di sekitar outlet untuk check-in",
-      //     403,
-      //   );
-      // }
-    } else {
-      throw new AppError(
-        "Lokasi tidak tersedia. Aktifkan GPS untuk check-in",
-        400,
-      );
-    }
-
-    const shift = await getEmployeeShiftForToday(employeeId, new Date());
+    const shift = await getEmployeeShiftForDate(employeeId, today);
     if (!shift) {
       throw new AppError("Anda tidak memiliki shift yang aktif hari ini", 403);
     }
 
-    const now = new Date();
-    const checkInTime = now;
+    if (!canCheckIn(now, shift.startTime, shift.endTime, 15)) {
+      throw new AppError("Check-in hanya dapat dilakukan maksimal 15 menit sebelum shift dimulai", 403);
+    }
+
+    const outletId = await getEmployeeOutlet(employeeId);
 
     const checkInData: any = {
-      check_in_time: checkInTime,
+      check_in_time: now,
       outlet_id: outletId,
     };
     if (body?.lat !== undefined) checkInData.check_in_latitude = body.lat;
     if (body?.lng !== undefined) checkInData.check_in_longitude = body.lng;
 
-    const attendance = await prisma.attendance.upsert({
-      where: {
-        employee_id_date: {
+    let attendance;
+    if (existing) {
+      attendance = await prisma.attendance.update({
+        where: { id: existing.id },
+        data: checkInData,
+      });
+    } else {
+      attendance = await prisma.attendance.create({
+        data: {
           employee_id: employeeId,
           date: today,
+          ...checkInData,
         },
-      },
-      update: checkInData,
-      create: {
-        employee_id: employeeId,
-        date: today,
-        ...checkInData,
-      },
-    });
+      });
+    }
 
-    // Socket emit dengan employee name
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
-      select: { full_name: true },
+      select: { full_name: true, outlet_id: true },
     });
 
-    emitToRole("outlet_admin", "attendance:checkin", {
-      employeeId,
-      employeeName: employee?.full_name,
-      outletId,
-      checkInTime: now.toLocaleTimeString("id-ID"),
-      attendanceId: attendance.id,
-    });
+    if (employee?.outlet_id) {
+      emitToRoom(`outlet:${employee.outlet_id}`, "attendance:checkin", {
+        employeeId,
+        employeeName: employee.full_name,
+        outletId: employee.outlet_id,
+        checkInTime: formatLocalTime(now),
+        attendanceId: attendance.id,
+      });
+    }
+
+    emitToUser(employeeId, "attendance:updated", { type: "checkin", attendanceId: attendance.id });
+    emitToRole("super_admin", "attendance:updated", { type: "checkin", attendanceId: attendance.id, outletId: employee?.outlet_id });
 
     return attendance;
   },
@@ -94,7 +117,6 @@ export const attendanceService = {
     const attendance = await prisma.attendance.findUnique({
       where: { id: attendanceId },
     });
-
     if (!attendance) {
       throw new AppError("Record absensi tidak ditemukan", 404);
     }
@@ -106,29 +128,42 @@ export const attendanceService = {
     }
 
     const now = new Date();
+    const attendanceDate = new Date(attendance.date);
+    const shift = await getEmployeeShiftForDate(employeeId, attendanceDate);
+    if (!shift) {
+      throw new AppError("Tidak ada shift untuk tanggal absensi ini", 403);
+    }
+
+    if (!canCheckOut(now, shift.endTime)) {
+      throw new AppError("Check-out hanya dapat dilakukan setelah shift berakhir", 403);
+    }
+
     const updated = await prisma.attendance.update({
       where: { id: attendanceId },
-      data: {
-        check_out_time: now,
-      },
+      data: { check_out_time: now },
     });
 
-    // Get employee name for socket emit
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
-      select: { full_name: true },
+      select: { full_name: true, outlet_id: true },
     });
 
-    emitToRole("outlet_admin", "attendance:checkout", {
-      employeeId,
-      employeeName: employee?.full_name,
-      outletId: attendance.outlet_id,
-      checkOutTime: now.toLocaleTimeString("id-ID"),
-      attendanceId,
-    });
+    if (employee?.outlet_id) {
+      emitToRoom(`outlet:${employee.outlet_id}`, "attendance:checkout", {
+        employeeId,
+        employeeName: employee.full_name,
+        outletId: attendance.outlet_id,
+        checkOutTime: formatLocalTime(now),
+        attendanceId,
+      });
+    }
+
+    emitToUser(employeeId, "attendance:updated", { type: "checkout", attendanceId });
+    emitToRole("super_admin", "attendance:updated", { type: "checkout", attendanceId, outletId: employee?.outlet_id });
 
     return updated;
   },
+
   async getMyAttendanceLogs(
     employeeId: string,
     page: number,
@@ -153,15 +188,21 @@ export const attendanceService = {
 
     const logsWithStatus = await Promise.all(
       logs.map(async (log) => {
-        let status: "on_time" | "late" | null = null;
+        let status = null;
         if (log.check_in_time) {
-          const shift = await getEmployeeShiftForToday(employeeId, log.date);
+          const shift = await getEmployeeShiftForDate(employeeId, log.date);
           if (shift) {
             const isLateFlag = isLate(log.check_in_time, shift.startTime);
             status = isLateFlag ? "late" : "on_time";
           }
         }
-        return { ...log, status };
+        return {
+          ...log,
+          status,
+          date: formatLocalDate(log.date),
+          check_in_time: formatLocalTime(log.check_in_time),
+          check_out_time: formatLocalTime(log.check_out_time),
+        };
       }),
     );
 
@@ -186,13 +227,11 @@ export const attendanceService = {
     limit: number,
   ) {
     const where: any = {};
-
     if (employeeId) {
       where.employee_id = employeeId;
     } else if (outletId) {
       where.outlet_id = outletId;
     }
-
     if (startDate) where.date = { gte: startDate };
     if (endDate) where.date = { ...where.date, lte: endDate };
 
@@ -226,24 +265,23 @@ export const attendanceService = {
 
     const logsWithStatus = await Promise.all(
       logs.map(async (log) => {
-        let status: "on_time" | "late" | null = null;
+        let statusVal = null;
         if (log.check_in_time && log.employee) {
-          const shift = await getEmployeeShiftForToday(
-            log.employee.id,
-            log.date,
-          );
+          const shift = await getEmployeeShiftForDate(log.employee.id, log.date);
           if (shift) {
             const isLateFlag = isLate(log.check_in_time, shift.startTime);
-            status = isLateFlag ? "late" : "on_time";
+            statusVal = isLateFlag ? "late" : "on_time";
           }
         }
-        // Map employee to user for frontend compatibility
         return {
           ...log,
-          status,
+          status: statusVal,
           user: log.employee,
           user_id: log.employee_id,
-          attendance_date: log.date.toISOString(),
+          attendance_date: formatLocalDate(log.date),
+          date: formatLocalDate(log.date),
+          check_in_time: formatLocalTime(log.check_in_time),
+          check_out_time: formatLocalTime(log.check_out_time),
         };
       }),
     );
@@ -267,7 +305,7 @@ export const attendanceService = {
   async checkTodayAttendance(employeeId: string) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return prisma.attendance.findUnique({
+    const attendance = await prisma.attendance.findUnique({
       where: {
         employee_id_date: {
           employee_id: employeeId,
@@ -275,11 +313,20 @@ export const attendanceService = {
         },
       },
     });
+    if (attendance) {
+      return {
+        ...attendance,
+        date: formatLocalDate(attendance.date),
+        check_in_time: formatLocalTime(attendance.check_in_time),
+        check_out_time: formatLocalTime(attendance.check_out_time),
+      };
+    }
+    return null;
   },
 
   async getCurrentShift(employeeId: string) {
     const now = new Date();
-    const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay();
+    const dayOfWeek = now.getUTCDay() === 0 ? 7 : now.getUTCDay();
 
     const employeeShift = await prisma.employeeShift.findFirst({
       where: {
@@ -297,26 +344,48 @@ export const attendanceService = {
       return null;
     }
 
-    const { shift, outlet } = employeeShift;
-    const startTime = shift.start_time;
-    const endTime = shift.end_time;
+    const shift = employeeShift.shift;
+    const startHour = shift.start_time.getHours();
+    const startMinute = shift.start_time.getMinutes();
+    const startSecond = shift.start_time.getSeconds();
+    const endHour = shift.end_time.getHours();
+    const endMinute = shift.end_time.getMinutes();
+    const endSecond = shift.end_time.getSeconds();
 
-    const currentTime = now.toLocaleTimeString("id-ID", { hour12: false });
-    const startTimeStr = startTime.toLocaleTimeString("id-ID", {
-      hour12: false,
-    });
-    const endTimeStr = endTime.toLocaleTimeString("id-ID", { hour12: false });
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, startMinute, startSecond);
+    let end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endHour, endMinute, endSecond);
+    if (end <= start) {
+      end.setDate(end.getDate() + 1);
+    }
 
-    const isWithinShift =
-      currentTime >= startTimeStr && currentTime <= endTimeStr;
+    const isActive = now >= start && now <= end;
+    let progressPercent = 0;
+    let remainingSeconds = 0;
+
+    if (isActive) {
+      const total = end.getTime() - start.getTime();
+      const elapsed = now.getTime() - start.getTime();
+      progressPercent = Math.min(100, Math.max(0, (elapsed / total) * 100));
+      remainingSeconds = Math.max(0, (end.getTime() - now.getTime()) / 1000);
+    }
+
+    const startTimeStr = `${String(startHour).padStart(2, "0")}:${String(startMinute).padStart(2, "0")}:${String(startSecond).padStart(2, "0")}`;
+    const endTimeStr = `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}:${String(endSecond).padStart(2, "0")}`;
+
+    const canCheckInNow = canCheckIn(now, start, end, 15);
+    const canCheckOutNow = canCheckOut(now, end);
 
     return {
       shiftName: shift.name,
-      startTime,
-      endTime,
-      outletName: outlet.name,
-      outletId: outlet.id,
-      isActive: isWithinShift,
+      startTime: startTimeStr,
+      endTime: endTimeStr,
+      isActive,
+      progressPercent: Math.round(progressPercent),
+      remainingSeconds,
+      outletName: employeeShift.outlet.name,
+      outletId: employeeShift.outlet.id,
+      canCheckIn: canCheckInNow,
+      canCheckOut: canCheckOutNow,
     };
   },
 };

@@ -147,6 +147,8 @@ export default function DriverAttendancePage() {
             onCheckOut={handleCheckOut}
             loading={att.isCheckingIn || att.isCheckingOut}
             error={att.error}
+            canCheckIn={att.currentShift?.canCheckIn ?? false}
+            canCheckOut={att.currentShift?.canCheckOut ?? false}
           />
 
           <section>

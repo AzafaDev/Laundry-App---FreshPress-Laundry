@@ -15,11 +15,13 @@ export default function OutletAdminLayout({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const { user, accessToken } = useEmployeeAuthStore();
+  const { user, accessToken, _hasHydrated } = useEmployeeAuthStore();
   const { on } = useSocket();
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    if (!_hasHydrated) return;
+
     if (!accessToken || !user) {
       router.replace("/employee/login");
       return;
@@ -27,9 +29,8 @@ export default function OutletAdminLayout({
     if (user.role !== "outlet_admin") {
       router.replace("/access-denied");
     }
-  }, [user, accessToken, router]);
+  }, [user, accessToken, _hasHydrated, router]);
 
-  // Socket subscription untuk real-time attendance
   useEffect(() => {
     if (!user || user.role !== "outlet_admin") return;
 
@@ -51,7 +52,7 @@ export default function OutletAdminLayout({
     };
   }, [user, on, queryClient]);
 
-  if (!user || !accessToken || user.role !== "outlet_admin") {
+  if (!_hasHydrated || !user || !accessToken || user.role !== "outlet_admin") {
     return null;
   }
 

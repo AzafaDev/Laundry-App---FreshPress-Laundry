@@ -34,6 +34,7 @@ export function initSocketServer(httpServer: HttpServer): IOServer {
       userId: string;
       role: string;
       email: string;
+      outletId?: string;
     };
 
     console.log(`[socket] connected: ${user.email} (${user.role})`);
@@ -43,6 +44,10 @@ export function initSocketServer(httpServer: HttpServer): IOServer {
     socket.join(`role:${user.role}`);
 
     socket.join(`online:${user.role}`);
+
+    if (user.role !== "customer" && user.outletId) {
+      socket.join(`outlet:${user.outletId}`);
+    }
 
     socket.on("disconnect", (reason) => {
       console.log(`[socket] disconnected: ${user.email} - ${reason}`);
@@ -57,6 +62,11 @@ export function getIO(): IOServer {
     throw new Error("socket.io belum di inisialisasi");
   }
   return io;
+}
+
+export function emitToRoom(room: string, event: string, data: any) {
+  if (!io) return;
+  io.to(room).emit(event, data);
 }
 
 export function emitToUser(userId: string, event: string, data: any) {

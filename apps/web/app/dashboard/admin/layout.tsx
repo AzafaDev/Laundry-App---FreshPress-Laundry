@@ -12,9 +12,11 @@ export default function AdminDashboardLayout({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const { user, accessToken } = useEmployeeAuthStore();
+  const { user, accessToken, _hasHydrated } = useEmployeeAuthStore();
 
   useEffect(() => {
+    if (!_hasHydrated) return;
+
     if (!accessToken || !user) {
       router.replace("/employee/login");
       return;
@@ -22,9 +24,9 @@ export default function AdminDashboardLayout({
     if (user.role !== "super_admin") {
       router.replace("/access-denied");
     }
-  }, [user, accessToken, router]);
+  }, [user, accessToken, _hasHydrated, router]);
 
-  if (!user || !accessToken || user.role !== "super_admin") {
+  if (!_hasHydrated || !user || !accessToken || user.role !== "super_admin") {
     return null;
   }
 

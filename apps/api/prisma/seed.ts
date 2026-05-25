@@ -74,8 +74,8 @@ async function main() {
     longitude: 106.816666,
     service_radius_km: 10.0,
     phone: "+6221 1234567",
-    opening_time: new Date("1970-01-01T08:00:00Z"),
-    closing_time: new Date("1970-01-01T22:00:00Z"),
+    opening_time: new Date(1970, 0, 1, 8, 0, 0),
+    closing_time: new Date(1970, 0, 1, 22, 0, 0),
     is_active: true,
   });
 
@@ -90,8 +90,8 @@ async function main() {
     longitude: 106.766667,
     service_radius_km: 8.0,
     phone: "+6221 7654321",
-    opening_time: new Date("1970-01-01T08:00:00Z"),
-    closing_time: new Date("1970-01-01T22:00:00Z"),
+    opening_time: new Date(1970, 0, 1, 8, 0, 0),
+    closing_time: new Date(1970, 0, 1, 22, 0, 0),
     is_active: true,
   });
 
@@ -164,8 +164,8 @@ async function main() {
     update: {},
     create: {
       name: "Morning",
-      start_time: new Date("1970-01-01T08:00:00Z"),
-      end_time: new Date("1970-01-01T16:00:00Z"),
+      start_time: new Date(1970, 0, 1, 8, 0, 0),
+      end_time: new Date(1970, 0, 1, 16, 0, 0),
       description: "Shift pagi 08:00 - 16:00",
       is_active: true,
     },
@@ -176,8 +176,8 @@ async function main() {
     update: {},
     create: {
       name: "Afternoon",
-      start_time: new Date("1970-01-01T14:00:00Z"),
-      end_time: new Date("1970-01-01T22:00:00Z"),
+      start_time: new Date(1970, 0, 1, 14, 0, 0),
+      end_time: new Date(1970, 0, 1, 22, 0, 0),
       description: "Shift siang 14:00 - 22:00",
       is_active: true,
     },
@@ -188,21 +188,20 @@ async function main() {
     update: {},
     create: {
       name: "Night",
-      start_time: new Date("1970-01-01T22:00:00Z"),
-      end_time: new Date("1970-01-01T06:00:00Z"),
+      start_time: new Date(1970, 0, 1, 22, 0, 0),
+      end_time: new Date(1970, 0, 1, 6, 0, 0),
       description: "Shift malam 22:00 - 06:00",
       is_active: true,
     },
   });
 
-  // 24-hour shift for demo purposes
   const fullDayShift = await prisma.workShift.upsert({
     where: { name: "FullDay" },
     update: {},
     create: {
       name: "FullDay",
-      start_time: new Date("1970-01-01T00:00:00Z"),
-      end_time: new Date("1970-01-01T23:59:59Z"),
+      start_time: new Date(1970, 0, 1, 0, 0, 0),
+      end_time: new Date(1970, 0, 1, 23, 59, 59),
       description: "24 jam - Untuk demo check-in/check-out anytime",
       is_active: true,
     },

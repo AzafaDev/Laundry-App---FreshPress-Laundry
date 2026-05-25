@@ -1,5 +1,6 @@
-import { disconnectSocket, getSocket } from "@/lib/socket";
+import { disconnectSocket, getSocket, reconnectSocket } from "@/lib/socket";
 import { useAuthStore } from "@/stores/authStore";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import {
   useNotificationStore,
   type Notification,
@@ -9,43 +10,21 @@ import { useEffect, useRef } from "react";
 type EventHandler = (...args: any[]) => void;
 
 export function useSocket() {
-  const { accessToken } = useAuthStore();
+  const customerToken = useAuthStore((s) => s.accessToken);
+  const employeeToken = useEmployeeAuthStore((s) => s.accessToken);
   const addNotification = useNotificationStore((s) => s.addNotification);
   const connectedRef = useRef(false);
 
+  // Pilih token prioritas: employee dulu, baru customer
+  const token = employeeToken ?? customerToken;
+
   useEffect(() => {
-    if (!accessToken) return;
-
-    const socket = getSocket();
-
-    const onConnect = () => {
-      connectedRef.current = true;
-      console.log("[useSocket] connected");
-    };
-
-    const onDisconnect = () => {
-      connectedRef.current = false;
-      console.log("[useSocket] disconnected");
-    };
-
-    const onNotification = (data: Notification) => {
-      addNotification(data);
-    };
-
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("notification", onNotification);
-
-    if (socket.connected) {
-      connectedRef.current = true;
+    if (!token) {
+      disconnectSocket();
+      return;
     }
-
-    return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("notification", onNotification);
-    };
-  }, [accessToken, addNotification]);
+    reconnectSocket();
+  }, [token]);
 
   return {
     on: (event: string, handler: EventHandler) => {
