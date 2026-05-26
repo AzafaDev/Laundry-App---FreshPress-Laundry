@@ -19,3 +19,12 @@ export const getAvailableDeliveries = async (req: Request, res: Response, next: 
     res.json({ success: true, data: tasks });
   } catch (err) { next(err); }
 };
+
+export const getActiveTask = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const employeeId = req.user?.userId;
+    if (!employeeId) throw new AppError("Unauthorized", 401);
+    const result = await driverService.getActiveTask(employeeId);
+    res.json({ success: true, data: result });
+  } catch (err) { next(err); }
+};

@@ -12,6 +12,7 @@ import {
   getTodayLocalStart,
   toLocalMidnight,
   getShiftForDateTime,
+  hasActiveDriverTask,
 } from "./attendanceHelper.js";
 
 function formatLocalDate(date: Date): string {
@@ -340,6 +341,11 @@ export const attendanceService = {
 
 export const driverService = {
   async getAvailablePickupOrders(employeeId: string) {
+    const hasActive = await hasActiveDriverTask(employeeId);
+    if (hasActive) {
+      throw new AppError("Anda masih memiliki tugas aktif. Selesaikan tugas saat ini terlebih dahulu.", 403);
+    }
+
     const currentShift = await attendanceService.getCurrentShift(employeeId);
     if (!currentShift || !currentShift.isActive) {
       throw new AppError("Anda tidak berada dalam shift aktif", 403);
@@ -373,6 +379,11 @@ export const driverService = {
   },
 
   async getAvailableDeliveryOrders(employeeId: string) {
+    const hasActive = await hasActiveDriverTask(employeeId);
+    if (hasActive) {
+      throw new AppError("Anda masih memiliki tugas aktif. Selesaikan tugas saat ini terlebih dahulu.", 403);
+    }
+
     const currentShift = await attendanceService.getCurrentShift(employeeId);
     if (!currentShift || !currentShift.isActive) {
       throw new AppError("Shift tidak aktif", 403);
@@ -396,10 +407,79 @@ export const driverService = {
     });
     return tasks;
   },
+
+  async getActiveTask(employeeId: string) {
+    const activeTask = await prisma.driverTask.findFirst({
+      where: {
+        driver_id: employeeId,
+        status: 'in_progress',
+      },
+      include: {
+        order: {
+          select: {
+            id: true,
+            invoice_number: true,
+            pickup_address: {
+              select: {
+                address: true,
+                latitude: true,
+                longitude: true,
+              },
+            },
+            customer: {
+              select: {
+                full_name: true,
+                phone: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!activeTask) {
+      return { hasActiveTask: false, task: null };
+    }
+
+    return {
+      hasActiveTask: true,
+      task: {
+        id: activeTask.id,
+        orderId: activeTask.order.id,
+        invoiceNumber: activeTask.order.invoice_number,
+        taskType: activeTask.task_type,
+        status: activeTask.status,
+        takenAt: activeTask.taken_at,
+        address: activeTask.order.pickup_address?.address,
+        customerName: activeTask.order.customer?.full_name,
+        customerPhone: activeTask.order.customer?.phone,
+      },
+    };
+  },
 };
 
 export const workerService = {
   async getStationOrders(employeeId: string, stationType: "washing" | "ironing" | "packing") {
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { outlet_id: true, role: true },
+    });
+    if (!employee) {
+      throw new AppError("Employee tidak ditemukan", 404);
+    }
+    if (!employee.outlet_id) {
+      throw new AppError("Anda belum ditugaskan ke outlet manapun", 403);
+    }
+
+    const allowedRoleForStation: Record<string, string> = {
+      washing: "washing_worker",
+      ironing: "ironing_worker",
+      packing: "packing_worker",
+    };
+    if (employee.role !== allowedRoleForStation[stationType]) {
+      throw new AppError(`Role Anda (${employee.role}) tidak memiliki akses ke stasiun ${stationType}`, 403);
+    }
+
     const currentShift = await attendanceService.getCurrentShift(employeeId);
     if (!currentShift || !currentShift.isActive) {
       throw new AppError("Shift tidak aktif", 403);
@@ -421,7 +501,10 @@ export const workerService = {
     }
 
     const orders = await prisma.order.findMany({
-      where: { status: orderStatus as any },
+      where: {
+        status: orderStatus as any,
+        outlet_id: employee.outlet_id,
+      },
       include: {
         customer: true,
         order_items: { include: { laundry_item: true } },

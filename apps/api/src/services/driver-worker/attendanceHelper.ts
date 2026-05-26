@@ -196,3 +196,14 @@ export async function getShiftForDateTime(
   }
   return null;
 }
+
+export async function hasActiveDriverTask(driverId: string): Promise<boolean> {
+  const activeTask = await prisma.driverTask.findFirst({
+    where: {
+      driver_id: driverId,
+      status: 'in_progress',
+    },
+    select: { id: true },
+  });
+  return activeTask !== null;
+}

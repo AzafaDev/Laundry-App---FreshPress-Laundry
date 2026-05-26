@@ -8,7 +8,7 @@ import {
   getMyLogs,
   getCurrentShift,
 } from "../../controllers/driver-worker/attendance.controller.js";
-import { getAvailablePickups, getAvailableDeliveries } from "../../controllers/driver-worker/driver.controller.js";
+import { getAvailablePickups, getAvailableDeliveries, getActiveTask } from "../../controllers/driver-worker/driver.controller.js";
 import { getStationOrders } from "../../controllers/driver-worker/worker.controller.js";
 
 const router = Router();
@@ -50,6 +50,11 @@ router.get(
   "/driver/deliveries/available",
   requireRole("driver"),
   getAvailableDeliveries,
+);
+router.get(
+  "/driver/tasks/active",
+  requireRole("driver"),
+  getActiveTask,
 );
 router.get(
   "/worker/station/:station",
