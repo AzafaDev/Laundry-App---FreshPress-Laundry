@@ -136,13 +136,19 @@ export async function getShiftForDateTime(
   employeeId: string,
   targetDate: Date,
 ): Promise<{ shiftName: string; startTime: Date; endTime: Date } | null> {
+  const jsDay = targetDate.getDay();
+  const dbDay = jsDay === 0 ? 7 : jsDay;
+
   const employeeShifts = await prisma.employeeShift.findMany({
     where: {
       employee_id: employeeId,
+      day_of_week: dbDay,
       is_active: true,
     },
     include: { shift: true },
   });
+
+  if (employeeShifts.length === 0) return null;
 
   const targetHour = targetDate.getHours();
   const targetMinute = targetDate.getMinutes();
@@ -152,8 +158,10 @@ export async function getShiftForDateTime(
     const shift = es.shift;
     const startHour = shift.start_time.getHours();
     const startMinute = shift.start_time.getMinutes();
+    const startSecond = shift.start_time.getSeconds();
     const endHour = shift.end_time.getHours();
     const endMinute = shift.end_time.getMinutes();
+    const endSecond = shift.end_time.getSeconds();
 
     const startTotal = startHour * 60 + startMinute;
     let endTotal = endHour * 60 + endMinute;
@@ -168,13 +176,13 @@ export async function getShiftForDateTime(
 
     if (targetAdjusted >= startTotal && targetAdjusted <= endTotal) {
       const startDate = new Date(targetDate);
-      startDate.setHours(startHour, startMinute, 0, 0);
+      startDate.setHours(startHour, startMinute, startSecond, 0);
       if (isOvernight && targetAdjusted < startTotal) {
         startDate.setDate(startDate.getDate() - 1);
       }
 
       let endDate = new Date(targetDate);
-      endDate.setHours(endHour, endMinute, 0, 0);
+      endDate.setHours(endHour, endMinute, endSecond, 0);
       if (isOvernight && targetAdjusted >= startTotal) {
         endDate.setDate(endDate.getDate() + 1);
       }

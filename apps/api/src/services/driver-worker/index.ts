@@ -349,6 +349,9 @@ export const driverService = {
     if (!todayAttendance || !todayAttendance.check_in_time) {
       throw new AppError("Anda belum melakukan check-in hari ini", 403);
     }
+    if (todayAttendance.check_out_time) {
+      throw new AppError("Anda sudah check-out hari ini, tidak dapat mengambil order baru", 403);
+    }
 
     const tasks = await prisma.driverTask.findMany({
       where: {
@@ -378,6 +381,9 @@ export const driverService = {
     if (!todayAttendance?.check_in_time) {
       throw new AppError("Belum check-in", 403);
     }
+    if (todayAttendance.check_out_time) {
+      throw new AppError("Anda sudah check-out hari ini, tidak dapat mengambil order baru", 403);
+    }
 
     const tasks = await prisma.driverTask.findMany({
       where: {
@@ -401,6 +407,9 @@ export const workerService = {
     const todayAttendance = await attendanceService.checkTodayAttendance(employeeId);
     if (!todayAttendance?.check_in_time) {
       throw new AppError("Belum check-in", 403);
+    }
+    if (todayAttendance.check_out_time) {
+      throw new AppError("Sudah check-out, tidak dapat memproses order", 403);
     }
 
     let orderStatus: string;
