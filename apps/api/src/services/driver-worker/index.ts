@@ -7,13 +7,12 @@ import {
   canCheckIn,
   canCheckOut,
   isLate,
+  determineAttendanceStatus,
   isWithinRadius,
+  getTodayLocalStart,
+  toLocalMidnight,
+  getShiftForDateTime,
 } from "./attendanceHelper.js";
-
-function getTodayUTC(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
-}
 
 function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
@@ -38,7 +37,7 @@ interface CheckInBody {
 export const attendanceService = {
   async checkIn(employeeId: string, body?: CheckInBody) {
     const now = new Date();
-    const today = getTodayUTC();
+    const today = getTodayLocalStart();
 
     const existing = await prisma.attendance.findUnique({
       where: {
@@ -69,9 +68,14 @@ export const attendanceService = {
 
     const outletId = await getEmployeeOutlet(employeeId);
 
+    const lateStatus = isLate(now, shift.startTime);
+    const attendanceStatus = determineAttendanceStatus(now, shift.startTime);
+
     const checkInData: any = {
       check_in_time: now,
       outlet_id: outletId,
+      is_late: lateStatus,
+      status: attendanceStatus,
     };
     if (body?.lat !== undefined) checkInData.check_in_latitude = body.lat;
     if (body?.lng !== undefined) checkInData.check_in_longitude = body.lng;
@@ -128,8 +132,8 @@ export const attendanceService = {
     }
 
     const now = new Date();
-    const attendanceDate = new Date(attendance.date);
-    const shift = await getEmployeeShiftForDate(employeeId, attendanceDate);
+    const attendanceLocalMidnight = toLocalMidnight(attendance.date);
+    const shift = await getEmployeeShiftForDate(employeeId, attendanceLocalMidnight);
     if (!shift) {
       throw new AppError("Tidak ada shift untuk tanggal absensi ini", 403);
     }
@@ -186,28 +190,15 @@ export const attendanceService = {
       prisma.attendance.count({ where }),
     ]);
 
-    const logsWithStatus = await Promise.all(
-      logs.map(async (log) => {
-        let status = null;
-        if (log.check_in_time) {
-          const shift = await getEmployeeShiftForDate(employeeId, log.date);
-          if (shift) {
-            const isLateFlag = isLate(log.check_in_time, shift.startTime);
-            status = isLateFlag ? "late" : "on_time";
-          }
-        }
-        return {
-          ...log,
-          status,
-          date: formatLocalDate(log.date),
-          check_in_time: formatLocalTime(log.check_in_time),
-          check_out_time: formatLocalTime(log.check_out_time),
-        };
-      }),
-    );
+    const logsWithFormattedFields = logs.map((log) => ({
+      ...log,
+      date: formatLocalDate(log.date),
+      check_in_time: formatLocalTime(log.check_in_time),
+      check_out_time: formatLocalTime(log.check_out_time),
+    }));
 
     return {
-      data: logsWithStatus,
+      data: logsWithFormattedFields,
       pagination: {
         page,
         limit,
@@ -220,7 +211,7 @@ export const attendanceService = {
   async getAttendanceReport(
     outletId: string | undefined,
     employeeId: string | undefined,
-    status: "on_time" | "late" | undefined,
+    status: "on_time" | "late" | "absent" | undefined,
     startDate: Date | undefined,
     endDate: Date | undefined,
     page: number,
@@ -234,6 +225,7 @@ export const attendanceService = {
     }
     if (startDate) where.date = { gte: startDate };
     if (endDate) where.date = { ...where.date, lte: endDate };
+    if (status) where.status = status;
 
     const skip = (page - 1) * limit;
     const [logs, total] = await Promise.all([
@@ -263,36 +255,18 @@ export const attendanceService = {
       prisma.attendance.count({ where }),
     ]);
 
-    const logsWithStatus = await Promise.all(
-      logs.map(async (log) => {
-        let statusVal = null;
-        if (log.check_in_time && log.employee) {
-          const shift = await getEmployeeShiftForDate(log.employee.id, log.date);
-          if (shift) {
-            const isLateFlag = isLate(log.check_in_time, shift.startTime);
-            statusVal = isLateFlag ? "late" : "on_time";
-          }
-        }
-        return {
-          ...log,
-          status: statusVal,
-          user: log.employee,
-          user_id: log.employee_id,
-          attendance_date: formatLocalDate(log.date),
-          date: formatLocalDate(log.date),
-          check_in_time: formatLocalTime(log.check_in_time),
-          check_out_time: formatLocalTime(log.check_out_time),
-        };
-      }),
-    );
-
-    let filteredLogs = logsWithStatus;
-    if (status) {
-      filteredLogs = logsWithStatus.filter((log) => log.status === status);
-    }
+    const logsWithFormattedFields = logs.map((log) => ({
+      ...log,
+      user: log.employee,
+      user_id: log.employee_id,
+      attendance_date: formatLocalDate(log.date),
+      date: formatLocalDate(log.date),
+      check_in_time: formatLocalTime(log.check_in_time),
+      check_out_time: formatLocalTime(log.check_out_time),
+    }));
 
     return {
-      data: filteredLogs,
+      data: logsWithFormattedFields,
       pagination: {
         page,
         limit,
@@ -303,8 +277,7 @@ export const attendanceService = {
   },
 
   async checkTodayAttendance(employeeId: string) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayLocalStart();
     const attendance = await prisma.attendance.findUnique({
       where: {
         employee_id_date: {
@@ -326,66 +299,126 @@ export const attendanceService = {
 
   async getCurrentShift(employeeId: string) {
     const now = new Date();
-    const dayOfWeek = now.getUTCDay() === 0 ? 7 : now.getUTCDay();
+    const shiftInfo = await getShiftForDateTime(employeeId, now);
+    if (!shiftInfo) return null;
 
-    const employeeShift = await prisma.employeeShift.findFirst({
-      where: {
-        employee_id: employeeId,
-        day_of_week: dayOfWeek,
-        is_active: true,
-      },
-      include: {
-        shift: true,
-        outlet: true,
-      },
-    });
+    const { shiftName, startTime, endTime } = shiftInfo;
+    const outlet = await getEmployeeOutlet(employeeId);
+    const outletData = await prisma.outlet.findUnique({ where: { id: outlet } });
 
-    if (!employeeShift || !employeeShift.shift) {
-      return null;
-    }
-
-    const shift = employeeShift.shift;
-    const startHour = shift.start_time.getHours();
-    const startMinute = shift.start_time.getMinutes();
-    const startSecond = shift.start_time.getSeconds();
-    const endHour = shift.end_time.getHours();
-    const endMinute = shift.end_time.getMinutes();
-    const endSecond = shift.end_time.getSeconds();
-
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHour, startMinute, startSecond);
-    let end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endHour, endMinute, endSecond);
-    if (end <= start) {
-      end.setDate(end.getDate() + 1);
-    }
-
-    const isActive = now >= start && now <= end;
+    const isActive = now >= startTime && now <= endTime;
     let progressPercent = 0;
     let remainingSeconds = 0;
 
     if (isActive) {
-      const total = end.getTime() - start.getTime();
-      const elapsed = now.getTime() - start.getTime();
+      const total = endTime.getTime() - startTime.getTime();
+      const elapsed = now.getTime() - startTime.getTime();
       progressPercent = Math.min(100, Math.max(0, (elapsed / total) * 100));
-      remainingSeconds = Math.max(0, (end.getTime() - now.getTime()) / 1000);
+      remainingSeconds = Math.max(0, (endTime.getTime() - now.getTime()) / 1000);
     }
 
-    const startTimeStr = `${String(startHour).padStart(2, "0")}:${String(startMinute).padStart(2, "0")}:${String(startSecond).padStart(2, "0")}`;
-    const endTimeStr = `${String(endHour).padStart(2, "0")}:${String(endMinute).padStart(2, "0")}:${String(endSecond).padStart(2, "0")}`;
+    const formatTime = (date: Date) =>
+      `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 
-    const canCheckInNow = canCheckIn(now, start, end, 15);
-    const canCheckOutNow = canCheckOut(now, end);
+    const canCheckInNow = canCheckIn(now, startTime, endTime, 15);
+    const canCheckOutNow = canCheckOut(now, endTime);
 
     return {
-      shiftName: shift.name,
-      startTime: startTimeStr,
-      endTime: endTimeStr,
+      shiftName,
+      startTime: formatTime(startTime),
+      endTime: formatTime(endTime),
       isActive,
       progressPercent: Math.round(progressPercent),
       remainingSeconds,
-      outletName: employeeShift.outlet.name,
-      outletId: employeeShift.outlet.id,
+      outletName: outletData?.name ?? "",
+      outletId: outlet,
       canCheckIn: canCheckInNow,
       canCheckOut: canCheckOutNow,
     };
+  },
+};
+
+export const driverService = {
+  async getAvailablePickupOrders(employeeId: string) {
+    const currentShift = await attendanceService.getCurrentShift(employeeId);
+    if (!currentShift || !currentShift.isActive) {
+      throw new AppError("Anda tidak berada dalam shift aktif", 403);
+    }
+
+    const todayAttendance = await attendanceService.checkTodayAttendance(employeeId);
+    if (!todayAttendance || !todayAttendance.check_in_time) {
+      throw new AppError("Anda belum melakukan check-in hari ini", 403);
+    }
+
+    const tasks = await prisma.driverTask.findMany({
+      where: {
+        status: "available",
+        driver_id: null,
+      },
+      include: {
+        order: {
+          include: {
+            customer: true,
+            pickup_address: true,
+          },
+        },
+      },
+      orderBy: { created_at: "asc" },
+    });
+
+    return tasks;
+  },
+
+  async getAvailableDeliveryOrders(employeeId: string) {
+    const currentShift = await attendanceService.getCurrentShift(employeeId);
+    if (!currentShift || !currentShift.isActive) {
+      throw new AppError("Shift tidak aktif", 403);
+    }
+    const todayAttendance = await attendanceService.checkTodayAttendance(employeeId);
+    if (!todayAttendance?.check_in_time) {
+      throw new AppError("Belum check-in", 403);
+    }
+
+    const tasks = await prisma.driverTask.findMany({
+      where: {
+        task_type: "delivery",
+        status: "available",
+        driver_id: null,
+        order: { status: "ready_for_delivery" },
+      },
+      include: { order: { include: { customer: true, pickup_address: true } } },
+    });
+    return tasks;
+  },
+};
+
+export const workerService = {
+  async getStationOrders(employeeId: string, stationType: "washing" | "ironing" | "packing") {
+    const currentShift = await attendanceService.getCurrentShift(employeeId);
+    if (!currentShift || !currentShift.isActive) {
+      throw new AppError("Shift tidak aktif", 403);
+    }
+    const todayAttendance = await attendanceService.checkTodayAttendance(employeeId);
+    if (!todayAttendance?.check_in_time) {
+      throw new AppError("Belum check-in", 403);
+    }
+
+    let orderStatus: string;
+    switch (stationType) {
+      case "washing": orderStatus = "washing"; break;
+      case "ironing": orderStatus = "ironing"; break;
+      case "packing": orderStatus = "packing"; break;
+      default: throw new AppError("Station tidak valid", 400);
+    }
+
+    const orders = await prisma.order.findMany({
+      where: { status: orderStatus as any },
+      include: {
+        customer: true,
+        order_items: { include: { laundry_item: true } },
+      },
+      orderBy: { created_at: "asc" },
+    });
+    return orders;
   },
 };

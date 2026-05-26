@@ -21,7 +21,10 @@ const STATUS_COLOR: Record<string, string> = {
 };
 
 export default function OutletAdminAttendanceReportPage() {
-  const { user } = useEmployeeAuthStore();
+  const { _hasHydrated, user } = useEmployeeAuthStore();
+  if (!_hasHydrated) {
+    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
+  }
   const outletId = user?.outlet_id ?? null;
 
   const [filters, setFilters] = useState({

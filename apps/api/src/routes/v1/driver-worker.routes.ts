@@ -8,12 +8,13 @@ import {
   getMyLogs,
   getCurrentShift,
 } from "../../controllers/driver-worker/attendance.controller.js";
+import { getAvailablePickups, getAvailableDeliveries } from "../../controllers/driver-worker/driver.controller.js";
+import { getStationOrders } from "../../controllers/driver-worker/worker.controller.js";
 
 const router = Router();
 
 router.use(authenticate);
 
-// ✅ Ganti requireRole('driver', 'worker') dengan tiga role worker spesifik
 router.post(
   "/attendance/check-in",
   requireRole("driver", "washing_worker", "ironing_worker", "packing_worker"),
@@ -38,6 +39,22 @@ router.get(
   "/attendance/current-shift",
   requireRole("driver", "washing_worker", "ironing_worker", "packing_worker"),
   getCurrentShift,
+);
+
+router.get(
+  "/driver/pickups/available",
+  requireRole("driver"),
+  getAvailablePickups,
+);
+router.get(
+  "/driver/deliveries/available",
+  requireRole("driver"),
+  getAvailableDeliveries,
+);
+router.get(
+  "/worker/station/:station",
+  requireRole("washing_worker", "ironing_worker", "packing_worker"),
+  getStationOrders,
 );
 
 export default router;

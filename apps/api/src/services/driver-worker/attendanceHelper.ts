@@ -1,7 +1,16 @@
-import { CHECKIN_RADIUS_METERS } from "../../config/constants.js";
+import { CHECKIN_RADIUS_METERS, LATE_THRESHOLD_MINUTES } from "../../config/constants.js";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { getDistance } from "geolib";
+
+export function getTodayLocalStart(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+export function toLocalMidnight(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
 
 export async function getEmployeeOutlet(employeeId: string): Promise<string> {
   const employee = await prisma.employee.findUnique({
@@ -19,9 +28,9 @@ export async function getEmployeeOutlet(employeeId: string): Promise<string> {
 
 export async function getEmployeeShiftForDate(
   employeeId: string,
-  date: Date,
+  localDate: Date,
 ): Promise<{ shiftName: string; startTime: Date; endTime: Date } | null> {
-  const jsDay = date.getDay();
+  const jsDay = localDate.getDay();
   const dbDay = jsDay === 0 ? 7 : jsDay;
 
   const employeeShift = await prisma.employeeShift.findFirst({
@@ -45,8 +54,23 @@ export async function getEmployeeShiftForDate(
   const endMinute = shift.end_time.getMinutes();
   const endSecond = shift.end_time.getSeconds();
 
-  let startTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), startHour, startMinute, startSecond);
-  let endTime = new Date(date.getFullYear(), date.getMonth(), date.getDate(), endHour, endMinute, endSecond);
+  const startTime = new Date(
+    localDate.getFullYear(),
+    localDate.getMonth(),
+    localDate.getDate(),
+    startHour,
+    startMinute,
+    startSecond,
+  );
+
+  let endTime = new Date(
+    localDate.getFullYear(),
+    localDate.getMonth(),
+    localDate.getDate(),
+    endHour,
+    endMinute,
+    endSecond,
+  );
 
   if (endTime <= startTime) {
     endTime.setDate(endTime.getDate() + 1);
@@ -55,8 +79,15 @@ export async function getEmployeeShiftForDate(
   return { shiftName: shift.name, startTime, endTime };
 }
 
-export function canCheckIn(now: Date, shiftStart: Date, shiftEnd: Date, toleranceMinutes = 15): boolean {
-  const allowedStart = new Date(shiftStart.getTime() - toleranceMinutes * 60000);
+export function canCheckIn(
+  now: Date,
+  shiftStart: Date,
+  shiftEnd: Date,
+  toleranceMinutes = 15,
+): boolean {
+  const allowedStart = new Date(
+    shiftStart.getTime() - toleranceMinutes * 60000,
+  );
   return now >= allowedStart && now <= shiftEnd;
 }
 
@@ -67,11 +98,19 @@ export function canCheckOut(now: Date, shiftEnd: Date): boolean {
 export function isLate(
   checkInTime: Date,
   shiftStartTime: Date,
-  lateThresholdMinutes: number = 30,
 ): boolean {
   const diffMinutes =
     (checkInTime.getTime() - shiftStartTime.getTime()) / (1000 * 60);
-  return diffMinutes > lateThresholdMinutes;
+  return diffMinutes > LATE_THRESHOLD_MINUTES;
+}
+
+export function determineAttendanceStatus(
+  checkInTime: Date | null,
+  shiftStartTime: Date | null,
+): "on_time" | "late" | "absent" {
+  if (!checkInTime) return "absent";
+  if (!shiftStartTime) return "on_time";
+  return isLate(checkInTime, shiftStartTime) ? "late" : "on_time";
 }
 
 export async function isWithinRadius(
@@ -91,4 +130,61 @@ export async function isWithinRadius(
     { latitude: Number(outlet.latitude), longitude: Number(outlet.longitude) },
   );
   return distance <= CHECKIN_RADIUS_METERS;
+}
+
+export async function getShiftForDateTime(
+  employeeId: string,
+  targetDate: Date,
+): Promise<{ shiftName: string; startTime: Date; endTime: Date } | null> {
+  const employeeShifts = await prisma.employeeShift.findMany({
+    where: {
+      employee_id: employeeId,
+      is_active: true,
+    },
+    include: { shift: true },
+  });
+
+  const targetHour = targetDate.getHours();
+  const targetMinute = targetDate.getMinutes();
+  const targetTimeInMinutes = targetHour * 60 + targetMinute;
+
+  for (const es of employeeShifts) {
+    const shift = es.shift;
+    const startHour = shift.start_time.getHours();
+    const startMinute = shift.start_time.getMinutes();
+    const endHour = shift.end_time.getHours();
+    const endMinute = shift.end_time.getMinutes();
+
+    const startTotal = startHour * 60 + startMinute;
+    let endTotal = endHour * 60 + endMinute;
+
+    const isOvernight = endTotal < startTotal;
+    if (isOvernight) endTotal += 24 * 60;
+
+    let targetAdjusted = targetTimeInMinutes;
+    if (isOvernight && targetAdjusted < startTotal) {
+      targetAdjusted += 24 * 60;
+    }
+
+    if (targetAdjusted >= startTotal && targetAdjusted <= endTotal) {
+      const startDate = new Date(targetDate);
+      startDate.setHours(startHour, startMinute, 0, 0);
+      if (isOvernight && targetAdjusted < startTotal) {
+        startDate.setDate(startDate.getDate() - 1);
+      }
+
+      let endDate = new Date(targetDate);
+      endDate.setHours(endHour, endMinute, 0, 0);
+      if (isOvernight && targetAdjusted >= startTotal) {
+        endDate.setDate(endDate.getDate() + 1);
+      }
+
+      return {
+        shiftName: shift.name,
+        startTime: startDate,
+        endTime: endDate,
+      };
+    }
+  }
+  return null;
 }

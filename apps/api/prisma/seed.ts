@@ -39,17 +39,22 @@ const generateAttendanceTimes = (
 
   const startTime = shift.start_time;
   const endTime = shift.end_time;
+  const isNightShift = endTime.getHours() < startTime.getHours();
+
   const checkIn = new Date(date);
   checkIn.setUTCHours(startTime.getUTCHours(), startTime.getUTCMinutes(), 0);
   const checkOut = new Date(date);
-  checkOut.setUTCHours(endTime.getUTCHours(), endTime.getUTCMinutes(), 0);
+
+  if (isNightShift) {
+    checkOut.setUTCHours(endTime.getUTCHours(), endTime.getUTCMinutes(), 0);
+    checkOut.setUTCDate(checkOut.getUTCDate() + 1);
+  } else {
+    checkOut.setUTCHours(endTime.getUTCHours(), endTime.getUTCMinutes(), 0);
+  }
 
   if (status === "late") {
     const lateMinutes = Math.floor(Math.random() * 25) + 5;
     checkIn.setUTCMinutes(checkIn.getUTCMinutes() + lateMinutes);
-  }
-  if (checkOut <= checkIn) {
-    checkOut.setUTCHours(checkOut.getUTCHours() + 1);
   }
   return { check_in_time: checkIn, check_out_time: checkOut };
 };

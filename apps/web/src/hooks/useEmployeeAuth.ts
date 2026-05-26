@@ -55,7 +55,8 @@ export const useEmployeeAuth = () => {
       // tetap lanjut clear auth meskipun API gagal
     } finally {
       clearAuth();
-      queryClient.clear(); // reset semua query cache
+      queryClient.clear();
+      queryClient.resetQueries();
       router.push("/employee/login");
     }
   };

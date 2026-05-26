@@ -546,6 +546,8 @@ model Attendance {
   check_out_latitude  Decimal?  @db.Decimal(10, 8)
   check_out_longitude Decimal?  @db.Decimal(11, 8)
   notes              String?
+  is_late            Boolean?
+  status             String?   @db.VarChar(20)
   created_at         DateTime  @default(now()) @db.Timestamptz
   updated_at         DateTime  @default(now()) @updatedAt @db.Timestamptz
 
@@ -556,6 +558,7 @@ model Attendance {
   @@unique([employee_id, date])
   @@index([outlet_id])
   @@index([date])
+  @@index([status])
   @@map("attendances")
 }
 

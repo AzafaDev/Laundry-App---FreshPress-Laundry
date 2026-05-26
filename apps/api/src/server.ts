@@ -10,6 +10,7 @@ import router from "./routes/index.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 import { env } from "./config/env.js";
 import { initSocketServer } from "./lib/socket.js";
+import "./cron/markAbsentAttendance.js";
 
 const app: Application = express();
 

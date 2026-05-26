@@ -1,7 +1,7 @@
 // apps/web/src/types/attendance.type.ts
 
 export type AttendanceStatus = "on_time" | "late" | "absent";
-export type AttendanceStatusFilter = "on_time" | "late"; // untuk filter admin report
+export type AttendanceStatusFilter = "on_time" | "late" | "absent"; // untuk filter admin report
 
 export interface Attendance {
   id: string;

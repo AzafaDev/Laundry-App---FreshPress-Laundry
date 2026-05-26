@@ -5,9 +5,11 @@ import type { User } from "../types/user.types";
 interface AuthStore {
   user: User | null;
   accessToken: string | null;
+  _hasHydrated: boolean;
   setAuth: (user: User, accessToken: string) => void;
   clearAuth: () => void;
   updateUser: (partial: Partial<User>) => void;
+  setHasHydrated: (state: boolean) => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -15,12 +17,14 @@ export const useAuthStore = create<AuthStore>()(
     (set) => ({
       user: null,
       accessToken: null,
+      _hasHydrated: false,
       setAuth: (user, accessToken) => set({ user, accessToken }),
       clearAuth: () => set({ user: null, accessToken: null }),
       updateUser: (partial) =>
         set((state) => ({
           user: state.user ? { ...state.user, ...partial } : null,
         })),
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
     }),
     {
       name: "freshpress-auth",
@@ -28,6 +32,9 @@ export const useAuthStore = create<AuthStore>()(
         user: state.user,
         accessToken: state.accessToken,
       }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     },
   ),
 );
