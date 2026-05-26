@@ -13,9 +13,11 @@ const WORKER_ROLES: EmployeeRole[] = [
 
 export default function WorkerLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { user, accessToken } = useEmployeeAuthStore();
+  const { user, accessToken, _hasHydrated } = useEmployeeAuthStore();
 
   useEffect(() => {
+    if (!_hasHydrated) return;
+
     if (!accessToken || !user) {
       router.replace("/employee/login");
       return;
@@ -23,9 +25,9 @@ export default function WorkerLayout({ children }: { children: ReactNode }) {
     if (!WORKER_ROLES.includes(user.role)) {
       router.replace("/access-denied");
     }
-  }, [user, accessToken, router]);
+  }, [user, accessToken, _hasHydrated, router]);
 
-  if (!user || !accessToken || !WORKER_ROLES.includes(user.role)) {
+  if (!_hasHydrated || !user || !accessToken || !WORKER_ROLES.includes(user.role)) {
     return null;
   }
 

@@ -1,30 +1,36 @@
-import { CHECKIN_RADIUS_METERS } from "../../config/constants.js";
+import { CHECKIN_RADIUS_METERS, LATE_THRESHOLD_MINUTES } from "../../config/constants.js";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { getDistance } from "geolib";
+
+export function getTodayLocalStart(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+export function toLocalMidnight(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
 
 export async function getEmployeeOutlet(employeeId: string): Promise<string> {
   const employee = await prisma.employee.findUnique({
     where: { id: employeeId },
     select: { outlet_id: true },
   });
-
   if (!employee) {
     throw new AppError("Employee tidak ditemukan.", 404);
   }
-
   if (!employee.outlet_id) {
     throw new AppError("Employee tidak memiliki outlet terdaftar.", 400);
   }
-
   return employee.outlet_id;
 }
 
-export async function getEmployeeShiftForToday(
+export async function getEmployeeShiftForDate(
   employeeId: string,
-  now: Date,
+  localDate: Date,
 ): Promise<{ shiftName: string; startTime: Date; endTime: Date } | null> {
-  const jsDay = now.getDay();
+  const jsDay = localDate.getDay();
   const dbDay = jsDay === 0 ? 7 : jsDay;
 
   const employeeShift = await prisma.employeeShift.findFirst({
@@ -33,9 +39,7 @@ export async function getEmployeeShiftForToday(
       day_of_week: dbDay,
       is_active: true,
     },
-    include: {
-      shift: true, // work_shifts
-    },
+    include: { shift: true },
   });
 
   if (!employeeShift || !employeeShift.shift) {
@@ -43,44 +47,70 @@ export async function getEmployeeShiftForToday(
   }
 
   const shift = employeeShift.shift;
-
-  const startUTCHours = shift.start_time.getUTCHours();
-  const startUTCMinutes = shift.start_time.getUTCMinutes();
-  const startUTCSeconds = shift.start_time.getUTCSeconds();
-
-  const endUTCHours = shift.end_time.getUTCHours();
-  const endUTCMinutes = shift.end_time.getUTCMinutes();
-  const endUTCSeconds = shift.end_time.getUTCSeconds();
+  const startHour = shift.start_time.getHours();
+  const startMinute = shift.start_time.getMinutes();
+  const startSecond = shift.start_time.getSeconds();
+  const endHour = shift.end_time.getHours();
+  const endMinute = shift.end_time.getMinutes();
+  const endSecond = shift.end_time.getSeconds();
 
   const startTime = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    startUTCHours,
-    startUTCMinutes,
-    startUTCSeconds,
+    localDate.getFullYear(),
+    localDate.getMonth(),
+    localDate.getDate(),
+    startHour,
+    startMinute,
+    startSecond,
   );
 
-  const endTime = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    endUTCHours,
-    endUTCMinutes,
-    endUTCSeconds,
+  let endTime = new Date(
+    localDate.getFullYear(),
+    localDate.getMonth(),
+    localDate.getDate(),
+    endHour,
+    endMinute,
+    endSecond,
   );
+
+  if (endTime <= startTime) {
+    endTime.setDate(endTime.getDate() + 1);
+  }
 
   return { shiftName: shift.name, startTime, endTime };
+}
+
+export function canCheckIn(
+  now: Date,
+  shiftStart: Date,
+  shiftEnd: Date,
+  toleranceMinutes = 15,
+): boolean {
+  const allowedStart = new Date(
+    shiftStart.getTime() - toleranceMinutes * 60000,
+  );
+  return now >= allowedStart && now <= shiftEnd;
+}
+
+export function canCheckOut(now: Date, shiftEnd: Date): boolean {
+  return now >= shiftEnd;
 }
 
 export function isLate(
   checkInTime: Date,
   shiftStartTime: Date,
-  lateThresholMinutes: number = 30,
 ): boolean {
   const diffMinutes =
     (checkInTime.getTime() - shiftStartTime.getTime()) / (1000 * 60);
-  return diffMinutes > lateThresholMinutes;
+  return diffMinutes > LATE_THRESHOLD_MINUTES;
+}
+
+export function determineAttendanceStatus(
+  checkInTime: Date | null,
+  shiftStartTime: Date | null,
+): "on_time" | "late" | "absent" {
+  if (!checkInTime) return "absent";
+  if (!shiftStartTime) return "on_time";
+  return isLate(checkInTime, shiftStartTime) ? "late" : "on_time";
 }
 
 export async function isWithinRadius(
@@ -92,15 +122,69 @@ export async function isWithinRadius(
     where: { id: outletId },
     select: { latitude: true, longitude: true },
   });
-
   if (!outlet || outlet.latitude === null || outlet.longitude === null) {
     return false;
   }
-
   const distance = getDistance(
     { latitude: userLat, longitude: userLng },
     { latitude: Number(outlet.latitude), longitude: Number(outlet.longitude) },
   );
-
   return distance <= CHECKIN_RADIUS_METERS;
+}
+
+export async function getShiftForDateTime(
+  employeeId: string,
+  targetDate: Date,
+): Promise<{ shiftName: string; startTime: Date; endTime: Date } | null> {
+  const employeeShifts = await prisma.employeeShift.findMany({
+    where: {
+      employee_id: employeeId,
+      is_active: true,
+    },
+    include: { shift: true },
+  });
+
+  const targetHour = targetDate.getHours();
+  const targetMinute = targetDate.getMinutes();
+  const targetTimeInMinutes = targetHour * 60 + targetMinute;
+
+  for (const es of employeeShifts) {
+    const shift = es.shift;
+    const startHour = shift.start_time.getHours();
+    const startMinute = shift.start_time.getMinutes();
+    const endHour = shift.end_time.getHours();
+    const endMinute = shift.end_time.getMinutes();
+
+    const startTotal = startHour * 60 + startMinute;
+    let endTotal = endHour * 60 + endMinute;
+
+    const isOvernight = endTotal < startTotal;
+    if (isOvernight) endTotal += 24 * 60;
+
+    let targetAdjusted = targetTimeInMinutes;
+    if (isOvernight && targetAdjusted < startTotal) {
+      targetAdjusted += 24 * 60;
+    }
+
+    if (targetAdjusted >= startTotal && targetAdjusted <= endTotal) {
+      const startDate = new Date(targetDate);
+      startDate.setHours(startHour, startMinute, 0, 0);
+      if (isOvernight && targetAdjusted < startTotal) {
+        startDate.setDate(startDate.getDate() - 1);
+      }
+
+      let endDate = new Date(targetDate);
+      endDate.setHours(endHour, endMinute, 0, 0);
+      if (isOvernight && targetAdjusted >= startTotal) {
+        endDate.setDate(endDate.getDate() + 1);
+      }
+
+      return {
+        shiftName: shift.name,
+        startTime: startDate,
+        endTime: endDate,
+      };
+    }
+  }
+  return null;
 }

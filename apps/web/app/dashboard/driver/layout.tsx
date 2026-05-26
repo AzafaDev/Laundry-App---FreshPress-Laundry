@@ -6,9 +6,11 @@ import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
 export default function DriverLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const { user, accessToken } = useEmployeeAuthStore();
+  const { user, accessToken, _hasHydrated } = useEmployeeAuthStore();
 
   useEffect(() => {
+    if (!_hasHydrated) return;
+
     if (!accessToken || !user) {
       router.replace("/employee/login");
       return;
@@ -16,9 +18,9 @@ export default function DriverLayout({ children }: { children: ReactNode }) {
     if (user.role !== "driver") {
       router.replace("/access-denied");
     }
-  }, [user, accessToken, router]);
+  }, [user, accessToken, _hasHydrated, router]);
 
-  if (!user || !accessToken || user.role !== "driver") {
+  if (!_hasHydrated || !user || !accessToken || user.role !== "driver") {
     return null;
   }
 

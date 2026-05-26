@@ -5,54 +5,56 @@ import { attendanceService } from "@/services/attendance.service";
 import { useSocket } from "./useSocket";
 import { formatTime } from "@/utils/formatDate";
 import { useGeolocation } from "./useGeolocation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import type { AttendanceReportParams } from "@/types/attendance.type";
 
 // --- Hook untuk employee (check-in/out, my logs, current shift) ---
 export function useAttendance() {
+  const [optimisticCheckedIn, setOptimisticCheckedIn] = useState(false);
   const queryClient = useQueryClient();
   const { on, emit } = useSocket();
   const { latitude, longitude, permissionDenied } = useGeolocation();
 
-  // Pastikan employee sudah login (opsional, untuk validasi)
   const { accessToken, user } = useEmployeeAuthStore();
   const isEmployee = !!accessToken && !!user;
+  const employeeId = user?.id;
 
-  // Real-time subscription
   useEffect(() => {
     if (!isEmployee) return;
     const unsubscribe = on("attendance:updated", () => {
-      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", "today", employeeId] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", "logs", employeeId] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", "currentShift", employeeId] });
       toast.success("Status absensi diperbarui", {
         icon: "🔄",
         duration: 2000,
       });
     });
     return unsubscribe;
-  }, [on, queryClient, isEmployee]);
+  }, [on, queryClient, isEmployee, employeeId]);
 
   const todayQuery = useQuery({
-    queryKey: ["attendance", "today"],
+    queryKey: ["attendance", "today", employeeId],
     queryFn: attendanceService.checkTodayAttendance,
-    staleTime: 1000 * 60 * 2,
+    staleTime: 0,
     refetchOnWindowFocus: true,
-    enabled: isEmployee,
+    enabled: isEmployee && !!employeeId,
   });
 
   const logsQuery = useQuery({
-    queryKey: ["attendance", "logs"],
+    queryKey: ["attendance", "logs", employeeId],
     queryFn: () => attendanceService.getMyLogs({}),
-    staleTime: 1000 * 60 * 5,
-    enabled: isEmployee,
+    staleTime: 0,
+    enabled: isEmployee && !!employeeId,
   });
 
   const shiftQuery = useQuery({
-    queryKey: ["attendance", "currentShift"],
+    queryKey: ["attendance", "currentShift", employeeId],
     queryFn: attendanceService.getCurrentShift,
-    staleTime: 1000 * 60 * 15,
-    enabled: isEmployee,
+    staleTime: 0,
+    enabled: isEmployee && !!employeeId,
   });
 
   const checkInMutation = useMutation({
@@ -62,15 +64,20 @@ export function useAttendance() {
       }
       return attendanceService.checkIn({ lat: latitude, lng: longitude });
     },
-onMutate: () => toast.loading("Merekam check-in...", { id: "attendance" }),
+    onMutate: () => {
+      setOptimisticCheckedIn(true);
+      toast.loading("Merekam check-in...", { id: "attendance" });
+    },
     onSuccess: (data) => {
       toast.success(`Check-in berhasil pukul ${formatTime(data.check_in_time)}`, {
         id: "attendance",
       });
-      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", "today", employeeId] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", "logs", employeeId] });
       emit("attendance:checked-in", { userId: data.user_id });
     },
     onError: (error: any) => {
+      setOptimisticCheckedIn(false);
       toast.error(error?.response?.data?.message || "Gagal check-in", {
         id: "attendance",
       });
@@ -86,7 +93,8 @@ onMutate: () => toast.loading("Merekam check-in...", { id: "attendance" }),
         `Check-out berhasil. Total jam: ${data.total_hours || "-"} jam`,
         { id: "attendance" },
       );
-      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", "today", employeeId] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", "logs", employeeId] });
       emit("attendance:checked-out", { attendanceId: data.id });
     },
     onError: (error: any) => {
@@ -98,7 +106,7 @@ onMutate: () => toast.loading("Merekam check-in...", { id: "attendance" }),
 
   const today = todayQuery.data;
   const checkedIn =
-    today?.check_in_time != null && today.check_out_time == null;
+    optimisticCheckedIn || (today?.check_in_time != null && today.check_out_time == null);
 
   return {
     checkedIn,
@@ -120,7 +128,9 @@ onMutate: () => toast.loading("Merekam check-in...", { id: "attendance" }),
     isCheckingIn: checkInMutation.isPending,
     isCheckingOut: checkOutMutation.isPending,
     refetch: () => {
-      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", "today", employeeId] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", "logs", employeeId] });
+      queryClient.invalidateQueries({ queryKey: ["attendance", "currentShift", employeeId] });
     },
     fetchNextLogs: (page: number) =>
       attendanceService.getMyLogs({ page, limit: 20 }),

@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
 export default function OutletAdminDashboardPage() {
-  const { user } = useEmployeeAuthStore();
+  const { _hasHydrated, user } = useEmployeeAuthStore();
+  if (!_hasHydrated) {
+    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
+  }
 
   return (
     <>

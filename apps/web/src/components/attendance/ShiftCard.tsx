@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatTime } from "@/utils/formatDate";
-import { differenceInMinutes, differenceInSeconds, formatDuration, intervalToDuration } from "date-fns";
+import { differenceInSeconds, formatDuration, intervalToDuration } from "date-fns";
 import { id } from "date-fns/locale";
 import type { CurrentShift } from "@/services/attendance.service";
 
@@ -32,56 +31,56 @@ export function ShiftCard({ currentShift }: ShiftCardProps) {
     );
   }
 
-  const { shiftName, startTime, endTime, isActive } = currentShift;
+  const { shiftName, startTime, endTime, isActive, progressPercent, remainingSeconds } = currentShift;
 
-  const nowDate = now;
-  const [startHour, startMinute] = startTime.split(":").map(Number);
-  const [endHour, endMinute] = endTime.split(":").map(Number);
-  const shiftStart = new Date(nowDate);
-  shiftStart.setHours(startHour, startMinute, 0, 0);
-  const shiftEnd = new Date(nowDate);
-  shiftEnd.setHours(endHour, endMinute, 0, 0);
+  const formatTime = (timeStr: string) => {
+    const parts = timeStr.split(":");
+    return `${parts[0]}:${parts[1]}`;
+  };
 
-  const minutesToStart = differenceInMinutes(shiftStart, nowDate);
-  const willStartSoon = !isActive && minutesToStart > 0 && minutesToStart <= 30;
+  const startTimeStr = formatTime(startTime);
+  const endTimeStr = formatTime(endTime);
 
-  let progressPercent = 0;
-  let remainingTimeStr = "";
   let statusText = "";
   let badgeColor = "";
 
   if (isActive) {
     statusText = "Sedang Berlangsung";
     badgeColor = "bg-primary/10 text-primary border-primary/20";
-    const totalDuration = shiftEnd.getTime() - shiftStart.getTime();
-    const elapsed = nowDate.getTime() - shiftStart.getTime();
-    if (totalDuration > 0) {
-      progressPercent = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
-    }
-    const remainingSeconds = differenceInSeconds(shiftEnd, nowDate);
-    if (remainingSeconds > 0) {
-      const duration = intervalToDuration({ start: 0, end: remainingSeconds * 1000 });
-      remainingTimeStr = formatDuration(duration, { locale: id, delimiter: " " });
-    } else {
-      remainingTimeStr = "0 menit";
-    }
-  } else if (willStartSoon) {
-    statusText = "Akan Segera Dimulai";
-    badgeColor = "bg-amber-100 text-amber-700 border-amber-200";
-    if (minutesToStart > 0) {
-      remainingTimeStr = `${minutesToStart} menit lagi`;
-    } else {
-      remainingTimeStr = "Sedang berlangsung";
-    }
   } else {
-    const isAfterShift = nowDate > shiftEnd;
-    if (isAfterShift) {
+    const nowDate = now;
+    const startHour = parseInt(startTime.split(":")[0]);
+    const startMinute = parseInt(startTime.split(":")[1]);
+    const endHour = parseInt(endTime.split(":")[0]);
+    const endMinute = parseInt(endTime.split(":")[1]);
+
+    const shiftStartToday = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate(), startHour, startMinute, 0);
+    const shiftEndToday = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate(), endHour, endMinute, 0);
+    if (shiftEndToday <= shiftStartToday) shiftEndToday.setDate(shiftEndToday.getDate() + 1);
+
+    const minutesToStart = differenceInSeconds(shiftStartToday, nowDate) / 60;
+    const willStartSoon = !isActive && minutesToStart > 0 && minutesToStart <= 30;
+
+    if (willStartSoon) {
+      statusText = "Akan Segera Dimulai";
+      badgeColor = "bg-amber-100 text-amber-700 border-amber-200";
+    } else if (nowDate > shiftEndToday) {
       statusText = "Telah Berakhir";
       badgeColor = "bg-surface-container-high text-on-surface-variant border-outline-variant";
     } else {
       statusText = "Belum Dimulai";
       badgeColor = "bg-surface-container-high text-on-surface-variant border-outline-variant";
     }
+  }
+
+  let remainingTimeStr = "";
+  if (isActive && remainingSeconds > 0) {
+    const duration = intervalToDuration({ start: 0, end: remainingSeconds * 1000 });
+    remainingTimeStr = formatDuration(duration, { locale: id, delimiter: " " });
+  } else if (!isActive && statusText === "Akan Segera Dimulai") {
+    const shiftStartToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(startTime.split(":")[0]), parseInt(startTime.split(":")[1]), 0);
+    const minutesToStart = Math.ceil((shiftStartToday.getTime() - now.getTime()) / (1000 * 60));
+    remainingTimeStr = `${minutesToStart} menit lagi`;
   }
 
   return (
@@ -97,7 +96,7 @@ export function ShiftCard({ currentShift }: ShiftCardProps) {
       </div>
 
       <div className="flex items-center gap-4 text-sm text-on-surface-variant">
-        <span>🕒 {formatTime(shiftStart.toISOString())} - {formatTime(shiftEnd.toISOString())}</span>
+        <span>🕒 {startTimeStr} - {endTimeStr}</span>
       </div>
 
       {isActive && (
@@ -111,7 +110,7 @@ export function ShiftCard({ currentShift }: ShiftCardProps) {
         </div>
       )}
 
-      {willStartSoon && (
+      {!isActive && statusText === "Akan Segera Dimulai" && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
           <p className="text-sm text-amber-700 font-medium flex items-center gap-2">
             ⏰ Shift akan dimulai dalam {remainingTimeStr}
@@ -119,7 +118,7 @@ export function ShiftCard({ currentShift }: ShiftCardProps) {
         </div>
       )}
 
-      {!isActive && !willStartSoon && statusText === "Telah Berakhir" && (
+      {!isActive && statusText === "Telah Berakhir" && (
         <div className="bg-surface-container-high rounded-lg p-3">
           <p className="text-sm text-on-surface-variant">
             Shift hari ini sudah berakhir. Anda tidak dapat melakukan check-in.

@@ -15,6 +15,12 @@ export interface CurrentShift {
   startTime: string;
   endTime: string;
   isActive: boolean;
+  progressPercent: number;
+  remainingSeconds: number;
+  outletName?: string;
+  outletId?: string;
+  canCheckIn: boolean;
+  canCheckOut: boolean;
 }
 
 // Helper untuk mendapatkan token employee (walaupun interceptor sudah handle)

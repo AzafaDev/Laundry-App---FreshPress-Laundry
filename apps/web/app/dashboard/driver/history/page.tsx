@@ -10,8 +10,14 @@ import { useAttendance } from "@/hooks/useAttendance";
 import { useQuery } from "@tanstack/react-query";
 import { toLogRecord } from "@/utils/formatDate";
 import { AttendanceLog } from "@/components/attendance/AttendanceLog";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
 export default function DriverHistoryPage() {
+  const { _hasHydrated } = useEmployeeAuthStore();
+  if (!_hasHydrated) {
+    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
+  }
+
   const [page, setPage] = useState(1);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
