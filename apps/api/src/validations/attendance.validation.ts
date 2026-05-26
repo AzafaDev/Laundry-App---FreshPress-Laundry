@@ -51,7 +51,7 @@ export const attendanceReportQuerySchema = z.object({
       val === "" || val === null || val === undefined ? undefined : val,
     z.string().uuid("Employee ID tidak valid").optional(),
   ),
-  status: z.enum(["on_time", "late"]).optional(),
+  status: z.enum(["on_time", "late", "absent"]).optional(),
   startDate: z.preprocess(
     (val) =>
       val === "" || val === null || val === undefined
