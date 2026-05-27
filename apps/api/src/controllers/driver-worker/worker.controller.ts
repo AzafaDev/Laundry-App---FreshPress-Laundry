@@ -11,3 +11,22 @@ export const getStationOrders = async (req: Request, res: Response, next: NextFu
     res.json({ success: true, data: orders });
   } catch (err) { next(err); }
 };
+
+export const completeStation = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const employeeId = req.user?.userId;
+    if (!employeeId) throw new AppError("Unauthorized", 401);
+
+    const station = req.params.station as "washing" | "ironing" | "packing";
+    const orderId = req.params.orderId as string;
+
+    const result = await workerService.completeStation(employeeId, station, orderId);
+    res.json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+};

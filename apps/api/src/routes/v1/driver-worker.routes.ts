@@ -8,8 +8,8 @@ import {
   getMyLogs,
   getCurrentShift,
 } from "../../controllers/driver-worker/attendance.controller.js";
-import { getAvailablePickups, getAvailableDeliveries } from "../../controllers/driver-worker/driver.controller.js";
-import { getStationOrders } from "../../controllers/driver-worker/worker.controller.js";
+import { getAvailablePickups, getAvailableDeliveries, getActiveTask, claimTask, completeTask } from "../../controllers/driver-worker/driver.controller.js";
+import { getStationOrders, completeStation } from "../../controllers/driver-worker/worker.controller.js";
 
 const router = Router();
 
@@ -52,9 +52,30 @@ router.get(
   getAvailableDeliveries,
 );
 router.get(
+  "/driver/tasks/active",
+  requireRole("driver"),
+  getActiveTask,
+);
+router.post(
+  "/driver/tasks/:taskId/claim",
+  requireRole("driver"),
+  claimTask,
+);
+router.patch(
+  "/driver/tasks/:taskId/complete",
+  requireRole("driver"),
+  completeTask,
+);
+
+router.get(
   "/worker/station/:station",
   requireRole("washing_worker", "ironing_worker", "packing_worker"),
   getStationOrders,
+);
+router.patch(
+  "/worker/station/:station/orders/:orderId/complete",
+  requireRole("washing_worker", "ironing_worker", "packing_worker"),
+  completeStation,
 );
 
 export default router;

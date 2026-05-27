@@ -2,6 +2,7 @@ import { Server as IOServer, Socket } from "socket.io";
 import { Server as HttpServer } from "http";
 import { env } from "../config/env.js";
 import { verifyAccessToken } from "../utils/jwt.util.js";
+import { prisma } from "./prisma.js";
 
 let io: IOServer | null = null;
 
@@ -77,4 +78,26 @@ export function emitToUser(userId: string, event: string, data: any) {
 export function emitToRole(role: string, event: string, data: any) {
   if (!io) return;
   io.to(`role:${role}`).emit(event, data);
+}
+
+export async function emitStationNewOrder(orderId: string, newStatus: string) {
+  const STATION_STATUSES = ["washing", "ironing", "packing"];
+  if (!STATION_STATUSES.includes(newStatus)) return;
+
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: {
+      outlet_id: true,
+      customer: { select: { full_name: true } },
+    },
+  });
+
+  if (order?.outlet_id) {
+    emitToRoom(`outlet:${order.outlet_id}`, "station:new-order", {
+      orderId,
+      station: newStatus,
+      customerName: order.customer?.full_name,
+      timestamp: new Date(),
+    });
+  }
 }
