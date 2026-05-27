@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, UserPlus, Mail } from "lucide-react";
+import { X, UserPlus } from "lucide-react";
 import { useCreateUser, useUpdateUser } from "@/hooks/useUsers";
 import type {
   CreateUserPayload,
@@ -13,9 +13,10 @@ import type {
 const ROLES: Array<{ value: UserRole; label: string }> = [
   { value: "super_admin", label: "Super Admin" },
   { value: "outlet_admin", label: "Outlet Admin" },
-  { value: "worker", label: "Worker" },
+  { value: "washing_worker", label: "Washing Worker" },
+  { value: "ironing_worker", label: "Ironing Worker" },
+  { value: "packing_worker", label: "Packing Worker" },
   { value: "driver", label: "Driver" },
-  { value: "customer", label: "Customer" },
 ];
 
 interface Props {
@@ -23,83 +24,66 @@ interface Props {
   onClose: () => void;
 }
 
-// Local form shape: password is always optional on the client; we send it
-// only when the admin actually typed something.
-type FormState = Omit<CreateUserPayload, "password"> & { password: string };
-
 export function UserFormModal({ user, onClose }: Props) {
   const isEdit = !!user;
   const create = useCreateUser();
   const update = useUpdateUser();
 
-  const [form, setForm] = useState<FormState>({
+  const [form, setForm] = useState({
     full_name: "",
     email: "",
     phone: "",
-    role: "outlet_admin",
+    role: "outlet_admin" as UserRole,
     password: "",
-    is_verified: true,
+    is_active: true,
   });
   const [error, setError] = useState<string | null>(null);
-  const [successInvite, setSuccessInvite] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
       setForm({
         full_name: user.full_name,
         email: user.email,
-        phone: user.phone,
+        phone: user.phone ?? "",
         role: user.role,
         password: "",
-        is_verified: user.is_verified,
+        is_active: user.is_active ?? true,
       });
     }
   }, [user]);
 
   const pending = create.isPending || update.isPending;
-  // Create-mode only: if password is blank, this submission becomes an invite.
-  const willInvite = !isEdit && form.password.trim().length === 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccessInvite(null);
     try {
       if (isEdit && user) {
         const payload: UpdateUserPayload = {
           full_name: form.full_name,
           email: form.email,
-          phone: form.phone,
+          phone: form.phone || undefined,
           role: form.role,
-          is_verified: form.is_verified,
+          is_active: form.is_active,
           ...(form.password ? { password: form.password } : {}),
         };
         await update.mutateAsync({ id: user.id, payload });
         onClose();
       } else {
+        if (!form.password.trim()) {
+          setError("Password wajib diisi untuk membuat akun baru.");
+          return;
+        }
         const payload: CreateUserPayload = {
           full_name: form.full_name,
           email: form.email,
-          phone: form.phone,
+          phone: form.phone || undefined,
           role: form.role,
-          // Only attach password when admin actually typed one — leaving it
-          // off triggers the server-side invite/verification flow.
-          ...(form.password ? { password: form.password } : {}),
-          // is_verified only matters in direct-create mode; the server forces
-          // false when inviting.
-          is_verified: willInvite ? false : form.is_verified,
+          password: form.password,
+          is_active: form.is_active,
         };
-        const result = await create.mutateAsync(payload);
-        if (willInvite) {
-          setSuccessInvite(
-            `Email verifikasi telah dikirim ke ${result.email}. Link berlaku 24 jam.`,
-          );
-          // keep the modal open briefly so the admin sees the confirmation,
-          // then close
-          setTimeout(onClose, 1800);
-        } else {
-          onClose();
-        }
+        await create.mutateAsync(payload);
+        onClose();
       }
     } catch (err) {
       const msg =
@@ -151,12 +135,12 @@ export function UserFormModal({ user, onClose }: Props) {
             />
           </Field>
 
-          <Field label="Nomor Telepon">
+          <Field label="Nomor Telepon (opsional)">
             <input
               type="tel"
-              required
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              placeholder="08xxxxxxxxxx"
               className={inputClass}
             />
           </Field>
@@ -181,68 +165,31 @@ export function UserFormModal({ user, onClose }: Props) {
             label={
               isEdit
                 ? "Password Baru (opsional)"
-                : "Password (opsional — kosongkan untuk kirim email invite)"
+                : "Password"
             }
           >
             <input
               type="password"
               value={form.password}
+              required={!isEdit}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder={
-                isEdit
-                  ? "Kosongkan jika tidak diubah"
-                  : "Kosongkan agar user atur sendiri lewat email"
-              }
+              placeholder={isEdit ? "Kosongkan jika tidak diubah" : "Min. 8 karakter"}
               className={inputClass}
             />
           </Field>
 
-          {/* Invite hint shown only in create-mode when password is empty */}
-          {willInvite && (
-            <div className="flex items-start gap-2 text-sm text-on-surface-variant bg-primary/5 border border-primary/20 px-3 py-2 rounded-md">
-              <Mail className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-              <span>
-                Mode invite aktif. Sistem akan mengirim email verifikasi ke{" "}
-                <strong>{form.email || "alamat email"}</strong>; user akan klik
-                link & membuat password-nya sendiri.
-              </span>
-            </div>
-          )}
-
-          {/* "Mark verified" only applies when admin sets the password directly */}
-          {!willInvite && !isEdit && (
-            <label className="flex items-center gap-2 text-sm text-on-surface-variant">
-              <input
-                type="checkbox"
-                checked={!!form.is_verified}
-                onChange={(e) =>
-                  setForm({ ...form, is_verified: e.target.checked })
-                }
-              />
-              Tandai akun sudah terverifikasi
-            </label>
-          )}
-          {isEdit && (
-            <label className="flex items-center gap-2 text-sm text-on-surface-variant">
-              <input
-                type="checkbox"
-                checked={!!form.is_verified}
-                onChange={(e) =>
-                  setForm({ ...form, is_verified: e.target.checked })
-                }
-              />
-              Akun terverifikasi
-            </label>
-          )}
+          <label className="flex items-center gap-2 text-sm text-on-surface-variant">
+            <input
+              type="checkbox"
+              checked={form.is_active}
+              onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+            />
+            Akun aktif
+          </label>
 
           {error && (
             <p className="text-sm text-error bg-error-container/30 px-3 py-2 rounded-md">
               {error}
-            </p>
-          )}
-          {successInvite && (
-            <p className="text-sm text-primary bg-primary/10 px-3 py-2 rounded-md">
-              {successInvite}
             </p>
           )}
 
@@ -259,11 +206,7 @@ export function UserFormModal({ user, onClose }: Props) {
               disabled={pending}
               className="py-3 px-6 rounded-xl bg-primary text-on-primary font-bold hover:opacity-90 disabled:opacity-60 transition-all shadow-lg shadow-primary/20"
             >
-              {pending
-                ? "Menyimpan..."
-                : willInvite
-                  ? "Kirim Invite"
-                  : "Simpan"}
+              {pending ? "Menyimpan..." : "Simpan"}
             </button>
           </div>
         </form>

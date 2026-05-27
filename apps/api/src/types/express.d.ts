@@ -7,6 +7,7 @@ declare module "express" {
       userId: string;
       role: string;
       email: string;
+      outletId?: string | null;
     };
     file?: File;
     files?: File[] | Record<string, File[]>;

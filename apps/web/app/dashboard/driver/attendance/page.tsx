@@ -10,14 +10,12 @@ import {
   AlertCircle,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { useQuery } from "@tanstack/react-query";
 import { AttendanceCard } from "@/components/attendance/AttendanceCard";
 import { AttendanceSummary } from "@/components/attendance/AttendanceSummary";
 import { ShiftCard } from "@/components/attendance/ShiftCard";
 import { useAttendance } from "@/hooks/useAttendance";
 import { toLogRecord } from "@/utils/formatDate";
 import { useGeolocation } from "@/hooks/useGeolocation";
-import { attendanceService } from "@/services/attendance.service";
 import { motion } from "framer-motion";
 import { DriverSidebar } from "@/components/dashboard/DriverSidebar";
 import { DriverTopBar } from "@/components/dashboard/DriverTopBar";
@@ -25,8 +23,12 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
 export default function DriverAttendancePage() {
+  const { _hasHydrated, user } = useEmployeeAuthStore();
+  if (!_hasHydrated) {
+    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
+  }
+
   const att = useAttendance();
-  const { user } = useEmployeeAuthStore();
   const { latitude, longitude, permissionDenied } = useGeolocation();
 
   const locationStatus =
@@ -36,20 +38,7 @@ export default function DriverAttendancePage() {
       ? "available"
       : "checking";
 
-  const { data: recentLogs, isLoading: recentLoading } = useQuery({
-    queryKey: ["attendance", "recent", "driver"],
-    queryFn: () => attendanceService.getMyLogs({ page: 1, limit: 5 }),
-    staleTime: 1000 * 60 * 2,
-    refetchOnWindowFocus: true,
-  });
-
-  const { refetch: refetchLogs } = useQuery({
-    queryKey: ["attendance", "logs"],
-    queryFn: () => att.fetchNextLogs(1),
-    enabled: !!att.fetchNextLogs,
-  });
-
-  const recentRecords = (recentLogs?.data ?? []).map(toLogRecord);
+  const recentRecords = att.records.slice(0, 5).map(toLogRecord);
 
   const handleCheckIn = async () => {
     if (locationStatus !== "available") {
@@ -58,7 +47,6 @@ export default function DriverAttendancePage() {
     }
     await att.checkInAsync();
     att.refetch();
-    refetchLogs();
   };
 
   const handleCheckOut = async () => {
@@ -68,11 +56,10 @@ export default function DriverAttendancePage() {
     }
     await att.checkOutAsync(att.attendanceId);
     att.refetch();
-    refetchLogs();
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24 lg:pb-0">
+    <div key={user?.id} className="min-h-screen bg-background pb-24 lg:pb-0">
       <DriverSidebar />
       <DriverTopBar />
 
@@ -147,6 +134,8 @@ export default function DriverAttendancePage() {
             onCheckOut={handleCheckOut}
             loading={att.isCheckingIn || att.isCheckingOut}
             error={att.error}
+            canCheckIn={att.currentShift?.canCheckIn ?? false}
+            canCheckOut={att.currentShift?.canCheckOut ?? false}
           />
 
           <section>
@@ -157,7 +146,7 @@ export default function DriverAttendancePage() {
             <AttendanceSummary
               records={recentRecords}
               viewAllHref="/dashboard/driver/history"
-              isLoading={recentLoading || att.isLoading}
+              isLoading={att.isLoading}
             />
           </section>
         </div>

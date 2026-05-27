@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { CalendarDays, ChevronRight } from "lucide-react";
-import { formatTime } from "@/utils/formatDate";
 import type { AttendanceRecord } from "@/utils/formatDate";
 
 interface AttendanceSummaryProps {
@@ -55,14 +54,14 @@ export function AttendanceSummary({
           </div>
           <span
             className={`px-2 py-1 rounded-full text-xs font-medium ${
-              att.status === "on-time"
+              att.status === "on_time"
                 ? "bg-primary/10 text-primary"
                 : att.status === "late"
                 ? "bg-amber-100 text-amber-700"
                 : "bg-error/10 text-error"
             }`}
           >
-            {att.status === "on-time"
+            {att.status === "on_time"
               ? "Tepat Waktu"
               : att.status === "late"
               ? "Terlambat"

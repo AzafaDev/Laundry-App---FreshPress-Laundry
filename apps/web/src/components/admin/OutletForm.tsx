@@ -1,9 +1,5 @@
 "use client";
 
-// Outlet create/edit form. The address field is now an autocomplete: as the
-// admin types, we debounce-call the server-side OpenCage proxy and show up to
-// 5 matches. Picking a match fills the address text AND drops the pin on the
-// map. The map remains click/drag-to-reposition as well.
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { X, Store, MapPin, Search, Loader2 } from "lucide-react";
@@ -15,7 +11,6 @@ import type {
   UpdateOutletPayload,
 } from "@/types/outlet.types";
 
-// react-leaflet touches `window` on import — load it client-only.
 const OutletMapPicker = dynamic(
   () => import("./OutletMapPicker").then((m) => m.OutletMapPicker),
   { ssr: false, loading: () => <MapSkeleton /> },
@@ -34,19 +29,21 @@ export function OutletForm({ outlet, onClose }: Props) {
   const [form, setForm] = useState({
     name: outlet?.name ?? "",
     address: outlet?.address ?? "",
+    province: outlet?.province ?? "",
+    city: outlet?.city ?? "",
+    district: outlet?.district ?? "",
+    postal_code: outlet?.postal_code ?? "",
+    phone: outlet?.phone ?? "",
     latitude: outlet?.latitude ?? null,
     longitude: outlet?.longitude ?? null,
-    max_service_km: outlet?.max_service_km ?? 5,
+    service_radius_km: outlet?.service_radius_km ?? 5,
     is_active: outlet?.is_active ?? true,
   });
   const [error, setError] = useState<string | null>(null);
 
-  // ── Autocomplete state ──────────────────────────────────────────────────────
   const [matches, setMatches] = useState<GeocodeMatch[]>([]);
   const [searching, setSearching] = useState(false);
   const [showMatches, setShowMatches] = useState(false);
-  // Skip the next debounce trigger (used right after picking a suggestion so we
-  // don't re-search the formatted address we just inserted).
   const skipNextSearchRef = useRef(false);
 
   useEffect(() => {
@@ -54,15 +51,19 @@ export function OutletForm({ outlet, onClose }: Props) {
       setForm({
         name: outlet.name,
         address: outlet.address,
+        province: outlet.province,
+        city: outlet.city,
+        district: outlet.district,
+        postal_code: outlet.postal_code ?? "",
+        phone: outlet.phone ?? "",
         latitude: outlet.latitude,
         longitude: outlet.longitude,
-        max_service_km: outlet.max_service_km ?? 5,
+        service_radius_km: outlet.service_radius_km ?? 5,
         is_active: outlet.is_active,
       });
     }
   }, [outlet]);
 
-  // Debounced geocode search. Fires 500 ms after the user stops typing.
   useEffect(() => {
     if (skipNextSearchRef.current) {
       skipNextSearchRef.current = false;
@@ -91,11 +92,16 @@ export function OutletForm({ outlet, onClose }: Props) {
 
   const pickMatch = (m: GeocodeMatch) => {
     skipNextSearchRef.current = true;
+    // Try to extract city/province from formatted address
+    const parts = m.formatted.split(",").map((s) => s.trim());
     setForm((prev) => ({
       ...prev,
       address: m.formatted,
       latitude: m.latitude,
       longitude: m.longitude,
+      // Auto-fill city & province from last parts of formatted address if empty
+      city: prev.city || (parts[parts.length - 2] ?? ""),
+      province: prev.province || (parts[parts.length - 1] ?? ""),
     }));
     setShowMatches(false);
     setMatches([]);
@@ -111,9 +117,14 @@ export function OutletForm({ outlet, onClose }: Props) {
         const payload: UpdateOutletPayload = {
           name: form.name,
           address: form.address,
+          province: form.province,
+          city: form.city,
+          district: form.district,
+          postal_code: form.postal_code || undefined,
+          phone: form.phone || undefined,
           latitude: form.latitude ?? undefined,
           longitude: form.longitude ?? undefined,
-          max_service_km: form.max_service_km,
+          service_radius_km: form.service_radius_km,
           is_active: form.is_active,
           re_geocode: form.latitude == null || form.longitude == null,
         };
@@ -122,9 +133,14 @@ export function OutletForm({ outlet, onClose }: Props) {
         const payload: CreateOutletPayload = {
           name: form.name,
           address: form.address,
+          province: form.province,
+          city: form.city,
+          district: form.district,
+          postal_code: form.postal_code || undefined,
+          phone: form.phone || undefined,
           latitude: form.latitude ?? undefined,
           longitude: form.longitude ?? undefined,
-          max_service_km: form.max_service_km,
+          service_radius_km: form.service_radius_km,
           is_active: form.is_active,
         };
         await create.mutateAsync(payload);
@@ -159,10 +175,7 @@ export function OutletForm({ outlet, onClose }: Props) {
           </button>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="p-6 space-y-4 overflow-y-auto"
-        >
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
           <Field label="Nama Outlet">
             <input
               type="text"
@@ -174,21 +187,17 @@ export function OutletForm({ outlet, onClose }: Props) {
             />
           </Field>
 
-          <Field label="Alamat">
-            {/* Autocomplete-enabled address field */}
+          <Field label="Alamat Lengkap">
             <div className="relative">
               <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-outline pointer-events-none" />
               <input
                 type="text"
                 required
                 value={form.address}
-                onChange={(e) =>
-                  setForm({ ...form, address: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
                 onFocus={() => setShowMatches(matches.length > 0)}
-                // Delay so the click-on-suggestion can register before blur hides it
                 onBlur={() => setTimeout(() => setShowMatches(false), 150)}
-                placeholder="Mulai ketik alamat, contoh: Jalan Kopo Bandung"
+                placeholder="Mulai ketik alamat..."
                 className={`${inputClass} pl-12 pr-10`}
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -199,15 +208,12 @@ export function OutletForm({ outlet, onClose }: Props) {
                 )}
               </div>
 
-              {/* Suggestions dropdown */}
               {showMatches && matches.length > 0 && (
                 <ul className="absolute z-10 left-0 right-0 mt-1 bg-white border border-outline-variant rounded-xl shadow-lg overflow-hidden max-h-72 overflow-y-auto">
                   {matches.map((m, i) => (
                     <li key={`${m.latitude},${m.longitude},${i}`}>
                       <button
                         type="button"
-                        // onMouseDown fires before the input's onBlur so the
-                        // suggestion isn't dismissed before the click lands.
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={() => pickMatch(m)}
                         className="w-full text-left px-4 py-2.5 hover:bg-surface-container-low border-b border-outline-variant last:border-b-0 transition-colors"
@@ -231,16 +237,74 @@ export function OutletForm({ outlet, onClose }: Props) {
               )}
             </div>
             <p className="text-xs text-on-surface-variant mt-1 ml-1">
-              Pilih salah satu hasil pencarian untuk langsung memindahkan pin di
-              peta, atau klik manual di peta untuk override.
+              Pilih hasil pencarian untuk pindahkan pin di peta, atau klik manual di peta.
             </p>
           </Field>
+
+          {/* Province / City / District */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Field label="Provinsi">
+              <input
+                type="text"
+                required
+                value={form.province}
+                onChange={(e) => setForm({ ...form, province: e.target.value })}
+                placeholder="Jawa Barat"
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Kota / Kabupaten">
+              <input
+                type="text"
+                required
+                value={form.city}
+                onChange={(e) => setForm({ ...form, city: e.target.value })}
+                placeholder="Bandung"
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Kecamatan">
+              <input
+                type="text"
+                required
+                value={form.district}
+                onChange={(e) =>
+                  setForm({ ...form, district: e.target.value })
+                }
+                placeholder="Coblong"
+                className={inputClass}
+              />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Kode Pos (opsional)">
+              <input
+                type="text"
+                value={form.postal_code}
+                onChange={(e) =>
+                  setForm({ ...form, postal_code: e.target.value })
+                }
+                placeholder="40134"
+                className={inputClass}
+              />
+            </Field>
+            <Field label="No. Telepon Outlet (opsional)">
+              <input
+                type="tel"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                placeholder="022xxxxxxx"
+                className={inputClass}
+              />
+            </Field>
+          </div>
 
           <Field label="Lokasi di Peta">
             <OutletMapPicker
               latitude={form.latitude}
               longitude={form.longitude}
-              radiusKm={form.max_service_km}
+              radiusKm={form.service_radius_km}
               onChange={(lat, lng) =>
                 setForm({ ...form, latitude: lat, longitude: lng })
               }
@@ -248,7 +312,7 @@ export function OutletForm({ outlet, onClose }: Props) {
             <p className="text-xs text-on-surface-variant mt-1 ml-1">
               {form.latitude != null && form.longitude != null
                 ? `Pin: ${form.latitude.toFixed(5)}, ${form.longitude.toFixed(5)}`
-                : "Belum ada pin — pilih dari hasil pencarian alamat di atas atau klik di peta."}
+                : "Belum ada pin — pilih dari hasil pencarian atau klik di peta."}
             </p>
           </Field>
 
@@ -259,11 +323,11 @@ export function OutletForm({ outlet, onClose }: Props) {
               min="0.1"
               max="100"
               required
-              value={form.max_service_km}
+              value={form.service_radius_km}
               onChange={(e) =>
                 setForm({
                   ...form,
-                  max_service_km: parseFloat(e.target.value),
+                  service_radius_km: parseFloat(e.target.value),
                 })
               }
               className={inputClass}

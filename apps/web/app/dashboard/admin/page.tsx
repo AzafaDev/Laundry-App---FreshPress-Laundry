@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Users, Store, BarChart3 } from "lucide-react";
-import { useAuthStore } from "@/stores/authStore";
+import { Users, Store, BarChart3, Clock } from "lucide-react";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
 export default function AdminDashboardPage() {
-  const user = useAuthStore((s) => s.user);
+  const user = useEmployeeAuthStore((s) => s.user);
   const isSuper = user?.role === "super_admin";
 
   return (
@@ -34,6 +34,14 @@ export default function AdminDashboardPage() {
           title="Outlets"
           description="Daftar outlet, koordinat, dan radius layanan."
         />
+        {isSuper && (
+          <DashCard
+            href="/dashboard/admin/shifts"
+            icon={<Clock className="w-6 h-6 text-primary" />}
+            title="Work Shifts"
+            description="Kelola jadwal shift dan penugasan karyawan per outlet."
+          />
+        )}
         <DashCard
           href="/dashboard/admin/reports"
           icon={<BarChart3 className="w-6 h-6 text-primary" />}

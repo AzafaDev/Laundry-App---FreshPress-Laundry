@@ -1,4 +1,5 @@
 import "dotenv/config";
+process.env.TZ = "Asia/Jakarta";
 import cookieParser from "cookie-parser";
 import express, { type Application } from "express";
 import cors from "cors";
@@ -9,6 +10,7 @@ import router from "./routes/index.js";
 import { errorHandler } from "./middlewares/error.middleware.js";
 import { env } from "./config/env.js";
 import { initSocketServer } from "./lib/socket.js";
+import "./cron/markAbsentAttendance.js";
 
 const app: Application = express();
 

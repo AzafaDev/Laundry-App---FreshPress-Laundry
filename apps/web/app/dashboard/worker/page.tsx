@@ -20,7 +20,10 @@ import { useAuthStore } from "@/stores/authStore";
 import { useAttendance } from "@/hooks/useAttendance";
 
 export default function WorkerDashboardPage() {
-  const { user } = useAuthStore();
+  const { _hasHydrated, user } = useAuthStore();
+  if (!_hasHydrated) {
+    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
+  }
   const { currentShift, checkedIn, checkInTime } = useAttendance();
   const [currentTime, setCurrentTime] = useState(new Date());
 

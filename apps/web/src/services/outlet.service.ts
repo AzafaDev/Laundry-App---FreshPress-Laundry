@@ -26,8 +26,7 @@ export interface AssignedUser {
   full_name: string;
   email: string;
   phone: string;
-  role: "customer" | "super_admin" | "outlet_admin" | "worker" | "driver";
-  is_verified: boolean;
+  role: "super_admin" | "outlet_admin" | "washing_worker" | "ironing_worker" | "packing_worker" | "driver";
   avatar_url: string | null;
   assigned_at: string;
 }

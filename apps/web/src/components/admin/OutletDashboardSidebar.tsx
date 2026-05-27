@@ -13,8 +13,8 @@ import {
   Shirt,
   type LucideIcon,
 } from "lucide-react";
-import { useAuthStore } from "@/stores/authStore";
-import { useAuth } from "@/hooks/useAuth";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+
 
 interface NavItem {
   href: string;
@@ -33,8 +33,8 @@ const NAV: NavItem[] = [
 
 export function OutletDashboardSidebar() {
   const pathname = usePathname();
-  const user = useAuthStore((s) => s.user);
-  const { logout } = useAuth();
+  const { user, clearAuth } = useEmployeeAuthStore();
+  
 
   return (
     <aside className="hidden lg:flex flex-col h-screen fixed left-0 top-0 w-72 bg-surface-container-low border-r border-outline-variant shadow-sm z-40">
@@ -92,7 +92,7 @@ export function OutletDashboardSidebar() {
           Settings
         </button>
         <button
-          onClick={logout}
+          onClick={clearAuth}
           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-error hover:bg-error-container/30 rounded-lg transition-colors"
         >
           <LogOut className="w-5 h-5" />

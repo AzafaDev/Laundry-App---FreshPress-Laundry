@@ -6,17 +6,17 @@ interface AttendanceRecord {
   checkIn: string;
   checkOut: string;
   duration: string;
-  status: 'on-time' | 'late' | 'absent';
+  status: 'on_time' | 'late' | 'absent';
 }
 
 const statusStyles: Record<AttendanceRecord['status'], string> = {
-  'on-time': 'bg-primary/10 text-primary',
+  'on_time': 'bg-primary/10 text-primary',
   late: 'bg-amber-100 text-amber-700',
   absent: 'bg-error/10 text-error',
 };
 
 const statusLabels: Record<AttendanceRecord['status'], string> = {
-  'on-time': 'Tepat Waktu',
+  'on_time': 'Tepat Waktu',
   late: 'Terlambat',
   absent: 'Absen',
 };

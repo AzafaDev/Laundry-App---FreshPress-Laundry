@@ -49,7 +49,7 @@ export function OutletAdminTable() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            placeholder="Cari outlet..."
+            placeholder="Cari outlet, kota..."
             className="w-full pl-9 pr-4 py-2.5 bg-surface border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
@@ -68,7 +68,7 @@ export function OutletAdminTable() {
             <thead className="bg-surface-container-low text-on-surface-variant">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold">Nama</th>
-                <th className="text-left px-4 py-3 font-semibold">Alamat</th>
+                <th className="text-left px-4 py-3 font-semibold">Kota</th>
                 <th className="text-left px-4 py-3 font-semibold">Koordinat</th>
                 <th className="text-left px-4 py-3 font-semibold">Radius</th>
                 <th className="text-left px-4 py-3 font-semibold">Status</th>
@@ -98,24 +98,29 @@ export function OutletAdminTable() {
                   key={o.id}
                   className="border-t border-outline-variant hover:bg-surface-container-low"
                 >
-                  <td className="px-4 py-3 font-medium text-on-surface">
-                    {o.name}
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-on-surface">{o.name}</p>
+                    <p className="text-xs text-on-surface-variant truncate max-w-[180px]">
+                      {o.address}
+                    </p>
                   </td>
-                  <td className="px-4 py-3 text-on-surface-variant max-w-xs truncate">
-                    {o.address}
+                  <td className="px-4 py-3 text-on-surface-variant">
+                    <p>{o.city}</p>
+                    <p className="text-xs">{o.province}</p>
                   </td>
                   <td className="px-4 py-3 text-on-surface-variant">
                     {o.latitude != null && o.longitude != null ? (
                       <span className="inline-flex items-center gap-1 text-xs">
                         <MapPin className="w-3 h-3" />
-                        {o.latitude.toFixed(4)}, {o.longitude.toFixed(4)}
+                        {Number(o.latitude).toFixed(4)},{" "}
+                        {Number(o.longitude).toFixed(4)}
                       </span>
                     ) : (
                       <span className="text-xs text-error">Belum di-geocode</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-on-surface-variant">
-                    {o.max_service_km ? `${o.max_service_km} km` : "—"}
+                    {o.service_radius_km ? `${o.service_radius_km} km` : "—"}
                   </td>
                   <td className="px-4 py-3">
                     {o.is_active ? (

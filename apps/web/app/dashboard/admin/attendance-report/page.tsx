@@ -36,6 +36,7 @@ const statusOptions = [
   { value: "", label: "Semua Status" },
   { value: "on_time", label: "Tepat Waktu" },
   { value: "late", label: "Terlambat" },
+  { value: "absent", label: "Absen" },
 ];
 
 // Mock data untuk outlet & user (nanti ganti dengan API)
@@ -54,7 +55,7 @@ export default function AttendanceReportPage() {
   const [filters, setFilters] = useState({
     outletId: undefined as string | undefined,
     employeeId: undefined as string | undefined,
-    status: "" as "" | "on_time" | "late",
+    status: "" as "" | "on_time" | "late" | "absent",
     startDate: undefined as string | undefined,
     endDate: undefined as string | undefined,
     page: 1,
@@ -214,7 +215,7 @@ export default function AttendanceReportPage() {
                 onChange={(e) =>
                   setFilters((f) => ({
                     ...f,
-                    status: e.target.value as "" | "on_time" | "late",
+                    status: e.target.value as "" | "on_time" | "late" | "absent",
                     page: 1,
                   }))
                 }

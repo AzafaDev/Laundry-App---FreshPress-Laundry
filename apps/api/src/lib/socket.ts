@@ -2,6 +2,7 @@ import { Server as IOServer, Socket } from "socket.io";
 import { Server as HttpServer } from "http";
 import { env } from "../config/env.js";
 import { verifyAccessToken } from "../utils/jwt.util.js";
+import { prisma } from "./prisma.js";
 
 let io: IOServer | null = null;
 
@@ -34,6 +35,7 @@ export function initSocketServer(httpServer: HttpServer): IOServer {
       userId: string;
       role: string;
       email: string;
+      outletId?: string;
     };
 
     console.log(`[socket] connected: ${user.email} (${user.role})`);
@@ -43,6 +45,10 @@ export function initSocketServer(httpServer: HttpServer): IOServer {
     socket.join(`role:${user.role}`);
 
     socket.join(`online:${user.role}`);
+
+    if (user.role !== "customer" && user.outletId) {
+      socket.join(`outlet:${user.outletId}`);
+    }
 
     socket.on("disconnect", (reason) => {
       console.log(`[socket] disconnected: ${user.email} - ${reason}`);
@@ -59,6 +65,11 @@ export function getIO(): IOServer {
   return io;
 }
 
+export function emitToRoom(room: string, event: string, data: any) {
+  if (!io) return;
+  io.to(room).emit(event, data);
+}
+
 export function emitToUser(userId: string, event: string, data: any) {
   if (!io) return;
   io.to(`user:${userId}`).emit(event, data);
@@ -67,4 +78,26 @@ export function emitToUser(userId: string, event: string, data: any) {
 export function emitToRole(role: string, event: string, data: any) {
   if (!io) return;
   io.to(`role:${role}`).emit(event, data);
+}
+
+export async function emitStationNewOrder(orderId: string, newStatus: string) {
+  const STATION_STATUSES = ["washing", "ironing", "packing"];
+  if (!STATION_STATUSES.includes(newStatus)) return;
+
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: {
+      outlet_id: true,
+      customer: { select: { full_name: true } },
+    },
+  });
+
+  if (order?.outlet_id) {
+    emitToRoom(`outlet:${order.outlet_id}`, "station:new-order", {
+      orderId,
+      station: newStatus,
+      customerName: order.customer?.full_name,
+      timestamp: new Date(),
+    });
+  }
 }

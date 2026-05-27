@@ -8,12 +8,13 @@ import {
   getMyLogs,
   getCurrentShift,
 } from "../../controllers/driver-worker/attendance.controller.js";
+import { getAvailablePickups, getAvailableDeliveries, getActiveTask, claimTask, completeTask } from "../../controllers/driver-worker/driver.controller.js";
+import { getStationOrders, completeStation } from "../../controllers/driver-worker/worker.controller.js";
 
 const router = Router();
 
 router.use(authenticate);
 
-// ✅ Ganti requireRole('driver', 'worker') dengan tiga role worker spesifik
 router.post(
   "/attendance/check-in",
   requireRole("driver", "washing_worker", "ironing_worker", "packing_worker"),
@@ -38,6 +39,43 @@ router.get(
   "/attendance/current-shift",
   requireRole("driver", "washing_worker", "ironing_worker", "packing_worker"),
   getCurrentShift,
+);
+
+router.get(
+  "/driver/pickups/available",
+  requireRole("driver"),
+  getAvailablePickups,
+);
+router.get(
+  "/driver/deliveries/available",
+  requireRole("driver"),
+  getAvailableDeliveries,
+);
+router.get(
+  "/driver/tasks/active",
+  requireRole("driver"),
+  getActiveTask,
+);
+router.post(
+  "/driver/tasks/:taskId/claim",
+  requireRole("driver"),
+  claimTask,
+);
+router.patch(
+  "/driver/tasks/:taskId/complete",
+  requireRole("driver"),
+  completeTask,
+);
+
+router.get(
+  "/worker/station/:station",
+  requireRole("washing_worker", "ironing_worker", "packing_worker"),
+  getStationOrders,
+);
+router.patch(
+  "/worker/station/:station/orders/:orderId/complete",
+  requireRole("washing_worker", "ironing_worker", "packing_worker"),
+  completeStation,
 );
 
 export default router;

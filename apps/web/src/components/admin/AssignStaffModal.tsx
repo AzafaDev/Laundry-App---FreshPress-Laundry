@@ -1,10 +1,5 @@
 "use client";
 
-// Modal that opens from the outlet table's "Assign Staff" button.
-// Shows two sections:
-//   1. Users currently assigned to this outlet (with an unassign button).
-//   2. A searchable picker that lists candidate users (worker / driver /
-//      outlet_admin roles) and assigns them with one click.
 import { useState } from "react";
 import {
   X,
@@ -29,20 +24,32 @@ interface Props {
   onClose: () => void;
 }
 
-// Only these roles make sense as outlet staff.
-const ASSIGNABLE_ROLES: UserRole[] = ["outlet_admin", "worker", "driver"];
+// Roles that make sense as outlet staff (excludes super_admin)
+const ASSIGNABLE_ROLES: UserRole[] = [
+  "outlet_admin",
+  "washing_worker",
+  "ironing_worker",
+  "packing_worker",
+  "driver",
+];
+
+const ROLE_OPTIONS: Array<{ value: UserRole | "all"; label: string }> = [
+  { value: "all", label: "Semua role" },
+  { value: "outlet_admin", label: "Outlet Admin" },
+  { value: "washing_worker", label: "Washing Worker" },
+  { value: "ironing_worker", label: "Ironing Worker" },
+  { value: "packing_worker", label: "Packing Worker" },
+  { value: "driver", label: "Driver" },
+];
 
 export function AssignStaffModal({ outlet, onClose }: Props) {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [recentlyAssigned, setRecentlyAssigned] = useState<string | null>(null);
 
-  // Current assignments
   const { data: assigned = [], isLoading: assignedLoading } =
     useOutletAssignments(outlet.id);
 
-  // Candidate users — paginated list of all users; we filter on role + search
-  // client-side so the modal can show "already assigned" badges inline.
   const { data: usersPage } = useUsers({
     page: 1,
     limit: 50,
@@ -61,11 +68,10 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
       setRecentlyAssigned(userId);
       setTimeout(() => setRecentlyAssigned(null), 1500);
     } catch {
-      /* error surfaced via mutation state; could add a toast here */
+      /* handled via mutation state */
     }
   };
 
-  // Candidate list: only assignable roles, exclude already-assigned users.
   const candidates = (usersPage?.items ?? []).filter(
     (u) =>
       ASSIGNABLE_ROLES.includes(u.role) &&
@@ -96,7 +102,7 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
         </div>
 
         <div className="p-6 space-y-6 overflow-y-auto">
-          {/* Section 1: currently assigned */}
+          {/* Current assignments */}
           <section>
             <h4 className="text-sm font-bold text-on-surface mb-3">
               Staff Saat Ini ({assigned.length})
@@ -125,13 +131,20 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
                           {u.full_name}
                         </p>
                         <p className="text-xs text-on-surface-variant truncate">
-                          {u.email} · <span className="capitalize">{u.role.replace("_", " ")}</span>
+                          {u.email} ·{" "}
+                          <span className="capitalize">
+                            {u.role.replace(/_/g, " ")}
+                          </span>
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={() => {
-                        if (confirm(`Unassign ${u.full_name} dari ${outlet.name}?`)) {
+                        if (
+                          confirm(
+                            `Unassign ${u.full_name} dari ${outlet.name}?`,
+                          )
+                        ) {
                           unassign.mutate(u.id);
                         }
                       }}
@@ -147,7 +160,7 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
             )}
           </section>
 
-          {/* Section 2: add new */}
+          {/* Add new staff */}
           <section>
             <h4 className="text-sm font-bold text-on-surface mb-3">
               Tambah Staff
@@ -170,17 +183,17 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
                 }
                 className="px-3 py-2.5 bg-surface border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
               >
-                <option value="all">Semua role</option>
-                <option value="outlet_admin">Outlet Admin</option>
-                <option value="worker">Worker</option>
-                <option value="driver">Driver</option>
+                {ROLE_OPTIONS.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
               </select>
             </div>
 
             {candidates.length === 0 ? (
               <p className="text-sm text-on-surface-variant px-3 py-2 bg-surface-container-low rounded-md">
-                Tidak ada kandidat user yang cocok. Coba ubah pencarian atau
-                role filter.
+                Tidak ada kandidat yang cocok.
               </p>
             ) : (
               <ul className="space-y-2 max-h-72 overflow-y-auto">
@@ -202,7 +215,7 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
                           <p className="text-xs text-on-surface-variant truncate">
                             {u.email} ·{" "}
                             <span className="capitalize">
-                              {u.role.replace("_", " ")}
+                              {u.role.replace(/_/g, " ")}
                             </span>
                           </p>
                         </div>

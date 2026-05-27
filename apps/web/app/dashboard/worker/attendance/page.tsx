@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { useQuery } from "@tanstack/react-query";
 import {
   Home,
   CalendarDays,
@@ -22,11 +21,14 @@ import { useAttendance } from "@/hooks/useAttendance";
 import { toLogRecord } from "@/utils/formatDate";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
-import { attendanceService } from "@/services/attendance.service";
 
 export default function WorkerAttendancePage() {
+  const { _hasHydrated, user } = useEmployeeAuthStore();
+  if (!_hasHydrated) {
+    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
+  }
+
   const att = useAttendance();
-  const { user } = useEmployeeAuthStore();
   const { latitude, longitude, permissionDenied } = useGeolocation();
 
   const locationStatus =
@@ -36,20 +38,7 @@ export default function WorkerAttendancePage() {
       ? "available"
       : "checking";
 
-  const { data: recentLogs, isLoading: recentLoading } = useQuery({
-    queryKey: ["attendance", "recent", "worker"],
-    queryFn: () => attendanceService.getMyLogs({ page: 1, limit: 5 }),
-    staleTime: 1000 * 60 * 2,
-    refetchOnWindowFocus: true,
-  });
-
-  const { refetch: refetchLogs } = useQuery({
-    queryKey: ["attendance", "logs"],
-    queryFn: () => att.fetchNextLogs(1),
-    enabled: !!att.fetchNextLogs,
-  });
-
-  const recentRecords = (recentLogs?.data ?? []).map(toLogRecord);
+  const recentRecords = att.records.slice(0, 5).map(toLogRecord);
 
   const handleCheckIn = async () => {
     if (locationStatus !== "available") {
@@ -59,7 +48,6 @@ export default function WorkerAttendancePage() {
     try {
       await att.checkInAsync();
       att.refetch();
-      refetchLogs();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || "Gagal check-in");
@@ -74,7 +62,6 @@ export default function WorkerAttendancePage() {
     try {
       await att.checkOutAsync(att.attendanceId);
       att.refetch();
-      refetchLogs();
     } catch (error: unknown) {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error(err.response?.data?.message || "Gagal check-out");
@@ -82,7 +69,7 @@ export default function WorkerAttendancePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24 lg:pb-0">
+    <div key={user?.id} className="min-h-screen bg-background pb-24 lg:pb-0">
       <WorkerSidebar />
       <WorkerTopBar />
       <main className="lg:pl-72 p-4 md:p-8">
@@ -157,6 +144,8 @@ export default function WorkerAttendancePage() {
             onCheckOut={handleCheckOut}
             loading={att.isCheckingIn || att.isCheckingOut}
             error={att.error}
+            canCheckIn={att.currentShift?.canCheckIn ?? false}
+            canCheckOut={att.currentShift?.canCheckOut ?? false}
           />
 
           {/* Riwayat Absensi */}
@@ -168,7 +157,7 @@ export default function WorkerAttendancePage() {
             <AttendanceSummary
               records={recentRecords}
               viewAllHref="/dashboard/worker/history"
-              isLoading={recentLoading || att.isLoading}
+              isLoading={att.isLoading}
             />
           </section>
         </div>

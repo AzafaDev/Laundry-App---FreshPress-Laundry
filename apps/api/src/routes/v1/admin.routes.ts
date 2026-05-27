@@ -7,6 +7,7 @@ import { validate } from "../../middlewares/validate.middleware.js";
 import { getAttendanceReport, exportAttendanceReport } from "../../controllers/admin/report.controller.js";
 import * as UserCtrl from "../../controllers/admin/user.controller.js";
 import * as OutletCtrl from "../../controllers/admin/outlet.controller.js";
+import * as ShiftCtrl from "../../controllers/admin/shift.controller.js";
 import {
   createUserSchema,
   updateUserSchema,
@@ -16,6 +17,11 @@ import {
   updateOutletSchema,
   assignUserToOutletSchema,
 } from "../../validations/outlet.validation.js";
+import {
+  createWorkShiftSchema,
+  updateWorkShiftSchema,
+  assignEmployeeShiftSchema,
+} from "../../validations/shift.validation.js";
 
 const router = Router();
 
@@ -34,7 +40,7 @@ router.get(
   exportAttendanceReport,
 );
 
-// Users (super_admin only)
+// ── Users (super_admin only) ──────────────────────────────────────────────────
 router.get("/admin/users", requireRole("super_admin"), UserCtrl.listUsers);
 router.get("/admin/users/:id", requireRole("super_admin"), UserCtrl.getUser);
 router.post(
@@ -55,7 +61,25 @@ router.delete(
   UserCtrl.deleteUser,
 );
 
-// Outlets (super_admin only)
+// Employee shift assignments (super_admin only)
+router.get(
+  "/admin/employees/:id/shifts",
+  requireRole("super_admin"),
+  ShiftCtrl.listEmployeeShifts,
+);
+router.post(
+  "/admin/employees/:id/shifts",
+  requireRole("super_admin"),
+  validate(assignEmployeeShiftSchema),
+  ShiftCtrl.assignEmployeeShift,
+);
+router.delete(
+  "/admin/employees/:id/shifts/:shiftRecordId",
+  requireRole("super_admin"),
+  ShiftCtrl.removeEmployeeShift,
+);
+
+// ── Outlets (super_admin only) ────────────────────────────────────────────────
 router.get(
   "/admin/outlets",
   requireRole("super_admin"),
@@ -103,6 +127,35 @@ router.post(
   requireRole("super_admin"),
   validate(assignUserToOutletSchema),
   OutletCtrl.assignUserToOutlet,
+);
+
+// ── WorkShifts (super_admin only) ─────────────────────────────────────────────
+router.get(
+  "/admin/shifts",
+  requireRole("super_admin", "outlet_admin"),
+  ShiftCtrl.listWorkShifts,
+);
+router.get(
+  "/admin/shifts/:id",
+  requireRole("super_admin", "outlet_admin"),
+  ShiftCtrl.getWorkShift,
+);
+router.post(
+  "/admin/shifts",
+  requireRole("super_admin"),
+  validate(createWorkShiftSchema),
+  ShiftCtrl.createWorkShift,
+);
+router.patch(
+  "/admin/shifts/:id",
+  requireRole("super_admin"),
+  validate(updateWorkShiftSchema),
+  ShiftCtrl.updateWorkShift,
+);
+router.delete(
+  "/admin/shifts/:id",
+  requireRole("super_admin"),
+  ShiftCtrl.deleteWorkShift,
 );
 
 export default router;

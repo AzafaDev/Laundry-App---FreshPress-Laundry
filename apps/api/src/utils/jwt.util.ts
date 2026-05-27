@@ -5,6 +5,7 @@ export type TokenPayload = {
   userId: string;
   role: string;
   email: string;
+  outletId?: string | null;
 };
 
 export const signAccessToken = (payload: TokenPayload): string => {

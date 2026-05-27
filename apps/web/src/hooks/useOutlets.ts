@@ -29,10 +29,6 @@ export const useOutlet = (id: string | undefined) =>
     enabled: !!id,
   });
 
-/**
- * Create outlet with optimistic UI — the new outlet is appended to every cached
- * list page until the server response confirms (or rolls back) the change.
- */
 export const useCreateOutlet = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -47,9 +43,14 @@ export const useCreateOutlet = () => {
         id: tempId,
         name: payload.name,
         address: payload.address,
+        province: payload.province,
+        city: payload.city,
+        district: payload.district,
+        postal_code: payload.postal_code,
+        phone: payload.phone,
         latitude: payload.latitude ?? null,
         longitude: payload.longitude ?? null,
-        max_service_km: payload.max_service_km,
+        service_radius_km: payload.service_radius_km,
         is_active: payload.is_active ?? true,
         created_at: new Date().toISOString(),
       };
@@ -100,8 +101,6 @@ export const useAssignUserToOutlet = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: OUTLETS_KEY }),
   });
 };
-
-// ── Outlet assignments (staff list per outlet) ───────────────────────────────
 
 export const useOutletAssignments = (outletId: string | null) =>
   useQuery<AssignedUser[]>({

@@ -1,10 +1,10 @@
 "use client";
 
 import { Bell, Menu } from "lucide-react";
-import { useAuthStore } from "@/stores/authStore";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
 export function AdminTopBar({ onToggleSidebar }: { onToggleSidebar?: () => void }) {
-  const user = useAuthStore((s) => s.user);
+  const user = useEmployeeAuthStore((s) => s.user);
 
   return (
     <header className="sticky top-0 z-30 flex justify-between items-center w-full px-4 md:px-8 h-16 bg-surface border-b border-outline-variant lg:pl-[304px]">

@@ -8,19 +8,18 @@ import {
   Store,
   Receipt,
   BarChart3,
+  Clock,
   Settings,
   LogOut,
   Shirt,
   type LucideIcon,
 } from "lucide-react";
-import { useAuthStore } from "@/stores/authStore";
-import { useAuth } from "@/hooks/useAuth";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
 interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
-  // Roles that may see this menu entry.
   roles: Array<"super_admin" | "outlet_admin">;
 }
 
@@ -35,13 +34,19 @@ const NAV: NavItem[] = [
     href: "/dashboard/admin/users",
     label: "Users",
     icon: Users,
-    roles: ["super_admin"], // super_admin only — outlet admins can't manage users
+    roles: ["super_admin"],
   },
   {
     href: "/dashboard/admin/outlets",
     label: "Outlets",
     icon: Store,
     roles: ["super_admin", "outlet_admin"],
+  },
+  {
+    href: "/dashboard/admin/shifts",
+    label: "Work Shifts",
+    icon: Clock,
+    roles: ["super_admin"],
   },
   {
     href: "/dashboard/admin/orders",
@@ -65,11 +70,9 @@ const NAV: NavItem[] = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
-  const user = useAuthStore((s) => s.user);
-  const { logout } = useAuth();
+  const { user, clearAuth } = useEmployeeAuthStore();
 
-  const role = user?.role;
-  // Only show admin nav to admin roles. Other roles see a stripped-down rail.
+  const role = user?.role as "super_admin" | "outlet_admin" | undefined;
   const items = NAV.filter((n) =>
     role && (role === "super_admin" || role === "outlet_admin")
       ? n.roles.includes(role)
@@ -96,7 +99,7 @@ export function AdminSidebar() {
             {user?.full_name ?? "Admin"}
           </span>
           <span className="text-xs text-on-surface-variant truncate capitalize">
-            {role?.replace("_", " ") ?? "—"}
+            {role?.replace(/_/g, " ") ?? "—"}
           </span>
         </div>
       </div>
@@ -136,7 +139,7 @@ export function AdminSidebar() {
           Settings
         </button>
         <button
-          onClick={logout}
+          onClick={clearAuth}
           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-error hover:bg-error-container/30 rounded-lg transition-colors"
         >
           <LogOut className="w-5 h-5" />
