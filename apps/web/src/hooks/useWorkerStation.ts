@@ -3,8 +3,6 @@ import { workerStationService, type StationType, type StationOrder } from "@/ser
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import toast from "react-hot-toast";
 
-type WorkerRole = "washing_worker" | "ironing_worker" | "packing_worker";
-
 function mapRoleToStation(role: string | undefined): StationType | null {
   switch (role) {
     case "washing_worker":
@@ -38,10 +36,6 @@ export function useWorkerStation() {
     onSuccess: (data, variables) => {
       toast.success(`Order ${variables.orderId} selesai di station ${variables.stationType}`);
       queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
-    },
-    onError: (error: any) => {
-      const message = error?.response?.data?.message || "Gagal menyelesaikan station.";
-      toast.error(message);
     },
   });
 

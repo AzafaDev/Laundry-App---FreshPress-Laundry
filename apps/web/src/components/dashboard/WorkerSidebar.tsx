@@ -24,7 +24,6 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/worker", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/worker/station", label: "Station", icon: ClipboardList },
-  { href: "/dashboard/worker/packing", label: "Packing", icon: Package },
   { href: "/dashboard/worker/attendance", label: "Attendance", icon: Clock },
   { href: "/dashboard/worker/history", label: "Riwayat", icon: BarChart3 },
 ];
