@@ -1,18 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useWorkerStation } from "@/hooks/useWorkerStation";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { WorkerSidebar } from "@/components/dashboard/WorkerSidebar";
 import { WorkerTopBar } from "@/components/dashboard/WorkerTopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { Loader2, Package, Shirt, Ironing, CheckCircle } from "lucide-react";
+import { Loader2, Package, Shirt, Wheat, CheckCircle } from "lucide-react";
 import { StationModal } from "@/components/worker/StationModal";
+import { useSocket } from "@/hooks/useSocket";
+import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
 const stationLabels = {
   washing: { title: "Stasiun Cuci", icon: Shirt, color: "primary" },
-  ironing: { title: "Stasiun Setrika", icon: Ironing, color: "secondary" },
+  ironing: { title: "Stasiun Setrika", icon: Wheat, color: "secondary" },
   packing: { title: "Stasiun Packing", icon: Package, color: "tertiary" },
 };
 
@@ -27,6 +29,21 @@ export default function WorkerStationPage() {
   else if (user?.role === "packing_worker") station = "packing";
 
   const { stationOrders, isLoading, completeStation, isCompleting, refetch } = useWorkerStation();
+  const { on } = useSocket();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!station) return;
+    const unsubNewOrder = on("station:new-order", (data: { station: string }) => {
+      if (data.station === station) {
+        toast.success(`Order baru masuk ke ${station} station`);
+        queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
+      }
+    });
+    return () => {
+      unsubNewOrder();
+    };
+  }, [on, queryClient, station]);
 
   if (_hasHydrated && !station) {
     return (

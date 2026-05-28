@@ -14,7 +14,7 @@ import {
   getShiftForDateTime,
   hasActiveDriverTask,
 } from "./attendanceHelper.js";
-import { Prisma, OrderStatus } from "../../generated/prisma/client.js";
+import { Prisma, OrderStatus } from "../../../generated/prisma/client.js";
 
 const DRIVER_TASK_DETAIL_SELECT = {
   id: true,

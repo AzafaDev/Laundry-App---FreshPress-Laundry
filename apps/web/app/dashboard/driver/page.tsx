@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -20,6 +21,9 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useDriverTasks } from "@/hooks/useDriverTasks";
+import { useSocket } from "@/hooks/useSocket";
+import { useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import type { DriverTask } from "@/services/driverTask.service";
 
 function TaskTypeIcon({ type }: { type: "pickup" | "delivery" }) {
@@ -150,6 +154,33 @@ export default function DriverDashboardPage() {
     completeTask,
     isCompleting,
   } = useDriverTasks();
+
+  const { on } = useSocket();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const unsubClaimed = on("driver:task-claimed", () => {
+      toast("Ada task baru yang tersedia", { icon: "🔄" });
+      queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-pickups"] });
+      queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-deliveries"] });
+    });
+
+    const unsubCompleted = on("driver:task-completed", () => {
+      queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "active"] });
+      queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-pickups"] });
+      queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-deliveries"] });
+    });
+
+    const unsubOrderUpdate = on("order:status-updated", (data: { orderId: string; status: string }) => {
+      toast.success(`Order ${data.orderId} status: ${data.status}`);
+    });
+
+    return () => {
+      unsubClaimed();
+      unsubCompleted();
+      unsubOrderUpdate();
+    };
+  }, [on, queryClient]);
 
   if (!_hasHydrated) {
     return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;

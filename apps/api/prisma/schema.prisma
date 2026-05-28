@@ -86,18 +86,18 @@ enum VerificationType {
 // ─────────────────────────────────────────
 
 model Customer {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  full_name    String    @db.VarChar(100)
-  email        String    @unique @db.VarChar(255)
-  password_hash String?  @db.VarChar(255)
-  phone        String?   @db.VarChar(20)
-  avatar_url   String?   @db.VarChar(500)
-  is_verified  Boolean   @default(false)
-  is_active    Boolean   @default(true)
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  full_name     String    @db.VarChar(100)
+  email         String    @unique @db.VarChar(255)
+  password_hash String?   @db.VarChar(255)
+  phone         String?   @db.VarChar(20)
+  avatar_url    String?   @db.VarChar(500)
+  is_verified   Boolean   @default(false)
+  is_active     Boolean   @default(true)
   last_login_at DateTime? @db.Timestamptz
-  deleted_at   DateTime? @db.Timestamptz
-  created_at   DateTime  @default(now()) @db.Timestamptz
-  updated_at   DateTime  @default(now()) @updatedAt @db.Timestamptz
+  deleted_at    DateTime? @db.Timestamptz
+  created_at    DateTime  @default(now()) @db.Timestamptz
+  updated_at    DateTime  @default(now()) @updatedAt @db.Timestamptz
 
   // Relations
   social_accounts SocialAccount[]
@@ -182,16 +182,16 @@ model Employee {
   updated_at    DateTime     @default(now()) @updatedAt @db.Timestamptz
 
   // Relations
-  outlet                 Outlet?         @relation(fields: [outlet_id], references: [id])
-  shifts                 EmployeeShift[]
-  process_logs            ProcessLog[]
+  outlet                   Outlet?         @relation(fields: [outlet_id], references: [id])
+  shifts                   EmployeeShift[]
+  process_logs             ProcessLog[]
   bypass_requests_made     BypassRequest[] @relation("BypassRequestedBy")
   bypass_requests_reviewed BypassRequest[] @relation("BypassReviewedBy")
-  driver_tasks            DriverTask[]
-  complaints             Complaint[]
-  attendances            Attendance[]
-  orders_created          Order[]
-  notifications          Notification[]
+  driver_tasks             DriverTask[]
+  complaints               Complaint[]
+  attendances              Attendance[]
+  orders_created           Order[]
+  notifications            Notification[]
 
   @@index([email])
   @@index([role])
@@ -225,10 +225,10 @@ model Outlet {
   updated_at        DateTime  @default(now()) @updatedAt @db.Timestamptz
 
   // Relations
-  employees      Employee[]
+  employees       Employee[]
   employee_shifts EmployeeShift[]
-  orders         Order[]
-  attendances    Attendance[]
+  orders          Order[]
+  attendances     Attendance[]
 
   @@index([latitude, longitude])
   @@index([is_active])
@@ -256,14 +256,14 @@ model WorkShift {
 }
 
 model EmployeeShift {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  employee_id String  @db.Uuid
-  shift_id   String   @db.Uuid
-  outlet_id  String   @db.Uuid
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employee_id String   @db.Uuid
+  shift_id    String   @db.Uuid
+  outlet_id   String   @db.Uuid
   day_of_week Int
-  is_active  Boolean  @default(true)
-  created_at DateTime @default(now()) @db.Timestamptz
-  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamptz
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz
 
   // Relations
   employee Employee  @relation(fields: [employee_id], references: [id])
@@ -333,35 +333,35 @@ model LaundryItem {
 // ─────────────────────────────────────────
 
 model Order {
-  id                        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  invoice_number            String      @unique @db.VarChar(50)
-  customer_id               String      @db.Uuid
-  outlet_id                 String      @db.Uuid
-  pickup_address_id         String      @db.Uuid
-  status                    OrderStatus @default(waiting_pickup_driver)
-  pickup_schedule           DateTime    @db.Timestamptz
-  total_weight_kg           Decimal?    @db.Decimal(6, 2)
-  total_price               Decimal?    @db.Decimal(12, 2)
-  notes                     String?
-  payment_deadline          DateTime?   @db.Timestamptz
-  auto_confirm_at           DateTime?   @db.Timestamptz
-  created_by_outlet_admin_id String?    @db.Uuid
-  deleted_at                DateTime?   @db.Timestamptz
-  created_at                DateTime    @default(now()) @db.Timestamptz
-  updated_at                DateTime    @default(now()) @updatedAt @db.Timestamptz
+  id                         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoice_number             String      @unique @db.VarChar(50)
+  customer_id                String      @db.Uuid
+  outlet_id                  String      @db.Uuid
+  pickup_address_id          String      @db.Uuid
+  status                     OrderStatus @default(waiting_pickup_driver)
+  pickup_schedule            DateTime    @db.Timestamptz
+  total_weight_kg            Decimal?    @db.Decimal(6, 2)
+  total_price                Decimal?    @db.Decimal(12, 2)
+  notes                      String?
+  payment_deadline           DateTime?   @db.Timestamptz
+  auto_confirm_at            DateTime?   @db.Timestamptz
+  created_by_outlet_admin_id String?     @db.Uuid
+  deleted_at                 DateTime?   @db.Timestamptz
+  created_at                 DateTime    @default(now()) @db.Timestamptz
+  updated_at                 DateTime    @default(now()) @updatedAt @db.Timestamptz
 
   // Relations
-  customer        Customer             @relation(fields: [customer_id], references: [id])
-  outlet          Outlet               @relation(fields: [outlet_id], references: [id])
-  pickup_address  CustomerAddress      @relation(fields: [pickup_address_id], references: [id])
+  customer         Customer             @relation(fields: [customer_id], references: [id])
+  outlet           Outlet               @relation(fields: [outlet_id], references: [id])
+  pickup_address   CustomerAddress      @relation(fields: [pickup_address_id], references: [id])
   created_by_admin Employee?            @relation(fields: [created_by_outlet_admin_id], references: [id])
   order_items      OrderItem[]
   status_histories OrderStatusHistory[]
   process_logs     ProcessLog[]
   bypass_requests  BypassRequest[]
   driver_tasks     DriverTask[]
-  payment         Payment?
-  complaints      Complaint[]
+  payment          Payment?
+  complaints       Complaint[]
 
   @@index([invoice_number])
   @@index([customer_id])
@@ -382,7 +382,7 @@ model OrderItem {
   created_at      DateTime @default(now()) @db.Timestamptz
 
   // Relations
-  order       Order       @relation(fields: [order_id], references: [id])
+  order        Order       @relation(fields: [order_id], references: [id])
   laundry_item LaundryItem @relation(fields: [laundry_item_id], references: [id])
 
   @@index([order_id])
@@ -430,8 +430,8 @@ model ProcessLog {
   created_at        DateTime    @default(now()) @db.Timestamptz
 
   // Relations
-  order         Order          @relation(fields: [order_id], references: [id])
-  employee      Employee       @relation(fields: [employee_id], references: [id])
+  order          Order          @relation(fields: [order_id], references: [id])
+  employee       Employee       @relation(fields: [employee_id], references: [id])
   bypass_request BypassRequest? @relation(fields: [bypass_request_id], references: [id])
 
   @@unique([order_id, station])
@@ -447,24 +447,24 @@ model ProcessLog {
 // ─────────────────────────────────────────
 
 model BypassRequest {
-  id                      String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  order_id                String        @db.Uuid
+  id                      String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id                String       @db.Uuid
   station                 StationType
-  requested_by            String        @db.Uuid
+  requested_by            String       @db.Uuid
   expected_items          Json
   actual_items            Json
   discrepancy_description String
   photo_evidence          String[]
-  status                  BypassStatus  @default(pending)
-  reviewed_by             String?       @db.Uuid
+  status                  BypassStatus @default(pending)
+  reviewed_by             String?      @db.Uuid
   admin_notes             String?
-  resolved_at             DateTime?     @db.Timestamptz
-  created_at              DateTime      @default(now()) @db.Timestamptz
+  resolved_at             DateTime?    @db.Timestamptz
+  created_at              DateTime     @default(now()) @db.Timestamptz
 
   // Relations
-  order       Order        @relation(fields: [order_id], references: [id])
-  requester   Employee     @relation("BypassRequestedBy", fields: [requested_by], references: [id])
-  reviewer    Employee?    @relation("BypassReviewedBy", fields: [reviewed_by], references: [id])
+  order        Order        @relation(fields: [order_id], references: [id])
+  requester    Employee     @relation("BypassRequestedBy", fields: [requested_by], references: [id])
+  reviewer     Employee?    @relation("BypassReviewedBy", fields: [reviewed_by], references: [id])
   process_logs ProcessLog[]
 
   @@index([order_id])
@@ -535,21 +535,21 @@ model Payment {
 // ─────────────────────────────────────────
 
 model Attendance {
-  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  employee_id        String    @db.Uuid
-  outlet_id          String    @db.Uuid
-  date               DateTime  @db.Date
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employee_id         String    @db.Uuid
+  outlet_id           String    @db.Uuid
+  date                DateTime  @db.Date
   check_in_time       DateTime? @db.Timestamptz
   check_in_latitude   Decimal?  @db.Decimal(10, 8)
   check_in_longitude  Decimal?  @db.Decimal(11, 8)
   check_out_time      DateTime? @db.Timestamptz
   check_out_latitude  Decimal?  @db.Decimal(10, 8)
   check_out_longitude Decimal?  @db.Decimal(11, 8)
-  notes              String?
-  is_late            Boolean?
-  status             String?   @db.VarChar(20)
-  created_at         DateTime  @default(now()) @db.Timestamptz
-  updated_at         DateTime  @default(now()) @updatedAt @db.Timestamptz
+  notes               String?
+  is_late             Boolean?
+  status              String?   @db.VarChar(20)
+  created_at          DateTime  @default(now()) @db.Timestamptz
+  updated_at          DateTime  @default(now()) @updatedAt @db.Timestamptz
 
   // Relations
   employee Employee @relation(fields: [employee_id], references: [id])
