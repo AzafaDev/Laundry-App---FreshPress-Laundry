@@ -22,6 +22,11 @@ export interface DriverTask {
       latitude: number;
       longitude: number;
     };
+    delivery_address?: {
+      address: string;
+      latitude: number;
+      longitude: number;
+    };
     customer: {
       full_name: string;
       phone: string;

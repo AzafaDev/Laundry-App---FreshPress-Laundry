@@ -1,170 +1,195 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   ClipboardList,
-  ListFilter,
-  Map,
   MapPin,
   Navigation,
-  Star,
-  QrCode,
   User,
   Clock,
   CalendarDays,
+  Truck,
+  ShoppingBag,
+  Loader2,
 } from "lucide-react";
-import { BottomNav } from "@/components/layout/BottomNav";
 import { DriverSidebar } from "@/components/dashboard/DriverSidebar";
-import { useAuthStore } from "@/stores/authStore";
-import { useAttendance } from "@/hooks/useAttendance";
-import { motion } from "framer-motion";
 import { DriverTopBar } from "@/components/dashboard/DriverTopBar";
+import { BottomNav } from "@/components/layout/BottomNav";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { useAttendance } from "@/hooks/useAttendance";
+import { useDriverTasks } from "@/hooks/useDriverTasks";
+import type { DriverTask } from "@/services/driverTask.service";
 
-interface TaskCardProps {
-  orderId: string;
-  customer: string;
-  address: string;
-  type: "pickup" | "delivery";
-  time: string;
-  status: "assigned" | "on_way" | "completed";
-  statusColor: string;
+function TaskTypeIcon({ type }: { type: "pickup" | "delivery" }) {
+  const Icon = type === "pickup" ? ShoppingBag : Truck;
+  const bgColor = type === "pickup" ? "bg-tertiary/10" : "bg-primary/10";
+  const textColor = type === "pickup" ? "text-tertiary" : "text-primary";
+  return (
+    <div className={`p-2 rounded-full ${bgColor} ${textColor}`}>
+      <Icon className="w-5 h-5" />
+    </div>
+  );
 }
 
-function TaskCard({
-  orderId,
-  customer,
-  address,
-  type,
-  time,
-  status,
-  statusColor,
-}: TaskCardProps) {
-  const TypeIcon = type === "delivery" ? "Truck" : "ShoppingBag";
-  // Note: karena kita pakai lucide-react, import dinamis tidak perlu, tapi kita gunakan komponen langsung
-  // Saya akan import di atas, untuk efisiensi kita asumsikan sudah import Truck dan ShoppingBag
-  // Tapi di sini kita tetap gunakan string, nanti sesuaikan
-
-  // Lebih baik kita buat mapping
-  const IconComponent =
-    type === "delivery"
-      ? require("lucide-react").Truck
-      : require("lucide-react").ShoppingBag;
-  const typeColor =
-    type === "delivery"
-      ? "bg-primary/10 text-primary"
-      : "bg-tertiary/10 text-tertiary";
+function AvailableTaskCard({
+  task,
+  onClaim,
+  isClaiming,
+}: {
+  task: DriverTask;
+  onClaim: (id: string) => void;
+  isClaiming: boolean;
+}) {
+  const order = task.order;
+  const address =
+    task.task_type === "pickup"
+      ? order?.pickup_address?.address
+      : order?.delivery_address?.address || order?.pickup_address?.address;
+  const customerName = order?.customer?.full_name ?? "Customer";
+  const taskTypeLabel = task.task_type === "pickup" ? "Pickup" : "Delivery";
 
   return (
-    <div className="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow group">
-      <div className="p-4 space-y-4">
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-xs text-outline uppercase tracking-wider">
-              Order ID
-            </span>
-            <p className="text-base font-bold">{orderId}</p>
-          </div>
-          <div
-            className={`px-2 py-1 rounded-lg text-xs font-bold ${statusColor}`}
-          >
-            {status === "on_way"
-              ? "On The Way"
-              : status === "assigned"
-                ? "Assigned"
-                : "Completed"}
-          </div>
+    <div className="bg-surface border border-outline-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-all">
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex items-center gap-2">
+          <TaskTypeIcon type={task.task_type} />
+          <span className="text-xs font-bold uppercase text-on-surface-variant">
+            {taskTypeLabel}
+          </span>
         </div>
-
-        <div className="flex items-center gap-4 p-2 bg-surface-container-low rounded-lg">
-          <div className={`${typeColor} p-2 rounded-full`}>
-            <IconComponent className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-sm font-bold">
-              {type === "delivery" ? "Delivery" : "Pickup"}
-            </p>
-            <p className="text-base text-on-surface-variant">{time}</p>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex items-start gap-2">
-            <MapPin className="w-5 h-5 text-outline mt-0.5" />
-            <p className="text-base text-on-surface">{address}</p>
-          </div>
-        </div>
+        <span className="text-xs text-outline">#{order?.invoice_number?.slice(0, 8)}</span>
       </div>
+      <h3 className="text-lg font-bold text-on-surface mb-1">{customerName}</h3>
+      <div className="flex items-start gap-2 text-sm text-on-surface-variant mb-4">
+        <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+        <span>{address || "Alamat tidak tersedia"}</span>
+      </div>
+      <button
+        onClick={() => onClaim(task.id)}
+        disabled={isClaiming}
+        className="w-full py-2.5 bg-primary text-on-primary rounded-lg font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {isClaiming ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Claim Task"}
+      </button>
+    </div>
+  );
+}
 
-      <div className="px-4 py-2 bg-surface-container-lowest border-t border-outline-variant flex gap-2">
-        <button className="flex-1 py-2 rounded-lg text-sm font-bold bg-primary text-on-primary hover:opacity-90 transition-all">
-          {status === "on_way" ? "Complete Task" : "Start Pickup"}
-        </button>
-        <button className="px-2 py-2 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors">
-          <Navigation className="w-5 h-5" />
+function ActiveTaskCard({ task, onComplete, isCompleting }: { task: DriverTask; onComplete: () => void; isCompleting: boolean }) {
+  const order = task.order;
+  const address =
+    task.task_type === "pickup"
+      ? order?.pickup_address?.address
+      : order?.delivery_address?.address || order?.pickup_address?.address;
+  const customerName = order?.customer?.full_name ?? "Customer";
+  const taskTypeLabel = task.task_type === "pickup" ? "Pickup" : "Delivery";
+
+  return (
+    <div className="bg-primary-container/10 border-2 border-primary/30 rounded-xl p-5 shadow-md">
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex items-center gap-2">
+          <TaskTypeIcon type={task.task_type} />
+          <span className="text-xs font-bold uppercase text-primary">Active Task</span>
+        </div>
+        <span className="text-xs text-outline">#{order?.invoice_number?.slice(0, 8)}</span>
+      </div>
+      <h3 className="text-xl font-bold text-on-surface mb-1">{customerName}</h3>
+      <div className="flex items-start gap-2 text-sm text-on-surface-variant mb-4">
+        <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+        <span>{address || "Alamat tidak tersedia"}</span>
+      </div>
+      <div className="flex gap-3">
+        <Link
+          href={`/dashboard/driver/task-detail?taskId=${task.id}`}
+          className="flex-1 py-2.5 bg-primary text-on-primary rounded-lg font-semibold text-sm text-center hover:opacity-90 transition-all"
+        >
+          Go to Task Detail
+        </Link>
+        <button
+          onClick={onComplete}
+          disabled={isCompleting}
+          className="flex-1 py-2.5 border-2 border-primary text-primary rounded-lg font-semibold text-sm hover:bg-primary/10 transition-all disabled:opacity-60"
+        >
+          {isCompleting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Complete"}
         </button>
       </div>
     </div>
   );
 }
 
+function TaskSkeleton() {
+  return (
+    <div className="bg-surface border border-outline-variant rounded-xl p-4 animate-pulse">
+      <div className="flex justify-between mb-3">
+        <div className="w-20 h-6 bg-outline-variant rounded-full" />
+        <div className="w-16 h-4 bg-outline-variant rounded" />
+      </div>
+      <div className="h-6 bg-outline-variant rounded w-3/4 mb-2" />
+      <div className="h-4 bg-outline-variant rounded w-full mb-4" />
+      <div className="h-10 bg-outline-variant rounded-lg w-full" />
+    </div>
+  );
+}
+
 export default function DriverDashboardPage() {
-  const { _hasHydrated, user } = useAuthStore();
+  const router = useRouter();
+  const { user, _hasHydrated } = useEmployeeAuthStore();
+  const { currentShift, checkedIn, checkInTime } = useAttendance();
+  const {
+    activeTask,
+    hasActiveTask,
+    availablePickups,
+    availableDeliveries,
+    isLoadingActive,
+    isLoadingPickups,
+    isLoadingDeliveries,
+    claimTask,
+    isClaiming,
+    completeTask,
+    isCompleting,
+  } = useDriverTasks();
+
   if (!_hasHydrated) {
     return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
   }
-  const { currentShift, checkedIn, checkInTime } = useAttendance();
 
-  const tasks: TaskCardProps[] = [
-    {
-      orderId: "#FP-8291",
-      customer: "Eleanor Thompson",
-      address: "428 Corporate Plaza, Suite 102, Tech District",
-      type: "delivery",
-      time: "15:00 - 17:00 Today",
-      status: "on_way",
-      statusColor: "bg-secondary-container text-on-secondary-container",
-    },
-    {
-      orderId: "#FP-8304",
-      customer: "James Wilson",
-      address: "89 Riverside Drive, Apt 4B, East Side",
-      type: "pickup",
-      time: "17:30 - 18:30 Today",
-      status: "assigned",
-      statusColor: "bg-surface-container-highest text-on-surface-variant",
-    },
-    {
-      orderId: "#FP-8311",
-      customer: "Sarah Mitchell",
-      address: "12 Oakwood Terrace, North Hills",
-      type: "delivery",
-      time: "09:00 - 11:00 Tomorrow",
-      status: "assigned",
-      statusColor: "bg-surface-container-highest text-on-surface-variant",
-    },
-  ];
+  const handleClaim = (taskId: string) => {
+    claimTask(taskId, {
+      onSuccess: () => {
+        router.push(`/dashboard/driver/task-detail?taskId=${taskId}`);
+      },
+    });
+  };
+
+  const handleComplete = () => {
+    if (activeTask) {
+      completeTask(activeTask.id, {
+        onSuccess: () => {
+          router.push("/dashboard/driver");
+        },
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background pb-24 lg:pb-0">
       <DriverSidebar />
       <DriverTopBar />
-
       <main className="lg:pl-80 p-4 md:p-8 space-y-6">
-        {/* Welcome Banner with Shift Info */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-primary/10 to-primary-container/20 p-5 rounded-2xl border border-primary/20"
         >
-          <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-on-primary">
                 <User className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-on-surface-variant">
-                  Selamat datang,
-                </p>
+                <p className="text-sm text-on-surface-variant">Selamat datang,</p>
                 <h2 className="text-xl font-bold text-on-surface">
                   {user?.full_name ?? "Driver"}
                 </h2>
@@ -207,107 +232,83 @@ export default function DriverDashboardPage() {
           </div>
         </motion.div>
 
-        {/* Notification Banner */}
-        <div className="bg-primary-container text-on-primary-container p-4 rounded-xl shadow-sm flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="bg-primary-fixed text-on-primary-fixed p-2 rounded-lg">
-              <ClipboardList className="w-6 h-6" />
-            </div>
+        {hasActiveTask && activeTask && (
+          <div>
+            <h2 className="text-lg font-bold text-on-surface mb-3">Aktif Task</h2>
+            <ActiveTaskCard task={activeTask} onComplete={handleComplete} isCompleting={isCompleting} />
+          </div>
+        )}
+
+        {!hasActiveTask && (
+          <>
             <div>
-              <p className="text-sm font-bold">New Requests</p>
-              <p className="text-base opacity-90">
-                3 new pickup requests available in your area.
-              </p>
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-lg font-bold text-on-surface">Pickup Tersedia</h2>
+                {availablePickups.length > 3 && (
+                  <Link href="/dashboard/driver/pickups" className="text-sm text-primary font-medium">
+                    Lihat semua
+                  </Link>
+                )}
+              </div>
+              {isLoadingPickups ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <TaskSkeleton />
+                  <TaskSkeleton />
+                  <TaskSkeleton />
+                </div>
+              ) : availablePickups.length === 0 ? (
+                <div className="bg-surface-container-low rounded-xl p-6 text-center text-on-surface-variant">
+                  Tidak ada pickup tersedia saat ini.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {availablePickups.slice(0, 3).map((task) => (
+                    <AvailableTaskCard
+                      key={task.id}
+                      task={task}
+                      onClaim={handleClaim}
+                      isClaiming={isClaiming}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-          <button className="bg-on-primary-container text-primary-container px-4 py-2 rounded-lg text-sm font-bold hover:bg-white transition-colors">
-            View All
-          </button>
-        </div>
 
-        {/* Section Title */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-on-surface">Active Tasks</h2>
-          <div className="flex gap-2">
-            <button className="p-2 rounded-lg border border-outline-variant hover:bg-surface-container transition-colors">
-              <ListFilter className="w-5 h-5 text-on-surface-variant" />
-            </button>
-            <button className="p-2 rounded-lg border border-outline-variant hover:bg-surface-container transition-colors">
-              <Map className="w-5 h-5 text-on-surface-variant" />
-            </button>
-          </div>
-        </div>
-
-        {/* Task Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {tasks.map((task) => (
-            <TaskCard key={task.orderId} {...task} />
-          ))}
-        </div>
-
-        {/* Mini Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pt-6">
-          <div className="md:col-span-8 bg-white border border-outline-variant rounded-2xl p-6 flex flex-col justify-between min-h-[200px]">
             <div>
-              <h3 className="text-lg font-bold text-on-surface mb-2">
-                Earnings Overview
-              </h3>
-              <p className="text-base text-on-surface-variant">
-                Great job today! You've completed 85% of your daily goal.
-              </p>
-            </div>
-            <div className="flex items-end justify-between">
-              <div className="space-y-1">
-                <p className="text-xs text-outline uppercase font-bold">
-                  Today's Total
-                </p>
-                <p className="text-3xl font-bold text-primary">$184.50</p>
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-lg font-bold text-on-surface">Delivery Tersedia</h2>
+                {availableDeliveries.length > 3 && (
+                  <Link href="/dashboard/driver/deliveries" className="text-sm text-primary font-medium">
+                    Lihat semua
+                  </Link>
+                )}
               </div>
-              <div className="flex gap-1 items-end h-16">
-                <div
-                  className="w-8 bg-primary-container rounded-t-sm"
-                  style={{ height: "40%" }}
-                />
-                <div
-                  className="w-8 bg-primary-container rounded-t-sm"
-                  style={{ height: "70%" }}
-                />
-                <div
-                  className="w-8 bg-primary-container rounded-t-sm"
-                  style={{ height: "55%" }}
-                />
-                <div
-                  className="w-8 bg-primary-container rounded-t-sm"
-                  style={{ height: "90%" }}
-                />
-                <div
-                  className="w-8 bg-primary-container rounded-t-sm"
-                  style={{ height: "65%" }}
-                />
-                <div
-                  className="w-8 bg-primary rounded-t-sm"
-                  style={{ height: "85%" }}
-                />
-              </div>
+              {isLoadingDeliveries ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <TaskSkeleton />
+                  <TaskSkeleton />
+                  <TaskSkeleton />
+                </div>
+              ) : availableDeliveries.length === 0 ? (
+                <div className="bg-surface-container-low rounded-xl p-6 text-center text-on-surface-variant">
+                  Tidak ada delivery tersedia saat ini.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {availableDeliveries.slice(0, 3).map((task) => (
+                    <AvailableTaskCard
+                      key={task.id}
+                      task={task}
+                      onClaim={handleClaim}
+                      isClaiming={isClaiming}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-
-          <div className="md:col-span-4 bg-secondary text-on-secondary rounded-2xl p-6 space-y-4 flex flex-col justify-center">
-            <Star className="w-10 h-10 fill-current" />
-            <div className="space-y-1">
-              <p className="text-5xl font-bold leading-none">4.9</p>
-              <p className="text-lg font-bold opacity-90">Driver Rating</p>
-            </div>
-            <p className="text-sm opacity-80">Based on last 50 deliveries</p>
-          </div>
-        </div>
+          </>
+        )}
       </main>
-
-      {/* Floating Action Button */}
-      <button className="fixed bottom-24 right-4 lg:bottom-12 lg:right-12 w-14 h-14 bg-primary text-on-primary rounded-full shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40">
-        <QrCode className="w-8 h-8" />
-      </button>
-
       <BottomNav />
     </div>
   );
