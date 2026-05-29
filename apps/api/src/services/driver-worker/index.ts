@@ -13,6 +13,7 @@ import {
   toLocalMidnight,
   getShiftForDateTime,
   hasActiveDriverTask,
+  getNow,
 } from "./attendanceHelper.js";
 import { Prisma, OrderStatus } from "../../../generated/prisma/client.js";
 
@@ -88,7 +89,7 @@ function mapDriverTaskToActivePayload(task: any) {
 
 const attendanceService = {
   async checkIn(employeeId: string, body?: CheckInBody) {
-    const now = new Date();
+    const now = getNow();
     const today = getTodayLocalStart();
 
     const existing = await prisma.attendance.findUnique({
@@ -194,7 +195,7 @@ const attendanceService = {
       }
     }
 
-    const now = new Date();
+    const now = getNow();
     const attendanceLocalMidnight = toLocalMidnight(attendance.date);
     const shift = await getEmployeeShiftForDate(employeeId, attendanceLocalMidnight);
     if (!shift) {
@@ -356,7 +357,7 @@ const attendanceService = {
   },
 
   async getCurrentShift(employeeId: string) {
-    const now = new Date();
+    const now = getNow();
     const shiftInfo = await getShiftForDateTime(employeeId, now);
     if (!shiftInfo) return null;
 

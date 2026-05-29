@@ -3,8 +3,14 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { getDistance } from "geolib";
 
+// Untuk testing: set MOCK_NOW di .env, contoh: MOCK_NOW=2026-05-29T07:45:00
+export function getNow(): Date {
+  if (process.env.MOCK_NOW) return new Date(process.env.MOCK_NOW);
+  return new Date();
+}
+
 export function getTodayLocalStart(): Date {
-  const now = new Date();
+  const now = getNow();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
