@@ -17,7 +17,7 @@ const OUTLET_SELECT = {
   address: true,
   latitude: true,
   longitude: true,
-  max_service_km: true,
+  service_radius_km: true,
   is_active: true,
   created_at: true,
 } satisfies Prisma.OutletSelect;
@@ -86,9 +86,13 @@ export const createOutlet = async (input: CreateOutletInput) => {
     data: {
       name: input.name,
       address: input.address,
+      province: input.province,
+      city: input.city,
+      district: input.district,
+      postal_code: input.postal_code,
       latitude,
       longitude,
-      max_service_km: input.max_service_km,
+      service_radius_km: input.max_service_km,
       is_active: input.is_active ?? true,
     },
     select: OUTLET_SELECT,
@@ -123,7 +127,7 @@ export const updateOutlet = async (id: string, input: UpdateOutletInput) => {
       ...(latitude !== undefined && { latitude }),
       ...(longitude !== undefined && { longitude }),
       ...(input.max_service_km !== undefined && {
-        max_service_km: input.max_service_km,
+        service_radius_km: input.max_service_km,
       }),
       ...(input.is_active !== undefined && { is_active: input.is_active }),
     },
@@ -149,48 +153,19 @@ export const deactivateOutlet = async (id: string) => {
  * keeps the schema unchanged but provides an explicit assignment trail.
  */
 export const assignUserToOutlet = async (outletId: string, userId: string) => {
-  const [outlet, user] = await Promise.all([
+  const [outlet, employee] = await Promise.all([
     prisma.outlet.findUnique({ where: { id: outletId } }),
-    prisma.user.findUnique({ where: { id: userId } }),
+    prisma.employee.findUnique({ where: { id: userId } }),
   ]);
   if (!outlet) throw new AppError("Outlet tidak ditemukan.", 404);
-  if (!user || user.deleted_at) throw new AppError("User tidak ditemukan.", 404);
+  if (!employee || employee.deleted_at) throw new AppError("User tidak ditemukan.", 404);
 
-  // Find or create a default shift on this outlet that represents "assigned to outlet".
-  const shift =
-    (await prisma.shift.findFirst({
-      where: { outlet_id: outletId, name: "default" },
-    })) ??
-    (await prisma.shift.create({
-      data: {
-        outlet_id: outletId,
-        name: "default",
-        start_time: "00:00:00",
-        end_time: "23:59:59",
-      },
-    }));
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  await prisma.userShift.upsert({
-    where: {
-      user_id_shift_id_shift_date: {
-        user_id: userId,
-        shift_id: shift.id,
-        shift_date: today,
-      },
-    },
-    update: { is_active: true },
-    create: {
-      user_id: userId,
-      shift_id: shift.id,
-      shift_date: today,
-      is_active: true,
-    },
+  await prisma.employee.update({
+    where: { id: userId },
+    data: { outlet_id: outletId },
   });
 
-  return { outlet_id: outletId, user_id: userId, shift_id: shift.id };
+  return { outlet_id: outletId, user_id: userId };
 };
 
 /**
@@ -209,41 +184,22 @@ export const listOutletAssignments = async (outletId: string) => {
   const outlet = await prisma.outlet.findUnique({ where: { id: outletId } });
   if (!outlet) throw new AppError("Outlet tidak ditemukan.", 404);
 
-  const rows = await prisma.userShift.findMany({
-    where: {
+  return prisma.employee.findMany({
+    where: { outlet_id: outletId, deleted_at: null },
+    select: {
+      id: true,
+      full_name: true,
+      email: true,
+      phone: true,
+      role: true,
       is_active: true,
-      shift: { outlet_id: outletId },
+      avatar_url: true,
+      deleted_at: true,
+      outlet_id: true,
+      created_at: true,
     },
-    include: {
-      user: {
-        select: {
-          id: true,
-          full_name: true,
-          email: true,
-          phone: true,
-          role: true,
-          is_verified: true,
-          avatar_url: true,
-          deleted_at: true,
-        },
-      },
-    },
-    orderBy: { shift_date: "desc" },
+    orderBy: { created_at: "desc" },
   });
-
-  // De-dup by user.id, keeping the most recent shift_date as `assigned_at`.
-  const map = new Map<string, { user: typeof rows[number]["user"]; assigned_at: Date }>();
-  for (const r of rows) {
-    if (r.user.deleted_at) continue;
-    const existing = map.get(r.user.id);
-    if (!existing || existing.assigned_at < r.shift_date) {
-      map.set(r.user.id, { user: r.user, assigned_at: r.shift_date });
-    }
-  }
-  return Array.from(map.values()).map(({ user, assigned_at }) => ({
-    ...user,
-    assigned_at,
-  }));
 };
 
 /**
@@ -257,13 +213,9 @@ export const unassignUserFromOutlet = async (
   const outlet = await prisma.outlet.findUnique({ where: { id: outletId } });
   if (!outlet) throw new AppError("Outlet tidak ditemukan.", 404);
 
-  await prisma.userShift.updateMany({
-    where: {
-      user_id: userId,
-      is_active: true,
-      shift: { outlet_id: outletId },
-    },
-    data: { is_active: false },
+  await prisma.employee.update({
+    where: { id: userId },
+    data: { outlet_id: null },
   });
   return { outlet_id: outletId, user_id: userId };
 };

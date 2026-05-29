@@ -18,20 +18,20 @@ const PUBLIC_USER_SELECT = {
   phone: true,
   avatar_url: true,
   role: true,
-  is_verified: true,
+  is_active: true,
   deleted_at: true,
   created_at: true,
   updated_at: true,
-} satisfies Prisma.UserSelect;
+} satisfies Prisma.EmployeeSelect;
 
 /** List users with pagination, role filter, and free-text search. */
 export const listUsers = async (query: ListUserQuery) => {
   const { page, limit, role, search, include_deleted } = query;
   const skip = (page - 1) * limit;
 
-  const where: Prisma.UserWhereInput = {
+  const where: Prisma.EmployeeWhereInput = {
     ...(include_deleted ? {} : { deleted_at: null }),
-    ...(role ? { role } : {}),
+    ...(role ? { role: role as any } : {}),
     ...(search
       ? {
           OR: [
@@ -43,14 +43,14 @@ export const listUsers = async (query: ListUserQuery) => {
   };
 
   const [items, total] = await Promise.all([
-    prisma.user.findMany({
+    prisma.employee.findMany({
       where,
       select: PUBLIC_USER_SELECT,
       orderBy: { created_at: "desc" },
       skip,
       take: limit,
     }),
-    prisma.user.count({ where }),
+    prisma.employee.count({ where }),
   ]);
 
   return {
@@ -66,7 +66,7 @@ export const listUsers = async (query: ListUserQuery) => {
 
 /** Get a single user by id (must be active). */
 export const getUserById = async (id: string) => {
-  const user = await prisma.user.findFirst({
+  const user = await prisma.employee.findFirst({
     where: { id, deleted_at: null },
     select: PUBLIC_USER_SELECT,
   });
@@ -89,7 +89,7 @@ export const getUserById = async (id: string) => {
  * UI) can show the right confirmation copy.
  */
 export const createUser = async (input: CreateUserInput) => {
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
+  const existing = await prisma.employee.findUnique({ where: { email: input.email } });
   if (existing) throw new AppError("Email sudah terdaftar.", 409);
 
   const isInvite = !input.password;
@@ -97,14 +97,14 @@ export const createUser = async (input: CreateUserInput) => {
     isInvite ? crypto.randomBytes(24).toString("hex") : input.password!,
   );
 
-  const user = await prisma.user.create({
+  const user = await prisma.employee.create({
     data: {
       full_name: input.full_name,
       email: input.email,
       phone: input.phone,
-      role: input.role,
+      role: input.role as any,
       password_hash,
-      is_verified: isInvite ? false : (input.is_verified ?? true),
+      is_active: !isInvite,
     },
     select: PUBLIC_USER_SELECT,
   });
@@ -134,14 +134,14 @@ export const createUser = async (input: CreateUserInput) => {
 
 /** Patch an existing user. */
 export const updateUser = async (id: string, input: UpdateUserInput) => {
-  const target = await prisma.user.findUnique({ where: { id } });
+  const target = await prisma.employee.findUnique({ where: { id } });
   if (!target || target.deleted_at) {
     throw new AppError("User tidak ditemukan.", 404);
   }
 
   // Email uniqueness guard when changing email.
   if (input.email && input.email !== target.email) {
-    const conflict = await prisma.user.findUnique({
+    const conflict = await prisma.employee.findUnique({
       where: { email: input.email },
     });
     if (conflict && conflict.id !== id) {
@@ -149,16 +149,16 @@ export const updateUser = async (id: string, input: UpdateUserInput) => {
     }
   }
 
-  const data: Prisma.UserUpdateInput = {
+  const data: Prisma.EmployeeUpdateInput = {
     ...(input.full_name !== undefined && { full_name: input.full_name }),
     ...(input.email !== undefined && { email: input.email }),
     ...(input.phone !== undefined && { phone: input.phone }),
-    ...(input.role !== undefined && { role: input.role }),
-    ...(input.is_verified !== undefined && { is_verified: input.is_verified }),
+    ...(input.role !== undefined && { role: input.role as any }),
+    ...(input.is_verified !== undefined && { is_active: input.is_verified }),
     ...(input.password && { password_hash: await hashPassword(input.password) }),
   };
 
-  return prisma.user.update({
+  return prisma.employee.update({
     where: { id },
     data,
     select: PUBLIC_USER_SELECT,
@@ -170,12 +170,12 @@ export const softDeleteUser = async (id: string, requesterId: string) => {
   if (id === requesterId) {
     throw new AppError("Tidak dapat menghapus akun sendiri.", 400);
   }
-  const target = await prisma.user.findUnique({ where: { id } });
+  const target = await prisma.employee.findUnique({ where: { id } });
   if (!target || target.deleted_at) {
     throw new AppError("User tidak ditemukan.", 404);
   }
 
-  return prisma.user.update({
+  return prisma.employee.update({
     where: { id },
     data: { deleted_at: new Date() },
     select: PUBLIC_USER_SELECT,

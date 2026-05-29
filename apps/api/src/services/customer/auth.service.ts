@@ -23,40 +23,42 @@ export const registerCustomer = async (data: {
   full_name: string;
   email: string;
   phone?: string;
-  role?: "customer" | "driver" | "worker";
 }) => {
-  const existing = await prisma.user.findUnique({ where: { email: data.email } });
+  const existing = await prisma.customer.findUnique({ where: { email: data.email } });
   if (existing) throw new AppError("Email sudah terdaftar.", 409);
 
   // Placeholder password hash – will be replaced on verification
   const tempHash = await hashPassword(crypto.randomBytes(16).toString("hex"));
 
-  const user = await prisma.user.create({
+  const customer = await prisma.customer.create({
     data: {
       full_name: data.full_name,
       email: data.email,
       phone: data.phone ?? "",
       password_hash: tempHash,
-      role: data.role ?? "customer",
       is_verified: false,
     },
   });
 
   const token = signEmailToken(
-    { userId: user.id, email: user.email, purpose: "verify" },
+    { userId: customer.id, email: customer.email, purpose: "verify" },
     "1h",
   );
-  await sendVerificationEmail(user.email, token);
+  try {
+    await sendVerificationEmail(customer.email, token);
+  } catch (emailErr) {
+    console.error("[registerCustomer] Failed to send verification email:", emailErr);
+  }
   return { message: "Email verifikasi telah dikirim." };
 };
 
 /** Resend verification email */
 export const resendVerification = async (email: string) => {
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) throw new AppError("Email tidak ditemukan.", 404);
-  if (user.is_verified) throw new AppError("Akun sudah terverifikasi.", 400);
+  const customer = await prisma.customer.findUnique({ where: { email } });
+  if (!customer) throw new AppError("Email tidak ditemukan.", 404);
+  if (customer.is_verified) throw new AppError("Akun sudah terverifikasi.", 400);
 
-  const token = signEmailToken({ userId: user.id, email, purpose: "verify" }, "1h");
+  const token = signEmailToken({ userId: customer.id, email, purpose: "verify" }, "1h");
   await sendVerificationEmail(email, token);
   return { message: "Email verifikasi telah dikirim ulang." };
 };
@@ -75,13 +77,13 @@ export const verifyEmailAndSetPassword = async (
 
   if (payload.purpose !== "verify") throw new AppError("Token tidak valid.", 400);
 
-  const user = await prisma.user.findUnique({ where: { id: payload.userId } });
-  if (!user) throw new AppError("User tidak ditemukan.", 404);
-  if (user.is_verified) throw new AppError("Akun sudah pernah diverifikasi.", 400);
+  const customer = await prisma.customer.findUnique({ where: { id: payload.userId } });
+  if (!customer) throw new AppError("User tidak ditemukan.", 404);
+  if (customer.is_verified) throw new AppError("Akun sudah pernah diverifikasi.", 400);
 
   const password_hash = await hashPassword(password);
-  await prisma.user.update({
-    where: { id: user.id },
+  await prisma.customer.update({
+    where: { id: customer.id },
     data: { is_verified: true, password_hash },
   });
 
@@ -90,51 +92,42 @@ export const verifyEmailAndSetPassword = async (
 
 /** Login with email + password */
 export const loginCustomer = async (email: string, password: string) => {
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) throw new AppError("Email atau password salah.", 401);
+  const customer = await prisma.customer.findUnique({ where: { email } });
+  if (!customer) throw new AppError("Email atau password salah.", 401);
+  if (!customer.password_hash) throw new AppError("Email atau password salah.", 401);
 
-  const valid = await comparePassword(password, user.password_hash);
+  const valid = await comparePassword(password, customer.password_hash);
   if (!valid) throw new AppError("Email atau password salah.", 401);
 
   const accessToken = signAccessToken({
-    userId: user.id,
-    role: user.role,
-    email: user.email,
+    userId: customer.id,
+    role: "customer",
+    email: customer.email,
   });
 
-  const { password_hash: _, ...safeUser } = user;
-  return { accessToken, user: safeUser };
+  const { password_hash: _, ...safeCustomer } = customer;
+  return { accessToken, user: safeCustomer };
 };
 
 /** Forgot password – send reset email */
 export const forgotPassword = async (email: string) => {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const customer = await prisma.customer.findUnique({ where: { email } });
   // Silently succeed even if no user found (security)
-  if (!user || !user.is_verified) {
+  if (!customer || !customer.is_verified) {
     return { message: "Jika email terdaftar, link reset akan dikirimkan." };
   }
 
   const token = signEmailToken(
     {
-      userId: user.id,
-      email: user.email,
+      userId: customer.id,
+      email: customer.email,
       purpose: "reset",
       nonce: crypto.randomBytes(8).toString("hex"),
     },
     "1h",
   );
 
-  // Store token hash so it can only be used once
-  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      password_hash: user.password_hash, // unchanged, but we'll piggyback via a separate mechanism
-    },
-  });
-
-  // We'll use a cache/DB field – for now store in a temp notification or reuse the token inline
-  await sendResetPasswordEmail(user.email, token);
+  await sendResetPasswordEmail(customer.email, token);
   return { message: "Jika email terdaftar, link reset akan dikirimkan." };
 };
 
@@ -149,12 +142,12 @@ export const resetPassword = async (token: string, newPassword: string) => {
 
   if (payload.purpose !== "reset") throw new AppError("Token tidak valid.", 400);
 
-  const user = await prisma.user.findUnique({ where: { id: payload.userId } });
-  if (!user) throw new AppError("User tidak ditemukan.", 404);
+  const customer = await prisma.customer.findUnique({ where: { id: payload.userId } });
+  if (!customer) throw new AppError("User tidak ditemukan.", 404);
 
   const password_hash = await hashPassword(newPassword);
-  await prisma.user.update({
-    where: { id: user.id },
+  await prisma.customer.update({
+    where: { id: customer.id },
     data: { password_hash },
   });
 
@@ -204,33 +197,32 @@ export const googleLogin = async (code: string) => {
   const payload = ticket.getPayload();
   if (!payload?.email) throw new AppError("Tidak ada email dari Google.", 400);
 
-  let user = await prisma.user.findUnique({ where: { email: payload.email } });
+  let customer = await prisma.customer.findUnique({ where: { email: payload.email } });
 
-  if (!user) {
-    user = await prisma.user.create({
+  if (!customer) {
+    customer = await prisma.customer.create({
       data: {
         email: payload.email,
         full_name: payload.name ?? payload.email,
         phone: "",
         password_hash: await hashPassword(crypto.randomBytes(16).toString("hex")),
-        role: "customer",
         is_verified: true,
         avatar_url: payload.picture ?? null,
       },
     });
-  } else if (!user.is_verified) {
-    user = await prisma.user.update({
-      where: { id: user.id },
+  } else if (!customer.is_verified) {
+    customer = await prisma.customer.update({
+      where: { id: customer.id },
       data: { is_verified: true },
     });
   }
 
   const accessToken = signAccessToken({
-    userId: user.id,
-    role: user.role,
-    email: user.email,
+    userId: customer.id,
+    role: "customer",
+    email: customer.email,
   });
 
-  const { password_hash: _, ...safeUser } = user;
-  return { accessToken, user: safeUser };
+  const { password_hash: _, ...safeCustomer } = customer;
+  return { accessToken, user: safeCustomer };
 };

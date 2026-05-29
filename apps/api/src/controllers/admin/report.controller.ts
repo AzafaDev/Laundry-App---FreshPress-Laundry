@@ -74,8 +74,8 @@ export const exportAttendanceReport = async (
       Role: att.user?.role ?? "-",
       Email: att.user?.email ?? "-",
       Tanggal: new Date(att.attendance_date).toLocaleDateString("id-ID"),
-      "Check In": att.check_in_time?.toLocaleTimeString("id-ID") ?? "-",
-      "Check Out": att.check_out_time?.toLocaleTimeString("id-ID") ?? "-",
+      "Check In": att.check_in_time ?? "-",
+      "Check Out": att.check_out_time ?? "-",
       Status:
         att.status === "on_time"
           ? "Tepat Waktu"
