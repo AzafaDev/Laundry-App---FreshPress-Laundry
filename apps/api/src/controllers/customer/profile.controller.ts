@@ -104,3 +104,17 @@ export const uploadAvatar = async (
     next(err);
   }
 };
+
+export const verifyEmailChange = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { token } = req.body;
+    const result = await ProfileService.verifyEmailChange(token);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+};

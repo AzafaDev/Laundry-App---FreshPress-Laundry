@@ -88,13 +88,20 @@ export default function ProfilePage() {
     e.preventDefault();
     setProfileError(""); setProfileSuccess(""); setProfileLoading(true);
     try {
+      const payload: Record<string, string | undefined> = {
+        full_name: profileForm.full_name,
+        phone: profileForm.phone || undefined,
+      };
+      if (profileForm.email !== user?.email) {
+        payload.new_email = profileForm.email;
+      }
       const { data } = await axiosInstance.patch(
         "/v1/customer/profile",
-        { full_name: profileForm.full_name, phone: profileForm.phone || undefined, email: profileForm.email !== user?.email ? profileForm.email : undefined },
+        payload,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       updateUser(data.user ?? data);
-      setProfileSuccess(profileForm.email !== user?.email ? "Profil diperbarui. Cek email baru Anda untuk verifikasi." : "Profil berhasil diperbarui.");
+      setProfileSuccess(data.message ?? "Profil berhasil diperbarui.");
     } catch (err: unknown) {
       setProfileError((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Gagal memperbarui profil.");
     } finally { setProfileLoading(false); }

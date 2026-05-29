@@ -14,6 +14,10 @@ const longitudeSchema = z
 export const createOutletSchema = z.object({
   name: z.string().min(2, "Nama outlet minimal 2 karakter."),
   address: z.string().min(5, "Alamat minimal 5 karakter."),
+  province: z.string().min(2, "Provinsi wajib diisi."),
+  city: z.string().min(2, "Kota wajib diisi."),
+  district: z.string().min(2, "Kecamatan wajib diisi."),
+  postal_code: z.string().optional(),
   latitude: latitudeSchema.optional(),
   longitude: longitudeSchema.optional(),
   max_service_km: z
