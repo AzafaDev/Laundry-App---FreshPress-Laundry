@@ -183,6 +183,17 @@ const attendanceService = {
       throw new AppError("Anda sudah check-out hari ini", 403);
     }
 
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { role: true, full_name: true, outlet_id: true },
+    });
+    if (employee?.role === "driver") {
+      const hasActive = await hasActiveDriverTask(employeeId);
+      if (hasActive) {
+        throw new AppError("Selesaikan task aktif sebelum check-out", 403);
+      }
+    }
+
     const now = new Date();
     const attendanceLocalMidnight = toLocalMidnight(attendance.date);
     const shift = await getEmployeeShiftForDate(employeeId, attendanceLocalMidnight);
@@ -197,11 +208,6 @@ const attendanceService = {
     const updated = await prisma.attendance.update({
       where: { id: attendanceId },
       data: { check_out_time: now },
-    });
-
-    const employee = await prisma.employee.findUnique({
-      where: { id: employeeId },
-      select: { full_name: true, outlet_id: true },
     });
 
     if (employee?.outlet_id) {
@@ -405,10 +411,17 @@ const driverService = {
       throw new AppError("Anda sudah check-out hari ini, tidak dapat mengambil order baru", 403);
     }
 
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { outlet_id: true },
+    });
+    if (!employee?.outlet_id) throw new AppError("Outlet tidak ditemukan", 400);
+
     const tasks = await prisma.driverTask.findMany({
       where: {
         status: "available",
         driver_id: null,
+        order: { outlet_id: employee.outlet_id },
       },
       include: {
         order: {
@@ -437,12 +450,18 @@ const driverService = {
       throw new AppError("Anda sudah check-out hari ini, tidak dapat mengambil order baru", 403);
     }
 
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { outlet_id: true },
+    });
+    if (!employee?.outlet_id) throw new AppError("Outlet tidak ditemukan", 400);
+
     const tasks = await prisma.driverTask.findMany({
       where: {
         task_type: "delivery",
         status: "available",
         driver_id: null,
-        order: { status: "ready_for_delivery" },
+        order: { status: "ready_for_delivery", outlet_id: employee.outlet_id },
       },
       include: { order: { include: { customer: true, pickup_address: true } } },
     });

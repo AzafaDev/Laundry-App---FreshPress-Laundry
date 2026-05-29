@@ -4,6 +4,7 @@ import { seedShifts } from './shifts.seed.js';
 import { seedEmployees } from './employees.seed.js';
 import { seedEmployeeShifts } from './employee-shifts.seed.js';
 import { seedAttendances } from './attendances.seed.js';
+import { seedOrders } from './orders.seed.js';
 
 export async function runAllSeeds() {
   console.log('🌱 Starting database seeding...\n');
@@ -31,6 +32,8 @@ export async function runAllSeeds() {
 
   await seedAttendances(employees, shifts);
 
+  await seedOrders(mainOutlet, employees);
+
   console.log('\n✅ All seeds completed successfully');
 }
 
@@ -46,6 +49,13 @@ export async function runModuleSeed(moduleName: string) {
       const outlets = await seedOutlets();
       await seedEmployees(outlets[0].id);
       break;
+    case 'orders': {
+      const outletList = await prisma.outlet.findMany({ take: 1 });
+      const empList = await prisma.employee.findMany();
+      if (!outletList[0]) { console.log('Run full seed first'); break; }
+      await seedOrders(outletList[0], empList);
+      break;
+    }
     default:
       console.log(`Module ${moduleName} not recognized`);
   }
