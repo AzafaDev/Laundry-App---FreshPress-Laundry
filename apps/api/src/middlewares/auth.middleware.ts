@@ -22,8 +22,11 @@ export const authenticate = async (
     if (userType === "employee" || payload.role !== "customer") {
       const employee = await prisma.employee.findFirst({
         where: { id: payload.userId, deleted_at: null },
-        select: { id: true },
+        select: { id: true, token_version: true },
       });
+      if (employee && payload.tokenVersion !== undefined && employee.token_version !== payload.tokenVersion) {
+        throw new AppError("Sesi tidak valid. Silakan login kembali.", 401);
+      }
       userExists = !!employee;
     } else {
       const customer = await prisma.customer.findFirst({

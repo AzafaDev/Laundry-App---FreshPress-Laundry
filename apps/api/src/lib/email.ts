@@ -31,6 +31,26 @@ export const sendVerificationEmail = async (
   });
 };
 
+export const sendEmployeeResetPasswordEmail = async (
+  to: string,
+  token: string,
+): Promise<void> => {
+  const link = `${env.CLIENT_URL}/employee/reset-password?token=${token}`;
+  await transporter.sendMail({
+    from: `"FreshPress Laundry" <${env.NODEMAILER_USER}>`,
+    to,
+    subject: "Reset Password Akun Karyawan FreshPress",
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+        <h2 style="color:#1a73e8;">Reset Password Karyawan</h2>
+        <p>Kami menerima permintaan reset password untuk akun karyawan Anda. Klik tombol di bawah untuk membuat password baru. Link berlaku selama <strong>30 menit</strong>.</p>
+        <a href="${link}" style="display:inline-block;background:#1a73e8;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0;">Reset Password</a>
+        <p style="color:#666;font-size:13px;">Jika Anda tidak meminta reset password, abaikan email ini.</p>
+      </div>
+    `,
+  });
+};
+
 export const sendResetPasswordEmail = async (
   to: string,
   token: string,

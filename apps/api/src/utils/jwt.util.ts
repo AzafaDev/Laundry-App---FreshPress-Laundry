@@ -6,6 +6,7 @@ export type TokenPayload = {
   role: string;
   email: string;
   outletId?: string | null;
+  tokenVersion?: number;
 };
 
 export const signAccessToken = (payload: TokenPayload): string => {

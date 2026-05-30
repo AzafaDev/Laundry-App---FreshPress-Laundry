@@ -25,27 +25,10 @@ import { SkeletonAttendaceCard, SkeletonShiftCard, SkeletonText } from "@/compon
 
 export default function DriverAttendancePage() {
   const { _hasHydrated, user } = useEmployeeAuthStore();
-  if (!_hasHydrated) {
-    return (
-      <div className="min-h-screen bg-background pb-24 lg:pb-0">
-        <DriverSidebar />
-        <DriverTopBar />
-        <main className="lg:pl-72 p-4 md:p-8">
-          <div className="max-w-2xl mx-auto space-y-6">
-            <SkeletonText className="h-6 w-40 mb-4" />
-            <SkeletonAttendaceCard />
-            <SkeletonShiftCard />
-          </div>
-        </main>
-        <BottomNav />
-      </div>
-    );
-  }
-
   const att = useAttendance();
   const { latitude, longitude, permissionDenied } = useGeolocation();
 
-  if (att.isLoading) {
+  if (!_hasHydrated || att.isLoading) {
     return (
       <div className="min-h-screen bg-background pb-24 lg:pb-0">
         <DriverSidebar />
