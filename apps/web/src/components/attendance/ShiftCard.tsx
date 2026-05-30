@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { differenceInSeconds, formatDuration, intervalToDuration } from "date-fns";
+import { formatDuration, intervalToDuration } from "date-fns";
 import { id } from "date-fns/locale";
 import type { CurrentShift } from "@/services/attendance.service";
 
@@ -10,13 +9,6 @@ interface ShiftCardProps {
 }
 
 export function ShiftCard({ currentShift }: ShiftCardProps) {
-  const [now, setNow] = useState(new Date());
-
-  useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   if (!currentShift) {
     return (
       <div className="bg-surface-container-low border border-outline-variant rounded-2xl p-5 shadow-sm">
@@ -31,7 +23,7 @@ export function ShiftCard({ currentShift }: ShiftCardProps) {
     );
   }
 
-  const { shiftName, startTime, endTime, isActive, progressPercent, remainingSeconds } = currentShift;
+  const { shiftName, startTime, endTime, isActive, phase, progressPercent, remainingSeconds } = currentShift;
 
   const formatTime = (timeStr: string) => {
     const parts = timeStr.split(":");
@@ -44,42 +36,23 @@ export function ShiftCard({ currentShift }: ShiftCardProps) {
   let statusText = "";
   let badgeColor = "";
 
-  if (isActive) {
+  if (phase === "active") {
     statusText = "Sedang Berlangsung";
     badgeColor = "bg-primary/10 text-primary border-primary/20";
+  } else if (phase === "pre_shift") {
+    statusText = "Akan Segera Dimulai";
+    badgeColor = "bg-amber-100 text-amber-700 border-amber-200";
   } else {
-    const nowDate = now;
-    const startHour = parseInt(startTime.split(":")[0]);
-    const startMinute = parseInt(startTime.split(":")[1]);
-    const endHour = parseInt(endTime.split(":")[0]);
-    const endMinute = parseInt(endTime.split(":")[1]);
-
-    const shiftStartToday = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate(), startHour, startMinute, 0);
-    const shiftEndToday = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate(), endHour, endMinute, 0);
-    if (shiftEndToday <= shiftStartToday) shiftEndToday.setDate(shiftEndToday.getDate() + 1);
-
-    const minutesToStart = differenceInSeconds(shiftStartToday, nowDate) / 60;
-    const willStartSoon = !isActive && minutesToStart > 0 && minutesToStart <= 30;
-
-    if (willStartSoon) {
-      statusText = "Akan Segera Dimulai";
-      badgeColor = "bg-amber-100 text-amber-700 border-amber-200";
-    } else if (nowDate > shiftEndToday) {
-      statusText = "Telah Berakhir";
-      badgeColor = "bg-surface-container-high text-on-surface-variant border-outline-variant";
-    } else {
-      statusText = "Belum Dimulai";
-      badgeColor = "bg-surface-container-high text-on-surface-variant border-outline-variant";
-    }
+    statusText = "Telah Berakhir";
+    badgeColor = "bg-surface-container-high text-on-surface-variant border-outline-variant";
   }
 
   let remainingTimeStr = "";
-  if (isActive && remainingSeconds > 0) {
+  if (phase === "active" && remainingSeconds > 0) {
     const duration = intervalToDuration({ start: 0, end: remainingSeconds * 1000 });
     remainingTimeStr = formatDuration(duration, { locale: id, delimiter: " " });
-  } else if (!isActive && statusText === "Akan Segera Dimulai") {
-    const shiftStartToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(startTime.split(":")[0]), parseInt(startTime.split(":")[1]), 0);
-    const minutesToStart = Math.ceil((shiftStartToday.getTime() - now.getTime()) / (1000 * 60));
+  } else if (phase === "pre_shift" && remainingSeconds > 0) {
+    const minutesToStart = Math.ceil(remainingSeconds / 60);
     remainingTimeStr = `${minutesToStart} menit lagi`;
   }
 

@@ -113,7 +113,7 @@ export const getCurrentShift = async (
     const employeeId = req.user?.userId;
     if (!employeeId) throw new AppError("Unauthorized", 401);
 
-    const shift = await attendanceService.getCurrentShift(employeeId);
+    const shift = await attendanceService.getUpcomingOrActiveShift(employeeId);
     res.json({ success: true, data: shift });
   } catch (error) {
     next(error);

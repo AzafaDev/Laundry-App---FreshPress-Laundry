@@ -15,6 +15,7 @@ export interface CurrentShift {
   startTime: string;
   endTime: string;
   isActive: boolean;
+  phase: "pre_shift" | "active" | "ended";
   progressPercent: number;
   remainingSeconds: number;
   outletName?: string;
