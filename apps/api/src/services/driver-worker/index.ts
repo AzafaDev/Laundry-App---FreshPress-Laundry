@@ -14,6 +14,7 @@ import {
   getShiftForDateTime,
   hasActiveDriverTask,
   getNow,
+  getUpcomingShiftForDateTime,
 } from "./attendanceHelper.js";
 import { Prisma, OrderStatus } from "../../../generated/prisma/client.js";
 
@@ -356,6 +357,52 @@ const attendanceService = {
     return null;
   },
 
+  async getUpcomingOrActiveShift(employeeId: string) {
+    const now = getNow();
+    const shiftInfo = await getUpcomingShiftForDateTime(employeeId, now, 15);
+    if (!shiftInfo) return null;
+
+    const { shiftName, startTime, endTime } = shiftInfo;
+    const outlet = await getEmployeeOutlet(employeeId);
+    const outletData = await prisma.outlet.findUnique({ where: { id: outlet } });
+
+    const isActive = now >= startTime && now <= endTime;
+    const isPreShift = now < startTime;
+    const phase: "pre_shift" | "active" | "ended" = isPreShift ? "pre_shift" : isActive ? "active" : "ended";
+
+    let progressPercent = 0;
+    let remainingSeconds = 0;
+
+    if (isActive) {
+      const total = endTime.getTime() - startTime.getTime();
+      const elapsed = now.getTime() - startTime.getTime();
+      progressPercent = Math.min(100, Math.max(0, (elapsed / total) * 100));
+      remainingSeconds = Math.max(0, (endTime.getTime() - now.getTime()) / 1000);
+    } else if (isPreShift) {
+      remainingSeconds = Math.max(0, (startTime.getTime() - now.getTime()) / 1000);
+    }
+
+    const formatTime = (date: Date) =>
+      `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+
+    const canCheckInNow = canCheckIn(now, startTime, endTime, 15);
+    const canCheckOutNow = canCheckOut(now, endTime);
+
+    return {
+      shiftName,
+      startTime: formatTime(startTime),
+      endTime: formatTime(endTime),
+      isActive,
+      phase,
+      progressPercent: Math.round(progressPercent),
+      remainingSeconds,
+      outletName: outletData?.name ?? "",
+      outletId: outlet,
+      canCheckIn: canCheckInNow,
+      canCheckOut: canCheckOutNow,
+    };
+  },
+
   async getCurrentShift(employeeId: string) {
     const now = getNow();
     const shiftInfo = await getShiftForDateTime(employeeId, now);
@@ -420,6 +467,7 @@ const driverService = {
 
     const tasks = await prisma.driverTask.findMany({
       where: {
+        task_type: "pickup",
         status: "available",
         driver_id: null,
         order: { outlet_id: employee.outlet_id },

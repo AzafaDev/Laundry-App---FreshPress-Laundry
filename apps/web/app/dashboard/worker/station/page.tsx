@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useWorkerStation } from "@/hooks/useWorkerStation";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { useAttendance } from "@/hooks/useAttendance";
 import { WorkerSidebar } from "@/components/dashboard/WorkerSidebar";
 import { WorkerTopBar } from "@/components/dashboard/WorkerTopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -28,6 +29,7 @@ export default function WorkerStationPage() {
   else if (user?.role === "ironing_worker") station = "ironing";
   else if (user?.role === "packing_worker") station = "packing";
 
+  const { checkedIn } = useAttendance();
   const { stationOrders, isLoading, completeStation, isCompleting, refetch } = useWorkerStation();
   const { on } = useSocket();
   const queryClient = useQueryClient();
@@ -92,7 +94,7 @@ export default function WorkerStationPage() {
 
     try {
       await completeStation({ orderId, stationType: station! });
-      toast.success(`Order ${orderId} selesai diproses`);
+      toast.success(`Order ${order.invoice_number} selesai diproses`);
       setModalOpen(false);
       refetch();
     } catch (err: unknown) {
@@ -117,7 +119,12 @@ export default function WorkerStationPage() {
             </div>
           </div>
 
-          {stationOrders.length === 0 ? (
+          {!checkedIn ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
+              <p className="text-amber-700 font-semibold">Silakan check-in terlebih dahulu</p>
+              <p className="text-sm text-amber-600 mt-1">Anda harus check-in sebelum dapat memproses order.</p>
+            </div>
+          ) : stationOrders.length === 0 ? (
             <div className="bg-surface-container-low rounded-xl p-8 text-center text-on-surface-variant">
               Tidak ada order yang perlu diproses saat ini.
             </div>

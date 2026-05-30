@@ -1,16 +1,31 @@
 // app/employee/login/page.tsx
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, useEffect } from "react";
 import Link from "next/link";
 import { Mail, Lock, EyeOff, Eye, ArrowRight, Shirt } from "lucide-react";
 import { useEmployeeAuth } from "@/hooks/useEmployeeAuth";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { useRouter } from "next/navigation";
 
 export default function EmployeeLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoggingIn, loginError } = useEmployeeAuth();
+  const { accessToken, user, _hasHydrated } = useEmployeeAuthStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!_hasHydrated || !accessToken || !user) return;
+    const paths: Record<string, string> = {
+      driver: "/dashboard/driver",
+      washing_worker: "/dashboard/worker",
+      ironing_worker: "/dashboard/worker",
+      packing_worker: "/dashboard/worker",
+    };
+    router.replace(paths[user.role] ?? "/dashboard");
+  }, [_hasHydrated, accessToken, user, router]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();

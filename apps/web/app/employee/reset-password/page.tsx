@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, type FormEvent, useEffect } from "react";
+import { useState, type FormEvent, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, EyeOff, Eye, Shirt } from "lucide-react";
 import { employeeAuthService } from "@/services/employeeAuth.service";
 
-export default function EmployeeResetPasswordPage() {
+function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -42,6 +42,89 @@ export default function EmployeeResetPasswordPage() {
   if (!token) return null;
 
   return (
+    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+      {error?.includes("tidak valid") ? (
+        <div className="space-y-4">
+          <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-2.5 rounded-lg" role="alert">
+            {error}
+          </div>
+          <a
+            href="/employee/forgot-password"
+            className="block w-full text-center py-2.5 bg-primary text-white font-semibold rounded-lg text-sm hover:brightness-105 transition-all"
+          >
+            Minta Link Reset Baru
+          </a>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-2.5 rounded-lg" role="alert">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <label htmlFor="newPassword" className="text-sm font-medium text-gray-700 block">
+              Password Baru
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                id="newPassword"
+                type={showNew ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Min. 8 karakter"
+                required
+                minLength={8}
+                className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:border-primary text-sm placeholder:text-gray-400"
+              />
+              <button type="button" onClick={() => setShowNew((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" aria-label="Toggle visibility">
+                {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700 block">
+              Konfirmasi Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                id="confirmPassword"
+                type={showConfirm ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Ulangi password baru"
+                required
+                className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:border-primary text-sm placeholder:text-gray-400"
+              />
+              <button type="button" onClick={() => setShowConfirm((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" aria-label="Toggle visibility">
+                {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-primary text-white font-semibold py-2.5 rounded-lg hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+          >
+            {isLoading ? (
+              <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              "Simpan Password"
+            )}
+          </button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+export default function EmployeeResetPasswordPage() {
+  return (
     <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-[400px]">
         <div className="text-center mb-6">
@@ -53,70 +136,9 @@ export default function EmployeeResetPasswordPage() {
           <p className="text-sm text-gray-500 mt-1">Masukkan password baru Anda.</p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-2.5 rounded-lg" role="alert">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-1">
-              <label htmlFor="newPassword" className="text-sm font-medium text-gray-700 block">
-                Password Baru
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  id="newPassword"
-                  type={showNew ? "text" : "password"}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Min. 8 karakter"
-                  required
-                  minLength={8}
-                  className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:border-primary text-sm placeholder:text-gray-400"
-                />
-                <button type="button" onClick={() => setShowNew((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" aria-label="Toggle visibility">
-                  {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700 block">
-                Konfirmasi Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  id="confirmPassword"
-                  type={showConfirm ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Ulangi password baru"
-                  required
-                  className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:border-primary text-sm placeholder:text-gray-400"
-                />
-                <button type="button" onClick={() => setShowConfirm((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" aria-label="Toggle visibility">
-                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-primary text-white font-semibold py-2.5 rounded-lg hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-sm"
-            >
-              {isLoading ? (
-                <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                "Simpan Password"
-              )}
-            </button>
-          </form>
-        </div>
+        <Suspense fallback={<div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm animate-pulse h-64" />}>
+          <ResetPasswordForm />
+        </Suspense>
       </div>
     </main>
   );

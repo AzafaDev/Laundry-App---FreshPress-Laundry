@@ -12,9 +12,7 @@ export function useDriverTasks() {
     queryKey: ["driver", "tasks", "active"],
     queryFn: driverTaskService.getActiveTask,
     enabled: isDriver,
-    staleTime: 5000,
-    refetchInterval: 5000,
-    refetchOnWindowFocus: true,
+    staleTime: 30000,
   });
 
   const hasActiveTask = activeTaskQuery.data?.hasActiveTask ?? false;
@@ -36,10 +34,6 @@ export function useDriverTasks() {
   const claimTaskMutation = useMutation({
     mutationFn: (taskId: string) => driverTaskService.claimTask(taskId),
     onSuccess: (claimedTask) => {
-      toast.success("Task berhasil diambil!");
-      queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "active"] });
-      queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-pickups"] });
-      queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-deliveries"] });
       queryClient.setQueryData(["driver", "tasks", "active"], {
         hasActiveTask: true,
         task: claimedTask,
@@ -54,7 +48,6 @@ export function useDriverTasks() {
   const completeTaskMutation = useMutation({
     mutationFn: (taskId: string) => driverTaskService.completeTask(taskId),
     onSuccess: () => {
-      toast.success("Task selesai! Terima kasih.");
       queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "active"] });
       queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-pickups"] });
       queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-deliveries"] });
