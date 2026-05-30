@@ -1,5 +1,5 @@
+import { Employee, Outlet } from '../../generated/prisma/client.js';
 import { prisma } from '../../src/lib/prisma.js';
-import type { Employee, Outlet } from '@prisma/client';
 
 // Seed orders untuk testing Sprint 2:
 // - 2 order status waiting_pickup_driver + DriverTask available  → driver claim test
@@ -26,17 +26,20 @@ export async function seedOrders(outlet: Outlet, employees: Employee[]) {
   });
 
   // Buat address dummy
-  const address = await prisma.customerAddress.upsert({
-    where: { id: 'seed-address-001' },
-    update: {},
-    create: {
-      id: 'seed-address-001',
+  const existingAddress = await prisma.customerAddress.findFirst({
+    where: { customer_id: customer.id },
+  });
+  const address = existingAddress ?? await prisma.customerAddress.create({
+    data: {
       customer_id: customer.id,
       label: 'Rumah',
       address: 'Jl. Test No. 1, Jakarta',
+      province: 'DKI Jakarta',
+      city: 'Jakarta Selatan',
+      district: 'Kebayoran Baru',
       latitude: -6.2,
       longitude: 106.816666,
-      is_default: true,
+      is_primary: true,
     },
   });
 

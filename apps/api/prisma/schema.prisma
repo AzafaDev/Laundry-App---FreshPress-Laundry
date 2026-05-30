@@ -176,22 +176,24 @@ model Employee {
   outlet_id     String?      @db.Uuid
   is_active     Boolean      @default(true)
   is_occupied   Boolean      @default(false)
+  token_version Int          @default(0)
   last_login_at DateTime?    @db.Timestamptz
   deleted_at    DateTime?    @db.Timestamptz
   created_at    DateTime     @default(now()) @db.Timestamptz
   updated_at    DateTime     @default(now()) @updatedAt @db.Timestamptz
 
   // Relations
-  outlet                   Outlet?         @relation(fields: [outlet_id], references: [id])
+  outlet                   Outlet?               @relation(fields: [outlet_id], references: [id])
   shifts                   EmployeeShift[]
   process_logs             ProcessLog[]
-  bypass_requests_made     BypassRequest[] @relation("BypassRequestedBy")
-  bypass_requests_reviewed BypassRequest[] @relation("BypassReviewedBy")
+  bypass_requests_made     BypassRequest[]       @relation("BypassRequestedBy")
+  bypass_requests_reviewed BypassRequest[]       @relation("BypassReviewedBy")
   driver_tasks             DriverTask[]
   complaints               Complaint[]
   attendances              Attendance[]
   orders_created           Order[]
   notifications            Notification[]
+  password_reset_tokens    PasswordResetToken[]
 
   @@index([email])
   @@index([role])
@@ -199,6 +201,21 @@ model Employee {
   @@index([is_occupied])
   @@index([deleted_at])
   @@map("employees")
+}
+
+model PasswordResetToken {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employee_id String    @db.Uuid
+  token_hash  String    @db.VarChar(64)
+  expires_at  DateTime  @db.Timestamptz
+  used_at     DateTime? @db.Timestamptz
+  created_at  DateTime  @default(now()) @db.Timestamptz
+
+  employee Employee @relation(fields: [employee_id], references: [id])
+
+  @@index([token_hash])
+  @@index([employee_id])
+  @@map("password_reset_tokens")
 }
 
 // ─────────────────────────────────────────

@@ -1,4 +1,5 @@
 import bcrypt from "bcrypt";
+import crypto from "crypto";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import {
@@ -6,6 +7,7 @@ import {
   signRefreshToken,
   verifyRefreshToken,
 } from "../../utils/jwt.util.js";
+import { sendEmployeeResetPasswordEmail } from "../../lib/email.js";
 import { Response } from "express";
 
 async function storeRefreshToken(
@@ -53,6 +55,7 @@ export const loginEmployee = async (
     role: employee.role,
     email: employee.email,
     outletId: employee.outlet_id,
+    tokenVersion: employee.token_version,
   });
 
   const refreshToken = signRefreshToken({
@@ -60,6 +63,7 @@ export const loginEmployee = async (
     role: employee.role,
     email: employee.email,
     outletId: employee.outlet_id,
+    tokenVersion: employee.token_version,
   });
 
   const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
@@ -86,7 +90,7 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
     throw new AppError("Refresh token tidak ditemukan", 401);
   }
 
-  let payload: { userId: string; role: string; email: string; outletId?: string | null };
+  let payload: { userId: string; role: string; email: string; outletId?: string | null; tokenVersion?: number };
   try {
     payload = verifyRefreshToken(refreshToken);
   } catch (error) {
@@ -114,6 +118,7 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
     role: payload.role,
     email: payload.email,
     outletId: payload.outletId,
+    tokenVersion: payload.tokenVersion,
   });
 
   const newRefreshToken = signRefreshToken({
@@ -121,6 +126,7 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
     role: payload.role,
     email: payload.email,
     outletId: payload.outletId,
+    tokenVersion: payload.tokenVersion,
   });
 
   const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
@@ -152,6 +158,70 @@ export const logoutEmployee = async (req: any, res: Response) => {
   });
 
   return { message: "Logout berhasil"}
+};
+
+export const forgotPassword = async (email: string) => {
+  const employee = await prisma.employee.findUnique({ where: { email, deleted_at: null } });
+  if (!employee) return { message: "Jika email terdaftar, link reset akan dikirimkan." };
+
+  await prisma.passwordResetToken.updateMany({
+    where: { employee_id: employee.id, used_at: null },
+    data: { used_at: new Date() },
+  });
+
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+  const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+  await prisma.passwordResetToken.create({
+    data: { employee_id: employee.id, token_hash: tokenHash, expires_at: expiresAt },
+  });
+
+  await sendEmployeeResetPasswordEmail(employee.email, rawToken);
+  return { message: "Jika email terdaftar, link reset akan dikirimkan." };
+};
+
+export const resetPassword = async (rawToken: string, newPassword: string) => {
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+  const record = await prisma.passwordResetToken.findFirst({
+    where: { token_hash: tokenHash, used_at: null, expires_at: { gt: new Date() } },
+  });
+
+  if (!record) throw new AppError("Token tidak valid atau sudah kadaluarsa.", 400);
+
+  const password_hash = await bcrypt.hash(newPassword, 10);
+  await prisma.$transaction([
+    prisma.employee.update({
+      where: { id: record.employee_id },
+      data: { password_hash, token_version: { increment: 1 } },
+    }),
+    prisma.passwordResetToken.update({
+      where: { id: record.id },
+      data: { used_at: new Date() },
+    }),
+  ]);
+
+  return { message: "Password berhasil diubah. Silakan login." };
+};
+
+export const changePassword = async (
+  employeeId: string,
+  oldPassword: string,
+  newPassword: string,
+) => {
+  const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+  if (!employee) throw new AppError("Akun tidak ditemukan.", 404);
+
+  const isValid = await bcrypt.compare(oldPassword, employee.password_hash);
+  if (!isValid) throw new AppError("Password lama tidak sesuai.", 400);
+
+  const password_hash = await bcrypt.hash(newPassword, 10);
+  await prisma.employee.update({
+    where: { id: employeeId },
+    data: { password_hash, token_version: { increment: 1 } },
+  });
+
+  return { message: "Password berhasil diubah." };
 };
 
 function parseDuration(duration: string): number {

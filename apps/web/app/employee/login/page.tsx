@@ -108,6 +108,12 @@ export default function EmployeeLoginPage() {
               </div>
             </div>
 
+            <div className="flex justify-end">
+              <Link href="/employee/forgot-password" className="text-xs text-primary hover:underline">
+                Lupa Password?
+              </Link>
+            </div>
+
             <button
               type="submit"
               disabled={isLoggingIn}

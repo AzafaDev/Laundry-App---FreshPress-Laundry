@@ -10,16 +10,16 @@ export async function runAllSeeds() {
   console.log('🌱 Starting database seeding...\n');
 
   console.log('🗑️ Cleaning up existing data...');
-  try {
-    await prisma.attendance.deleteMany({});
-    await prisma.employeeShift.deleteMany({});
-    await prisma.employee.deleteMany({});
-    await prisma.workShift.deleteMany({});
-    await prisma.outlet.deleteMany({});
-    console.log('✅ Data cleaned.\n');
-  } catch (e) {
-    console.log('⚠️ Cleanup skipped or partial.\n');
-  }
+  await prisma.driverTask.deleteMany({ where: { order: { invoice_number: { startsWith: 'INV-SEED-' } } } });
+  await prisma.order.deleteMany({ where: { invoice_number: { startsWith: 'INV-SEED-' } } });
+  await prisma.customerAddress.deleteMany({ where: { customer: { email: 'testcustomer@freshpress.com' } } });
+  await prisma.customer.deleteMany({ where: { email: 'testcustomer@freshpress.com' } });
+  await prisma.attendance.deleteMany({});
+  await prisma.employeeShift.deleteMany({});
+  await prisma.employee.deleteMany({});
+  await prisma.workShift.deleteMany({});
+  await prisma.outlet.deleteMany({});
+  console.log('✅ Data cleaned.\n');
 
   const outlets = await seedOutlets();
   const mainOutlet = outlets[0];
