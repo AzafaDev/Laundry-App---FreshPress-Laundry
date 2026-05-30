@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, type FormEvent, useEffect } from "react";
+import { useState, type FormEvent, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, EyeOff, Eye, Shirt } from "lucide-react";
 import { employeeAuthService } from "@/services/employeeAuth.service";
 
-export default function EmployeeResetPasswordPage() {
+function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
@@ -119,5 +119,13 @@ export default function EmployeeResetPasswordPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function EmployeeResetPasswordPage() {
+  return (
+    <Suspense>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
