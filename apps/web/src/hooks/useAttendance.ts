@@ -27,10 +27,6 @@ export function useAttendance() {
       queryClient.invalidateQueries({ queryKey: ["attendance", "today", employeeId] });
       queryClient.invalidateQueries({ queryKey: ["attendance", "logs", employeeId] });
       queryClient.invalidateQueries({ queryKey: ["attendance", "currentShift", employeeId] });
-      toast.success("Status absensi diperbarui", {
-        icon: "🔄",
-        duration: 2000,
-      });
     });
     return unsubscribe;
   }, [on, queryClient, isEmployee, employeeId]);

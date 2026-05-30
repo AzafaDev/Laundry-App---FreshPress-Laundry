@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -63,7 +63,7 @@ function AvailableTaskCard({
             {taskTypeLabel}
           </span>
         </div>
-        <span className="text-xs text-outline">#{order?.invoice_number?.slice(0, 8)}</span>
+        <span className="text-xs text-outline">#{order?.invoice_number}</span>
       </div>
       <h3 className="text-lg font-bold text-on-surface mb-1">{customerName}</h3>
       <div className="flex items-start gap-2 text-sm text-on-surface-variant mb-4">
@@ -97,7 +97,7 @@ function ActiveTaskCard({ task, onComplete, isCompleting }: { task: DriverTask; 
           <TaskTypeIcon type={task.task_type} />
           <span className="text-xs font-bold uppercase text-primary">Active Task</span>
         </div>
-        <span className="text-xs text-outline">#{order?.invoice_number?.slice(0, 8)}</span>
+        <span className="text-xs text-outline">#{order?.invoice_number}</span>
       </div>
       <h3 className="text-xl font-bold text-on-surface mb-1">{customerName}</h3>
       <div className="flex items-start gap-2 text-sm text-on-surface-variant mb-4">
@@ -140,6 +140,7 @@ function TaskSkeleton() {
 export default function DriverDashboardPage() {
   const router = useRouter();
   const { user, _hasHydrated } = useEmployeeAuthStore();
+  const [claimingTaskId, setClaimingTaskId] = useState<string | null>(null);
   const { currentShift, checkedIn, checkInTime } = useAttendance();
   const {
     activeTask,
@@ -150,7 +151,6 @@ export default function DriverDashboardPage() {
     isLoadingPickups,
     isLoadingDeliveries,
     claimTask,
-    isClaiming,
     completeTask,
     isCompleting,
   } = useDriverTasks();
@@ -187,9 +187,13 @@ export default function DriverDashboardPage() {
   }
 
   const handleClaim = (taskId: string) => {
+    setClaimingTaskId(taskId);
     claimTask(taskId, {
       onSuccess: () => {
         router.push(`/dashboard/driver/task-detail?taskId=${taskId}`);
+      },
+      onError: () => {
+        setClaimingTaskId(null);
       },
     });
   };
@@ -298,7 +302,7 @@ export default function DriverDashboardPage() {
                       key={task.id}
                       task={task}
                       onClaim={handleClaim}
-                      isClaiming={isClaiming}
+                      isClaiming={claimingTaskId === task.id}
                     />
                   ))}
                 </div>
@@ -331,7 +335,7 @@ export default function DriverDashboardPage() {
                       key={task.id}
                       task={task}
                       onClaim={handleClaim}
-                      isClaiming={isClaiming}
+                      isClaiming={claimingTaskId === task.id}
                     />
                   ))}
                 </div>

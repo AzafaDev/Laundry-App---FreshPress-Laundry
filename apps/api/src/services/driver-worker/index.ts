@@ -467,6 +467,7 @@ const driverService = {
 
     const tasks = await prisma.driverTask.findMany({
       where: {
+        task_type: "pickup",
         status: "available",
         driver_id: null,
         order: { outlet_id: employee.outlet_id },

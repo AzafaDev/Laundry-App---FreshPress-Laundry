@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { workerStationService, type StationType, type StationOrder } from "@/services/workerStation.service";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
-import toast from "react-hot-toast";
 
 function mapRoleToStation(role: string | undefined): StationType | null {
   switch (role) {
@@ -33,8 +32,7 @@ export function useWorkerStation() {
   const completeStationMutation = useMutation({
     mutationFn: ({ orderId, stationType }: { orderId: string; stationType: StationType }) =>
       workerStationService.completeStation(stationType, orderId),
-    onSuccess: (data, variables) => {
-      toast.success(`Order ${variables.orderId} selesai di station ${variables.stationType}`);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     },
   });
@@ -47,7 +45,7 @@ export function useWorkerStation() {
     isLoading: stationOrdersQuery.isLoading,
     isError: stationOrdersQuery.isError,
     isCompleted: !!stationOrdersQuery.data,
-    completeStation: completeStationMutation.mutate,
+    completeStation: completeStationMutation.mutateAsync,
     isCompleting: completeStationMutation.isPending,
     refetch: () => stationOrdersQuery.refetch(),
   };
