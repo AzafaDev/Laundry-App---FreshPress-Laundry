@@ -33,11 +33,8 @@ export function useDriverTasks() {
 
   const claimTaskMutation = useMutation({
     mutationFn: (taskId: string) => driverTaskService.claimTask(taskId),
-    onSuccess: (claimedTask) => {
-      queryClient.setQueryData(["driver", "tasks", "active"], {
-        hasActiveTask: true,
-        task: claimedTask,
-      });
+    onSuccess: (data) => {
+      queryClient.setQueryData(["driver", "tasks", "active"], data);
     },
     onError: (error: any) => {
       const message = error?.response?.data?.message || "Gagal mengambil task. Coba lagi.";

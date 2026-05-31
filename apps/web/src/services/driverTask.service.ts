@@ -61,8 +61,8 @@ export const driverTaskService = {
     return data.data;
   },
 
-  claimTask: async (taskId: string): Promise<DriverTask> => {
-    const { data } = await axiosInstance.post<{ success: true; data: DriverTask }>(
+  claimTask: async (taskId: string): Promise<ActiveTaskResponse> => {
+    const { data } = await axiosInstance.post<{ success: true; data: ActiveTaskResponse }>(
       `/v1/driver/tasks/${taskId}/claim`
     );
     return data.data;

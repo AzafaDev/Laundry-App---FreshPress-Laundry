@@ -1,8 +1,9 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma.js';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
+import { getNow, getEmployeeShiftForDate } from '../services/driver-worker/attendanceHelper.js';
 
-async function markAbsentForDate(targetDate: Date) {
+async function processEndOfDay(targetDate: Date) {
   const start = startOfDay(targetDate);
   const end = endOfDay(targetDate);
 
@@ -18,39 +19,54 @@ async function markAbsentForDate(targetDate: Date) {
     distinct: ['employee_id'],
   });
 
-  const employeeIds = employeesWithShift.map(e => e.employee_id);
-  if (employeeIds.length === 0) return;
+  if (employeesWithShift.length === 0) return;
 
-  const existingAttendances = await prisma.attendance.findMany({
+  const employeeIds = employeesWithShift.map(e => e.employee_id);
+
+  const attendances = await prisma.attendance.findMany({
     where: {
       employee_id: { in: employeeIds },
       date: { gte: start, lte: end },
     },
-    select: { employee_id: true },
+    select: { id: true, employee_id: true, check_in_time: true, check_out_time: true },
   });
-  const existingEmployeeIds = new Set(existingAttendances.map(a => a.employee_id));
 
-  const absentEmployees = employeesWithShift.filter(
-    e => !existingEmployeeIds.has(e.employee_id)
-  );
+  const attendanceMap = new Map(attendances.map(a => [a.employee_id, a]));
 
-  for (const emp of absentEmployees) {
-    await prisma.attendance.upsert({
-      where: { employee_id_date: { employee_id: emp.employee_id, date: targetDate } },
-      update: { status: 'absent', is_late: null, notes: 'Auto-marked absent' },
-      create: {
-        employee_id: emp.employee_id,
-        outlet_id: emp.outlet_id,
-        date: targetDate,
-        status: 'absent',
-        notes: 'Auto-marked absent (no check-in)',
-      },
-    });
+  for (const emp of employeesWithShift) {
+    const attendance = attendanceMap.get(emp.employee_id);
+
+    if (!attendance) {
+      // No check-in at all — mark absent
+      await prisma.attendance.upsert({
+        where: { employee_id_date: { employee_id: emp.employee_id, date: targetDate } },
+        update: { status: 'absent', is_late: null, notes: 'Auto-marked absent' },
+        create: {
+          employee_id: emp.employee_id,
+          outlet_id: emp.outlet_id,
+          date: targetDate,
+          status: 'absent',
+          notes: 'Auto-marked absent (no check-in)',
+        },
+      });
+    } else if (attendance.check_in_time && !attendance.check_out_time) {
+      // Checked in but forgot to check out — auto-checkout at shift end time
+      const shift = await getEmployeeShiftForDate(emp.employee_id, targetDate);
+      if (shift) {
+        await prisma.attendance.update({
+          where: { id: attendance.id },
+          data: {
+            check_out_time: shift.endTime,
+            notes: 'Auto-checkout (forgot to check out)',
+          },
+        });
+      }
+    }
   }
 }
 
 cron.schedule('55 23 * * *', async () => {
-  const yesterday = subDays(new Date(), 1);
-  await markAbsentForDate(yesterday);
-  console.log(`[Cron] Marked absent for ${yesterday.toISOString()}`);
+  const yesterday = subDays(getNow(), 1);
+  await processEndOfDay(yesterday);
+  console.log(`[Cron] Processed end-of-day for ${yesterday.toISOString()}`);
 });

@@ -20,6 +20,7 @@ interface AttendanceCardProps {
   error?: Error | null;
   canCheckIn?: boolean;
   canCheckOut?: boolean;
+  shiftEndTime?: string;
 }
 
 export function AttendanceCard({
@@ -32,6 +33,7 @@ export function AttendanceCard({
   error = null,
   canCheckIn = true,
   canCheckOut = true,
+  shiftEndTime,
 }: AttendanceCardProps) {
   return (
     <motion.div
@@ -114,6 +116,12 @@ export function AttendanceCard({
           {loading ? "Memproses..." : "Check Out"}
         </motion.button>
       </div>
+
+      {checkedIn && !canCheckOut && !checkOutTime && shiftEndTime && (
+        <p className="mt-3 text-center text-xs text-on-surface-variant">
+          Checkout tersedia setelah shift selesai ({shiftEndTime})
+        </p>
+      )}
 
       {checkOutTime && (
         <motion.p

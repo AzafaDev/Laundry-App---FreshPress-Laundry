@@ -8,7 +8,7 @@ import rateLimit from "express-rate-limit";
  */
 export const loginRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10,
+  max: process.env.NODE_ENV === "production" ? 10 : 100,
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // don't penalize valid logins
@@ -23,7 +23,7 @@ export const loginRateLimiter = rateLimit({
  */
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: process.env.NODE_ENV === "production" ? 20 : 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: {

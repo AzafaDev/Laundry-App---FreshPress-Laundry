@@ -11,6 +11,8 @@ export async function runAllSeeds() {
 
   console.log('🗑️ Cleaning up existing data...');
   await prisma.driverTask.deleteMany({ where: { order: { invoice_number: { startsWith: 'INV-SEED-' } } } });
+  await prisma.orderItem.deleteMany({ where: { order: { invoice_number: { startsWith: 'INV-SEED-' } } } });
+  await prisma.orderStatusHistory.deleteMany({ where: { order: { invoice_number: { startsWith: 'INV-SEED-' } } } });
   await prisma.order.deleteMany({ where: { invoice_number: { startsWith: 'INV-SEED-' } } });
   await prisma.customerAddress.deleteMany({ where: { customer: { email: 'testcustomer@freshpress.com' } } });
   await prisma.customer.deleteMany({ where: { email: 'testcustomer@freshpress.com' } });
