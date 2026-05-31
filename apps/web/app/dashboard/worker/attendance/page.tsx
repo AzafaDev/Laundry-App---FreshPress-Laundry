@@ -145,6 +145,11 @@ export default function WorkerAttendancePage() {
                 )}
               </div>
             </div>
+            {locationStatus === "denied" && (
+              <div className="mt-3 bg-error/10 border border-error/20 rounded-lg px-3 py-2 text-xs text-error">
+                Izinkan akses lokasi di browser untuk check-in: klik ikon kunci/info di address bar → izinkan Lokasi → refresh halaman.
+              </div>
+            )}
           </motion.div>
 
           <ShiftCard currentShift={att.currentShift ?? null} />

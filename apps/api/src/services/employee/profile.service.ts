@@ -9,7 +9,13 @@ const PROFILE_SELECT = {
   avatar_url: true,
   role: true,
   outlet_id: true,
+  outlet: { select: { name: true } },
 } as const;
+
+function formatProfile(employee: any) {
+  const { outlet, ...rest } = employee;
+  return { ...rest, outlet_name: outlet?.name ?? null };
+}
 
 export const getProfile = async (employeeId: string) => {
   const employee = await prisma.employee.findUnique({
@@ -17,7 +23,7 @@ export const getProfile = async (employeeId: string) => {
     select: PROFILE_SELECT,
   });
   if (!employee) throw new AppError("Akun tidak ditemukan.", 404);
-  return employee;
+  return formatProfile(employee);
 };
 
 export const updateProfile = async (
@@ -29,7 +35,7 @@ export const updateProfile = async (
     data,
     select: PROFILE_SELECT,
   });
-  return employee;
+  return formatProfile(employee);
 };
 
 export const updateAvatar = async (employeeId: string, avatarUrl: string) => {
@@ -38,5 +44,5 @@ export const updateAvatar = async (employeeId: string, avatarUrl: string) => {
     data: { avatar_url: avatarUrl },
     select: PROFILE_SELECT,
   });
-  return employee;
+  return formatProfile(employee);
 };

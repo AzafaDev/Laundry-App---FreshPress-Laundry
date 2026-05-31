@@ -52,10 +52,6 @@ export default function OutletAdminLayout({
     };
   }, [user, on, queryClient]);
 
-  if (!_hasHydrated || !user || !accessToken || user.role !== "outlet_admin") {
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-background text-on-surface">
       <AdminSidebar />

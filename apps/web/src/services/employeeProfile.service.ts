@@ -1,7 +1,7 @@
 import { axiosInstance } from "@/lib/axios";
 import { Employee } from "@/types/employee.types";
 
-type ProfileData = Pick<Employee, "id" | "full_name" | "email" | "phone" | "avatar_url" | "role" | "outlet_id">;
+type ProfileData = Pick<Employee, "id" | "full_name" | "email" | "phone" | "avatar_url" | "role" | "outlet_id" | "outlet_name">;
 
 export const employeeProfileService = {
   getProfile: async (): Promise<ProfileData> => {

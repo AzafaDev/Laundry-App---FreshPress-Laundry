@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { formatDuration, intervalToDuration } from "date-fns";
 import { id } from "date-fns/locale";
 import type { CurrentShift } from "@/services/attendance.service";
@@ -8,7 +9,39 @@ interface ShiftCardProps {
   currentShift: CurrentShift | null;
 }
 
+function useClientProgress(currentShift: CurrentShift | null) {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    if (!currentShift || currentShift.phase !== "active") return;
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, [currentShift]);
+
+  if (!currentShift || currentShift.phase !== "active") {
+    return { progressPercent: currentShift?.progressPercent ?? 0, remainingSeconds: currentShift?.remainingSeconds ?? 0 };
+  }
+
+  const [startH, startM] = currentShift.startTime.split(":").map(Number);
+  const [endH, endM] = currentShift.endTime.split(":").map(Number);
+  const todayBase = new Date(now);
+  todayBase.setSeconds(0, 0);
+
+  const start = new Date(todayBase);
+  start.setHours(startH, startM, 0, 0);
+  const end = new Date(todayBase);
+  end.setHours(endH, endM, 0, 0);
+
+  const total = end.getTime() - start.getTime();
+  const elapsed = now.getTime() - start.getTime();
+  const progressPercent = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+  const remainingSeconds = Math.max(0, Math.round((end.getTime() - now.getTime()) / 1000));
+
+  return { progressPercent, remainingSeconds };
+}
+
 export function ShiftCard({ currentShift }: ShiftCardProps) {
+  const { progressPercent, remainingSeconds } = useClientProgress(currentShift);
   if (!currentShift) {
     return (
       <div className="bg-surface-container-low border border-outline-variant rounded-2xl p-5 shadow-sm">
@@ -23,7 +56,7 @@ export function ShiftCard({ currentShift }: ShiftCardProps) {
     );
   }
 
-  const { shiftName, startTime, endTime, isActive, phase, progressPercent, remainingSeconds } = currentShift;
+  const { shiftName, startTime, endTime, isActive, phase } = currentShift;
 
   const formatTime = (timeStr: string) => {
     const parts = timeStr.split(":");
