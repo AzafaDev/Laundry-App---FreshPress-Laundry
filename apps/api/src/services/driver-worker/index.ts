@@ -10,7 +10,7 @@ import {
   determineAttendanceStatus,
   isWithinRadius,
   getTodayLocalStart,
-  toLocalMidnight,
+
   getShiftForDateTime,
   hasActiveDriverTask,
   getNow,
@@ -197,15 +197,6 @@ const attendanceService = {
     }
 
     const now = getNow();
-    const attendanceLocalMidnight = toLocalMidnight(attendance.date);
-    const shift = await getEmployeeShiftForDate(employeeId, attendanceLocalMidnight);
-    if (!shift) {
-      throw new AppError("Tidak ada shift untuk tanggal absensi ini", 403);
-    }
-
-    if (!canCheckOut(now, shift.endTime)) {
-      throw new AppError("Check-out hanya dapat dilakukan setelah shift berakhir", 403);
-    }
 
     const updated = await prisma.attendance.update({
       where: { id: attendanceId },
@@ -359,16 +350,18 @@ const attendanceService = {
 
   async getUpcomingOrActiveShift(employeeId: string) {
     const now = getNow();
-    const shiftInfo = await getUpcomingShiftForDateTime(employeeId, now, 15);
+    const today = getTodayLocalStart();
+    const shiftInfo = await getEmployeeShiftForDate(employeeId, today);
     if (!shiftInfo) return null;
 
     const { shiftName, startTime, endTime } = shiftInfo;
     const outlet = await getEmployeeOutlet(employeeId);
     const outletData = await prisma.outlet.findUnique({ where: { id: outlet } });
 
-    const isActive = now >= startTime && now <= endTime;
+    const isEnded = now > endTime;
+    const isActive = !isEnded && now >= startTime;
     const isPreShift = now < startTime;
-    const phase: "pre_shift" | "active" | "ended" = isPreShift ? "pre_shift" : isActive ? "active" : "ended";
+    const phase: "pre_shift" | "active" | "ended" = isEnded ? "ended" : isActive ? "active" : "pre_shift";
 
     let progressPercent = 0;
     let remainingSeconds = 0;
@@ -380,6 +373,8 @@ const attendanceService = {
       remainingSeconds = Math.max(0, (endTime.getTime() - now.getTime()) / 1000);
     } else if (isPreShift) {
       remainingSeconds = Math.max(0, (startTime.getTime() - now.getTime()) / 1000);
+    } else {
+      progressPercent = 100;
     }
 
     const formatTime = (date: Date) =>

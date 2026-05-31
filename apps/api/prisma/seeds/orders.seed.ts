@@ -43,6 +43,25 @@ export async function seedOrders(outlet: Outlet, employees: Employee[]) {
     },
   });
 
+  // Buat laundry items dummy jika belum ada
+  const laundryItems = await Promise.all([
+    prisma.laundryItem.upsert({
+      where: { name: 'Kaos' },
+      update: {},
+      create: { name: 'Kaos', unit: 'pcs', base_price: 5000 },
+    }),
+    prisma.laundryItem.upsert({
+      where: { name: 'Celana Panjang' },
+      update: {},
+      create: { name: 'Celana Panjang', unit: 'pcs', base_price: 8000 },
+    }),
+    prisma.laundryItem.upsert({
+      where: { name: 'Seprei' },
+      update: {},
+      create: { name: 'Seprei', unit: 'pcs', base_price: 15000 },
+    }),
+  ]);
+
   // Helper buat order
   async function createOrder(
     suffix: string,
@@ -51,9 +70,24 @@ export async function seedOrders(outlet: Outlet, employees: Employee[]) {
     withDeliveryTask = false,
   ) {
     const invoiceNumber = `INV-SEED-${suffix}`;
-    const existing = await prisma.order.findFirst({ where: { invoice_number: invoiceNumber } });
+    const existing = await prisma.order.findFirst({
+      where: { invoice_number: invoiceNumber },
+      include: { order_items: true },
+    });
     if (existing) {
       console.log(`⏭️  Order ${invoiceNumber} sudah ada, skip`);
+      // Tambahkan items jika belum ada (untuk order yang sudah di-seed sebelumnya)
+      if (existing.order_items.length === 0) {
+        await prisma.orderItem.createMany({
+          data: laundryItems.map((item, i) => ({
+            order_id: existing.id,
+            laundry_item_id: item.id,
+            quantity: i + 2,
+            price_at_order: item.base_price,
+          })),
+        });
+        console.log(`✅ Order items ditambahkan ke ${invoiceNumber}`);
+      }
       return existing;
     }
 
@@ -69,6 +103,15 @@ export async function seedOrders(outlet: Outlet, employees: Employee[]) {
         total_price: 35000,
         notes: `Seed order untuk testing ${status}`,
       },
+    });
+
+    await prisma.orderItem.createMany({
+      data: laundryItems.map((item, i) => ({
+        order_id: order.id,
+        laundry_item_id: item.id,
+        quantity: i + 2,
+        price_at_order: item.base_price,
+      })),
     });
 
     if (withPickupTask) {

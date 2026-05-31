@@ -14,6 +14,7 @@ export interface Employee {
   avatar_url: string | null;
   role: EmployeeRole;
   outlet_id: string | null;
+  outlet_name: string | null;
   is_active: boolean;
   is_occupied: boolean;
   last_login_at: string | null;

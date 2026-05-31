@@ -20,9 +20,5 @@ export default function DriverLayout({ children }: { children: ReactNode }) {
     }
   }, [user, accessToken, _hasHydrated, router]);
 
-  if (!_hasHydrated || !user || !accessToken || user.role !== "driver") {
-    return null;
-  }
-
   return <>{children}</>;
 }

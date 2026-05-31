@@ -59,8 +59,13 @@ export default function DriverAttendancePage() {
       toast.error("Aktifkan akses lokasi untuk check-in", { icon: "📍" });
       return;
     }
-    await att.checkInAsync();
-    att.refetch();
+    try {
+      await att.checkInAsync();
+      att.refetch();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Gagal check-in");
+    }
   };
 
   const handleCheckOut = async () => {
@@ -68,8 +73,13 @@ export default function DriverAttendancePage() {
       toast.error("Belum melakukan check-in");
       return;
     }
-    await att.checkOutAsync(att.attendanceId);
-    att.refetch();
+    try {
+      await att.checkOutAsync(att.attendanceId);
+      att.refetch();
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error(err.response?.data?.message || "Gagal check-out");
+    }
   };
 
   return (
@@ -154,7 +164,8 @@ export default function DriverAttendancePage() {
             loading={att.isCheckingIn || att.isCheckingOut}
             error={att.error}
             canCheckIn={att.currentShift?.canCheckIn ?? false}
-            canCheckOut={att.checkedIn && !att.checkOutTime}
+            canCheckOut={att.checkedIn && !att.checkOutTime && (att.currentShift?.canCheckOut ?? false)}
+            shiftEndTime={att.currentShift?.endTime}
           />
 
           <section>

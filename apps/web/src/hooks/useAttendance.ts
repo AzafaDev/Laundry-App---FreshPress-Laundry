@@ -5,7 +5,7 @@ import { attendanceService } from "@/services/attendance.service";
 import { useSocket } from "./useSocket";
 import { formatTime } from "@/utils/formatDate";
 import { useGeolocation } from "./useGeolocation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import type { AttendanceReportParams } from "@/types/attendance.type";
@@ -50,8 +50,42 @@ export function useAttendance() {
     queryKey: ["attendance", "currentShift", employeeId],
     queryFn: attendanceService.getCurrentShift,
     staleTime: 0,
+    refetchInterval: 60_000,
     enabled: isEmployee && !!employeeId,
   });
+
+  const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const refetchedOnExpireRef = useRef(false);
+
+  useEffect(() => {
+    if (shiftQuery.data != null) {
+      setRemainingSeconds(Math.round(shiftQuery.data.remainingSeconds));
+      refetchedOnExpireRef.current = false;
+    }
+  }, [shiftQuery.data]);
+
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (!isEmployee) return;
+
+    intervalRef.current = setInterval(() => {
+      setRemainingSeconds((prev) => {
+        if (prev <= 1 && !refetchedOnExpireRef.current) {
+          refetchedOnExpireRef.current = true;
+          queryClient.invalidateQueries({
+            queryKey: ["attendance", "currentShift", employeeId],
+          });
+          return 0;
+        }
+        return prev <= 0 ? 0 : prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isEmployee, employeeId, queryClient]);
 
   const checkInMutation = useMutation({
     mutationFn: async () => {
@@ -112,6 +146,7 @@ export function useAttendance() {
     records: logsQuery.data?.data ?? [],
     pagination: logsQuery.data?.pagination,
     currentShift: shiftQuery.data,
+    remainingSeconds,
     isLoading:
       todayQuery.isLoading || logsQuery.isLoading || shiftQuery.isLoading,
     isError: todayQuery.isError || logsQuery.isError || shiftQuery.isError,

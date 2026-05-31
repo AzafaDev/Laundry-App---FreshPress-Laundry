@@ -26,10 +26,6 @@ export default function AdminDashboardLayout({
     }
   }, [user, accessToken, _hasHydrated, router]);
 
-  if (!_hasHydrated || !user || !accessToken || user.role !== "super_admin") {
-    return null;
-  }
-
   return (
     <div className="min-h-screen bg-background text-on-surface">
       <AdminSidebar />
