@@ -85,8 +85,22 @@ export function ShiftCard({ currentShift }: ShiftCardProps) {
     const duration = intervalToDuration({ start: 0, end: remainingSeconds * 1000 });
     remainingTimeStr = formatDuration(duration, { locale: id, delimiter: " " });
   } else if (phase === "pre_shift" && remainingSeconds > 0) {
-    const minutesToStart = Math.ceil(remainingSeconds / 60);
-    remainingTimeStr = `${minutesToStart} menit lagi`;
+    if (remainingSeconds < 300) {
+      const mins = Math.floor(remainingSeconds / 60);
+      const secs = remainingSeconds % 60;
+      remainingTimeStr = mins > 0
+        ? `${mins} menit ${secs} detik lagi`
+        : `${secs} detik lagi`;
+    } else if (remainingSeconds < 3600) {
+      const minutesToStart = Math.ceil(remainingSeconds / 60);
+      remainingTimeStr = `${minutesToStart} menit lagi`;
+    } else {
+      const hours = Math.floor(remainingSeconds / 3600);
+      const mins = Math.ceil((remainingSeconds % 3600) / 60);
+      remainingTimeStr = mins > 0
+        ? `${hours} jam ${mins} menit lagi`
+        : `${hours} jam lagi`;
+    }
   }
 
   return (
