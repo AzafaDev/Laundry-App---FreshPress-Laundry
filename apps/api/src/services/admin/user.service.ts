@@ -15,9 +15,7 @@ const PUBLIC_EMPLOYEE_SELECT = {
   phone: true,
   avatar_url: true,
   role: true,
-  outlet_id: true,
   is_active: true,
-  is_occupied: true,
   deleted_at: true,
   created_at: true,
   updated_at: true,
@@ -30,7 +28,7 @@ export const listUsers = async (query: ListUserQuery) => {
 
   const where: Prisma.EmployeeWhereInput = {
     ...(include_deleted ? {} : { deleted_at: null }),
-    ...(role ? { role } : {}),
+    ...(role ? { role: role as any } : {}),
     ...(search
       ? {
           OR: [
@@ -65,7 +63,7 @@ export const listUsers = async (query: ListUserQuery) => {
 
 /** Get a single employee by id (must be active). */
 export const getUserById = async (id: string) => {
-  const employee = await prisma.employee.findFirst({
+  const user = await prisma.employee.findFirst({
     where: { id, deleted_at: null },
     select: PUBLIC_EMPLOYEE_SELECT,
   });
@@ -75,22 +73,19 @@ export const getUserById = async (id: string) => {
 
 /** Create a new employee account. */
 export const createUser = async (input: CreateUserInput) => {
-  const existing = await prisma.employee.findUnique({
-    where: { email: input.email },
-  });
+  const existing = await prisma.employee.findUnique({ where: { email: input.email } });
   if (existing) throw new AppError("Email sudah terdaftar.", 409);
 
   const password_hash = await hashPassword(input.password);
 
-  return prisma.employee.create({
+  const user = await prisma.employee.create({
     data: {
       full_name: input.full_name,
       email: input.email,
       phone: input.phone,
-      role: input.role,
+      role: input.role as any,
       password_hash,
-      outlet_id: input.outlet_id ?? null,
-      is_active: input.is_active ?? true,
+      is_active: !isInvite,
     },
     select: PUBLIC_EMPLOYEE_SELECT,
   });
@@ -116,9 +111,8 @@ export const updateUser = async (id: string, input: UpdateUserInput) => {
     ...(input.full_name !== undefined && { full_name: input.full_name }),
     ...(input.email !== undefined && { email: input.email }),
     ...(input.phone !== undefined && { phone: input.phone }),
-    ...(input.role !== undefined && { role: input.role }),
-    ...(input.is_active !== undefined && { is_active: input.is_active }),
-    ...(input.outlet_id !== undefined && { outlet_id: input.outlet_id }),
+    ...(input.role !== undefined && { role: input.role as any }),
+    ...(input.is_verified !== undefined && { is_active: input.is_verified }),
     ...(input.password && { password_hash: await hashPassword(input.password) }),
   };
 

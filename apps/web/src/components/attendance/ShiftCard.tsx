@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { differenceInSeconds, formatDuration, intervalToDuration } from "date-fns";
+import { useState, useEffect } from "react";
+import { formatDuration, intervalToDuration } from "date-fns";
 import { id } from "date-fns/locale";
 import type { CurrentShift } from "@/services/attendance.service";
 
@@ -9,14 +9,47 @@ interface ShiftCardProps {
   currentShift: CurrentShift | null;
 }
 
-export function ShiftCard({ currentShift }: ShiftCardProps) {
-  const [now, setNow] = useState(new Date());
+function useClientProgress(currentShift: CurrentShift | null) {
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!currentShift || (currentShift.phase !== "active" && currentShift.phase !== "pre_shift")) return;
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, [currentShift]);
 
+  if (!currentShift) {
+    return { progressPercent: 0, remainingSeconds: 0 };
+  }
+
+  const [startH, startM] = currentShift.startTime.split(":").map(Number);
+  const [endH, endM] = currentShift.endTime.split(":").map(Number);
+  const todayBase = new Date(now);
+
+  const start = new Date(todayBase);
+  start.setHours(startH, startM, 0, 0);
+  const end = new Date(todayBase);
+  end.setHours(endH, endM, 0, 0);
+
+  if (currentShift.phase === "pre_shift") {
+    const remainingSeconds = Math.max(0, Math.round((start.getTime() - now.getTime()) / 1000));
+    return { progressPercent: currentShift.progressPercent ?? 0, remainingSeconds };
+  }
+
+  if (currentShift.phase !== "active") {
+    return { progressPercent: currentShift.progressPercent ?? 0, remainingSeconds: currentShift.remainingSeconds ?? 0 };
+  }
+
+  const total = end.getTime() - start.getTime();
+  const elapsed = now.getTime() - start.getTime();
+  const progressPercent = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+  const remainingSeconds = Math.max(0, Math.round((end.getTime() - now.getTime()) / 1000));
+
+  return { progressPercent, remainingSeconds };
+}
+
+export function ShiftCard({ currentShift }: ShiftCardProps) {
+  const { progressPercent, remainingSeconds } = useClientProgress(currentShift);
   if (!currentShift) {
     return (
       <div className="bg-surface-container-low border border-outline-variant rounded-2xl p-5 shadow-sm">
@@ -31,7 +64,7 @@ export function ShiftCard({ currentShift }: ShiftCardProps) {
     );
   }
 
-  const { shiftName, startTime, endTime, isActive, progressPercent, remainingSeconds } = currentShift;
+  const { shiftName, startTime, endTime, isActive, phase } = currentShift;
 
   const formatTime = (timeStr: string) => {
     const parts = timeStr.split(":");
@@ -44,43 +77,38 @@ export function ShiftCard({ currentShift }: ShiftCardProps) {
   let statusText = "";
   let badgeColor = "";
 
-  if (isActive) {
+  if (phase === "active") {
     statusText = "Sedang Berlangsung";
     badgeColor = "bg-primary/10 text-primary border-primary/20";
+  } else if (phase === "pre_shift") {
+    statusText = "Akan Segera Dimulai";
+    badgeColor = "bg-amber-100 text-amber-700 border-amber-200";
   } else {
-    const nowDate = now;
-    const startHour = parseInt(startTime.split(":")[0]);
-    const startMinute = parseInt(startTime.split(":")[1]);
-    const endHour = parseInt(endTime.split(":")[0]);
-    const endMinute = parseInt(endTime.split(":")[1]);
-
-    const shiftStartToday = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate(), startHour, startMinute, 0);
-    const shiftEndToday = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate(), endHour, endMinute, 0);
-    if (shiftEndToday <= shiftStartToday) shiftEndToday.setDate(shiftEndToday.getDate() + 1);
-
-    const minutesToStart = differenceInSeconds(shiftStartToday, nowDate) / 60;
-    const willStartSoon = !isActive && minutesToStart > 0 && minutesToStart <= 30;
-
-    if (willStartSoon) {
-      statusText = "Akan Segera Dimulai";
-      badgeColor = "bg-amber-100 text-amber-700 border-amber-200";
-    } else if (nowDate > shiftEndToday) {
-      statusText = "Telah Berakhir";
-      badgeColor = "bg-surface-container-high text-on-surface-variant border-outline-variant";
-    } else {
-      statusText = "Belum Dimulai";
-      badgeColor = "bg-surface-container-high text-on-surface-variant border-outline-variant";
-    }
+    statusText = "Telah Berakhir";
+    badgeColor = "bg-surface-container-high text-on-surface-variant border-outline-variant";
   }
 
   let remainingTimeStr = "";
-  if (isActive && remainingSeconds > 0) {
+  if (phase === "active" && remainingSeconds > 0) {
     const duration = intervalToDuration({ start: 0, end: remainingSeconds * 1000 });
     remainingTimeStr = formatDuration(duration, { locale: id, delimiter: " " });
-  } else if (!isActive && statusText === "Akan Segera Dimulai") {
-    const shiftStartToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), parseInt(startTime.split(":")[0]), parseInt(startTime.split(":")[1]), 0);
-    const minutesToStart = Math.ceil((shiftStartToday.getTime() - now.getTime()) / (1000 * 60));
-    remainingTimeStr = `${minutesToStart} menit lagi`;
+  } else if (phase === "pre_shift" && remainingSeconds > 0) {
+    if (remainingSeconds < 300) {
+      const mins = Math.floor(remainingSeconds / 60);
+      const secs = remainingSeconds % 60;
+      remainingTimeStr = mins > 0
+        ? `${mins} menit ${secs} detik lagi`
+        : `${secs} detik lagi`;
+    } else if (remainingSeconds < 3600) {
+      const minutesToStart = Math.ceil(remainingSeconds / 60);
+      remainingTimeStr = `${minutesToStart} menit lagi`;
+    } else {
+      const hours = Math.floor(remainingSeconds / 3600);
+      const mins = Math.ceil((remainingSeconds % 3600) / 60);
+      remainingTimeStr = mins > 0
+        ? `${hours} jam ${mins} menit lagi`
+        : `${hours} jam lagi`;
+    }
   }
 
   return (

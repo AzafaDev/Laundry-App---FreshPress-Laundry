@@ -3,8 +3,14 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { getDistance } from "geolib";
 
+// Untuk testing: set MOCK_NOW di .env, contoh: MOCK_NOW=2026-05-29T07:45:00
+export function getNow(): Date {
+  if (process.env.MOCK_NOW) return new Date(process.env.MOCK_NOW);
+  return new Date();
+}
+
 export function getTodayLocalStart(): Date {
-  const now = new Date();
+  const now = getNow();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
@@ -194,6 +200,52 @@ export async function getShiftForDateTime(
       };
     }
   }
+  return null;
+}
+
+export async function getUpcomingShiftForDateTime(
+  employeeId: string,
+  targetDate: Date,
+  preShiftMinutes = 15,
+): Promise<{ shiftName: string; startTime: Date; endTime: Date } | null> {
+  const jsDay = targetDate.getDay();
+  const dbDay = jsDay === 0 ? 7 : jsDay;
+
+  const employeeShifts = await prisma.employeeShift.findMany({
+    where: { employee_id: employeeId, day_of_week: dbDay, is_active: true },
+    include: { shift: true },
+  });
+
+  if (employeeShifts.length === 0) return null;
+
+  const preShiftMs = preShiftMinutes * 60 * 1000;
+
+  for (const es of employeeShifts) {
+    const shift = es.shift;
+    const startDate = new Date(targetDate);
+    startDate.setHours(
+      shift.start_time.getHours(),
+      shift.start_time.getMinutes(),
+      shift.start_time.getSeconds(),
+      0,
+    );
+
+    let endDate = new Date(targetDate);
+    endDate.setHours(
+      shift.end_time.getHours(),
+      shift.end_time.getMinutes(),
+      shift.end_time.getSeconds(),
+      0,
+    );
+
+    if (endDate <= startDate) endDate.setDate(endDate.getDate() + 1);
+
+    const allowedStart = new Date(startDate.getTime() - preShiftMs);
+    if (targetDate >= allowedStart && targetDate <= endDate) {
+      return { shiftName: shift.name, startTime: startDate, endTime: endDate };
+    }
+  }
+
   return null;
 }
 

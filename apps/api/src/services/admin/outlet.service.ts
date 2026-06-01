@@ -96,10 +96,9 @@ export const createOutlet = async (input: CreateOutletInput) => {
       city: input.city,
       district: input.district,
       postal_code: input.postal_code,
-      phone: input.phone,
       latitude,
       longitude,
-      service_radius_km: input.service_radius_km,
+      service_radius_km: input.max_service_km,
       is_active: input.is_active ?? true,
     },
     select: OUTLET_SELECT,
@@ -138,8 +137,8 @@ export const updateOutlet = async (id: string, input: UpdateOutletInput) => {
       ...(input.phone !== undefined && { phone: input.phone }),
       ...(latitude !== undefined && { latitude }),
       ...(longitude !== undefined && { longitude }),
-      ...(input.service_radius_km !== undefined && {
-        service_radius_km: input.service_radius_km,
+      ...(input.max_service_km !== undefined && {
+        service_radius_km: input.max_service_km,
       }),
       ...(input.is_active !== undefined && { is_active: input.is_active }),
     },
@@ -167,8 +166,7 @@ export const assignUserToOutlet = async (outletId: string, userId: string) => {
     prisma.employee.findUnique({ where: { id: userId } }),
   ]);
   if (!outlet) throw new AppError("Outlet tidak ditemukan.", 404);
-  if (!employee || employee.deleted_at)
-    throw new AppError("Employee tidak ditemukan.", 404);
+  if (!employee || employee.deleted_at) throw new AppError("User tidak ditemukan.", 404);
 
   await prisma.employee.update({
     where: { id: userId },
@@ -192,11 +190,7 @@ export const listOutletAssignments = async (outletId: string) => {
   if (!outlet) throw new AppError("Outlet tidak ditemukan.", 404);
 
   return prisma.employee.findMany({
-    where: {
-      outlet_id: outletId,
-      deleted_at: null,
-      is_active: true,
-    },
+    where: { outlet_id: outletId, deleted_at: null },
     select: {
       id: true,
       full_name: true,
@@ -205,6 +199,8 @@ export const listOutletAssignments = async (outletId: string) => {
       role: true,
       is_active: true,
       avatar_url: true,
+      deleted_at: true,
+      outlet_id: true,
       created_at: true,
     },
     orderBy: { created_at: "desc" },
@@ -220,10 +216,6 @@ export const unassignUserFromOutlet = async (
 ) => {
   const outlet = await prisma.outlet.findUnique({ where: { id: outletId } });
   if (!outlet) throw new AppError("Outlet tidak ditemukan.", 404);
-
-  const employee = await prisma.employee.findUnique({ where: { id: userId } });
-  if (!employee || employee.outlet_id !== outletId)
-    throw new AppError("Employee tidak terdaftar di outlet ini.", 404);
 
   await prisma.employee.update({
     where: { id: userId },

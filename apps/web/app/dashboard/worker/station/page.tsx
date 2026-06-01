@@ -1,418 +1,344 @@
 "use client";
 
-import { useRef, useState } from "react";
-import Image from "next/image";
-import {
-  Shirt,
-  Check,
-  Minus,
-  Plus,
-  AlertTriangle,
-  LockKeyhole,
-  X,
-  ShieldAlert,
-  ChevronRight,
-  LayoutDashboard,
-  ReceiptText,
-  Package,
-  Store,
-  BadgeCheck,
-  BarChart3,
-  Home,
-  User,
-  Truck,
-} from "lucide-react";
+import { useState, useEffect } from "react";
+import { useWorkerStation } from "@/hooks/useWorkerStation";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { useAttendance } from "@/hooks/useAttendance";
+import { WorkerSidebar } from "@/components/dashboard/WorkerSidebar";
+import { WorkerTopBar } from "@/components/dashboard/WorkerTopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { ShiftBadge } from "@/components/ui/ShiftBadge";
+import { Loader2, Package, Shirt, Blend, CheckCircle, Clock, AlertCircle, Wifi, WifiOff } from "lucide-react";
+import { StationModal } from "@/components/worker/StationModal";
+import { useSocket } from "@/hooks/useSocket";
+import { useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import type { StationOrder } from "@/services/workerStation.service";
 
-// ---------- Desktop Sidebar ----------
-const WorkerSidebar = () => (
-  <aside className="hidden lg:flex flex-col h-screen fixed left-0 top-16 w-72 bg-surface-container-low border-r border-outline-variant shadow-sm z-40">
-    <div className="flex items-center gap-4 p-4 mb-4">
-      <Image
-        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTqv8g8JecSrw4WLhjwYYRlY6ErHwboPgS3nsAXoq7WG3cNM0IggmmmjU3Ao3N5JfqwpuUl4DU3UibgNQXavpuexJsj2a1kLx-RmQvgYXshfFFHSxFhiwum5Q_nQT0WkaFwEW9vwF18P54IAV3XGuH7o7H12yb8Fq_lqytxr2TSSkJ-BpKYT7y_Pvwhm30hGzhiARrBVoQ7DQHksnd1i3TX1sFu2d6I8T_4Nkc05X7oQRu_-pPNkvYn6-dw8g22Mt3XE-oGDu0bLY"
-        alt="Admin user"
-        width={48}
-        height={48}
-        className="rounded-full border-2 border-primary"
-      />
-      <div>
-        <span className="text-sm font-bold text-on-surface">Super Admin</span>
-        <span className="text-xs text-on-surface-variant">
-          admin@freshpress.com
-        </span>
-      </div>
-    </div>
-    <nav className="space-y-1 px-2">
-      <SidebarLink icon={LayoutDashboard} label="Dashboard" />
-      <SidebarLink icon={ReceiptText} label="Orders" active />
-      <SidebarLink icon={Package} label="Inventory" />
-      <SidebarLink icon={Store} label="Outlets" />
-      <SidebarLink icon={BadgeCheck} label="Staff" />
-      <SidebarLink icon={BarChart3} label="Reports" />
-    </nav>
-  </aside>
-);
+const stationConfig = {
+  washing: {
+    title: "Stasiun Cuci",
+    subtitle: "Proses cucian yang masuk",
+    Icon: Shirt,
+    accentClass: "bg-blue-50 border-blue-100",
+    iconClass: "text-blue-500 bg-blue-100",
+    badgeClass: "bg-blue-100 text-blue-700",
+  },
+  ironing: {
+    title: "Stasiun Setrika",
+    subtitle: "Proses setrika yang masuk",
+    Icon: Blend,
+    accentClass: "bg-orange-50 border-orange-100",
+    iconClass: "text-orange-500 bg-orange-100",
+    badgeClass: "bg-orange-100 text-orange-700",
+  },
+  packing: {
+    title: "Stasiun Packing",
+    subtitle: "Proses packing yang masuk",
+    Icon: Package,
+    accentClass: "bg-emerald-50 border-emerald-100",
+    iconClass: "text-emerald-600 bg-emerald-100",
+    badgeClass: "bg-emerald-100 text-emerald-700",
+  },
+};
 
-const SidebarLink = ({
-  icon: Icon,
-  label,
-  active,
-}: {
-  icon: React.ElementType;
-  label: string;
-  active?: boolean;
-}) => (
-  <a
-    href="#"
-    className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-      active
-        ? "bg-secondary-container text-on-secondary-container font-bold translate-x-1"
-        : "text-on-surface-variant hover:bg-surface-container-high"
-    }`}
-  >
-    <Icon className="w-5 h-5" />
-    {label}
-  </a>
-);
+const statusLabel: Record<string, string> = {
+  washing_in_progress: "Sedang dicuci",
+  ironing_in_progress: "Sedang disetrika",
+  packing_in_progress: "Sedang dipacking",
+  ready_for_washing: "Antri cuci",
+  ready_for_ironing: "Antri setrika",
+  ready_for_packing: "Antri packing",
+};
 
-// ---------- Garment Item Interface ----------
-interface GarmentItem {
-  id: number;
-  name: string;
-  sub: string;
-  icon: React.ElementType;
-  expected: number;
-  received: number;
-  mismatch: boolean;
+function computeWaiting(createdAt: string): { label: string; urgent: boolean } {
+  const diffMin = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
+  if (diffMin < 30) return { label: `${diffMin} mnt lalu`, urgent: false };
+  if (diffMin < 60) return { label: `${diffMin} mnt lalu`, urgent: true };
+  const hours = Math.floor(diffMin / 60);
+  return { label: `${hours} jam lalu`, urgent: true };
 }
 
-// ---------- Page Component ----------
-export default function WorkerStationPage() {
-  const [showBypassModal, setShowBypassModal] = useState(false);
-  const [items, setItems] = useState<GarmentItem[]>([
-    {
-      id: 1,
-      name: "T-shirts (White)",
-      sub: "Standard Wash & Fold",
-      icon: Shirt,
-      expected: 12,
-      received: 12,
-      mismatch: false,
-    },
-    {
-      id: 2,
-      name: "Denim Jeans",
-      sub: "Heavy Duty Cycle",
-      icon: Shirt,
-      expected: 5,
-      received: 4,
-      mismatch: true,
-    },
-    {
-      id: 3,
-      name: "Formal Shirts",
-      sub: "Press & Steam",
-      icon: Shirt,
-      expected: 8,
-      received: 8,
-      mismatch: false,
-    },
-  ]);
+function OrderCard({
+  order,
+  onProcess,
+  isProcessing,
+}: {
+  order: StationOrder;
+  onProcess: (id: string) => void;
+  isProcessing: boolean;
+}) {
+  const [waiting, setWaiting] = useState<{ label: string; urgent: boolean }>({ label: "", urgent: false });
+  useEffect(() => {
+    setWaiting(computeWaiting(order.created_at));
+    const timer = setInterval(() => setWaiting(computeWaiting(order.created_at)), 60000);
+    return () => clearInterval(timer);
+  }, [order.created_at]);
 
-  const [pin, setPin] = useState(["", "", "", ""]);
-  const pinRefs = Array.from({ length: 4 }, () =>
-    useRef<HTMLInputElement>(null),
-  );
-
-  const updateQuantity = (id: number, delta: number) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              received: Math.max(0, item.received + delta),
-              mismatch: false,
-            }
-          : item,
-      ),
-    );
-  };
+  const rawStatus = statusLabel[order.status] ?? order.status;
 
   return (
-    <div className="min-h-screen bg-background text-on-background pb-24 lg:pb-0">
-      {/* Top Bar */}
-      <header className="sticky top-0 z-50 flex justify-between items-center w-full px-4 md:px-8 h-16 bg-surface border-b border-outline-variant">
-        <div className="flex items-center gap-2">
-          <Shirt className="text-primary w-6 h-6" />
-          <h1 className="text-xl font-bold text-primary">FreshPress Laundry</h1>
+    <div
+      className={`bg-surface border rounded-xl p-4 shadow-sm transition-all ${
+        waiting.urgent ? "border-amber-200 bg-amber-50/30" : "border-outline-variant"
+      }`}
+    >
+      {/* Top row */}
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+            #{order.invoice_number}
+          </span>
+          <span className="text-xs text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-full border border-outline-variant">
+            {rawStatus}
+          </span>
         </div>
-        <nav className="hidden md:flex gap-6">
-          <a
-            href="#"
-            className="text-on-surface-variant hover:bg-surface-container-low px-2 py-1 rounded"
-          >
-            Home
-          </a>
-          <a
-            href="#"
-            className="text-primary font-semibold border-b-2 border-primary px-2 py-1"
-          >
-            Orders
-          </a>
-          <a
-            href="#"
-            className="text-on-surface-variant hover:bg-surface-container-low px-2 py-1 rounded"
-          >
-            Pickup
-          </a>
-        </nav>
-        <div className="w-10 h-10 rounded-full bg-primary-container overflow-hidden border border-outline-variant">
-          <Image
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgRSlM11gQJ-afFFrIL7fUxQzxOjmCaRP-Q9xufe1YYiOdAzi6PL6qA8g7g1QOQcPqdqu3ZYNHzJ5tr9FUywuDjgpcTm1h7povJuYZMSeKQ4kKeseghEhH8zCb86H48NeLs6sVCkb-6P9FQB2ueUgqJhUPWVU_7yt_kPCqLCbcPhu1laAC7C3lY5KFKY30XeG_ChcMku7ShUhcFa4vh6BMN4yL5A-Q-EhqVS4S8kV_7UVRLhxDBmtjAUW2CfXQuoHLLX-fPkbk5pc"
-            alt="Worker avatar"
-            width={40}
-            height={40}
-            className="object-cover"
-          />
+        <div
+          className={`flex items-center gap-1 text-xs font-medium shrink-0 ${
+            waiting.urgent ? "text-amber-600" : "text-on-surface-variant"
+          }`}
+        >
+          {waiting.urgent && <AlertCircle className="w-3 h-3" />}
+          <Clock className="w-3 h-3" />
+          {waiting.label}
         </div>
-      </header>
+      </div>
 
-      <WorkerSidebar />
+      {/* Customer */}
+      <h3 className="text-base font-bold text-on-surface">{order.customer.full_name}</h3>
+      <p className="text-sm text-on-surface-variant mt-0.5 mb-4">
+        {order.order_items.length} jenis item
+        {order.total_weight_kg ? ` • ${order.total_weight_kg} kg` : ""}
+      </p>
 
-      <main className="lg:pl-72 p-4 md:p-8 space-y-6">
-        {/* Order Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2 py-1 bg-primary-container text-on-primary-container text-xs rounded-full font-bold">
-                ACTIVE
-              </span>
-              <h2 className="text-xl font-bold text-on-surface">
-                Order #ORD-5521
-              </h2>
-            </div>
-            <p className="text-base text-on-surface-variant flex items-center gap-1">
-              <Shirt className="w-4 h-4" />
-              Station:{" "}
-              <span className="font-bold text-primary">Washing Station 04</span>
-            </p>
-            <div className="mt-2">
-              <ShiftBadge shift="Afternoon" />
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-xs text-on-surface-variant">Worker Assigned</p>
-              <p className="text-sm font-bold">John Marcus</p>
-            </div>
-            <button className="bg-primary text-on-primary px-6 py-3 rounded-lg font-bold hover:opacity-90 active:scale-[0.98] transition-all flex items-center gap-2">
-              <Check className="w-5 h-5" />
-              Finish Task
-            </button>
-          </div>
-        </div>
+      {/* Items preview */}
+      <div className="flex flex-wrap gap-1.5 mb-4">
+        {order.order_items.slice(0, 3).map((item) => (
+          <span
+            key={item.id}
+            className="text-xs bg-surface-container-low text-on-surface-variant px-2 py-0.5 rounded-md border border-outline-variant"
+          >
+            {item.laundry_item.name} ×{item.quantity}
+          </span>
+        ))}
+        {order.order_items.length > 3 && (
+          <span className="text-xs text-on-surface-variant px-1">
+            +{order.order_items.length - 3} lagi
+          </span>
+        )}
+      </div>
 
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* Garment Checklist */}
-          <div className="md:col-span-8 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
-              <h3 className="text-xl font-bold text-on-surface flex items-center gap-2">
-                <Shirt className="w-5 h-5" /> Garment Checklist
-              </h3>
-              <span className="text-sm text-on-surface-variant">
-                Items: {items.length} Total
-              </span>
+      <button
+        onClick={() => onProcess(order.id)}
+        disabled={isProcessing}
+        className="w-full py-2.5 bg-primary text-on-primary rounded-lg font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+      >
+        {isProcessing ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <CheckCircle className="w-4 h-4" />
+        )}
+        {isProcessing ? "Memproses..." : "Tandai Selesai"}
+      </button>
+    </div>
+  );
+}
+
+export default function WorkerStationPage() {
+  const { user, _hasHydrated } = useEmployeeAuthStore();
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(true);
+
+  let station: "washing" | "ironing" | "packing" | null = null;
+  if (user?.role === "washing_worker") station = "washing";
+  else if (user?.role === "ironing_worker") station = "ironing";
+  else if (user?.role === "packing_worker") station = "packing";
+
+  const { checkedIn } = useAttendance();
+  const { stationOrders, isLoading, completeStation, isCompleting, refetch } = useWorkerStation();
+  const { on } = useSocket();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!station) return;
+    const unsubNewOrder = on("station:new-order", (data: { station: string }) => {
+      if (data.station === station) {
+        toast.success(`Order baru masuk ke ${stationConfig[station].title}`);
+        queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
+      }
+    });
+    const unsubConnect = on("connect", () => setIsConnected(true));
+    const unsubDisconnect = on("disconnect", () => setIsConnected(false));
+    return () => {
+      unsubNewOrder();
+      unsubConnect();
+      unsubDisconnect();
+    };
+  }, [on, queryClient, station]);
+
+  if (_hasHydrated && !station) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-error">Akses ditolak. Anda bukan worker yang valid.</p>
+      </div>
+    );
+  }
+
+  if (!_hasHydrated || isLoading) {
+    return (
+      <div className="min-h-screen bg-background pb-24 lg:pb-0">
+        <WorkerSidebar />
+        <WorkerTopBar />
+        <main className="lg:pl-72 p-4 md:p-8">
+          <div className="max-w-5xl mx-auto space-y-6 animate-pulse">
+            {/* Header skeleton */}
+            <div className="flex items-center justify-between p-4 rounded-2xl border border-outline-variant bg-surface-container-low">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-xl bg-outline-variant" />
+                <div className="space-y-2">
+                  <div className="h-4 w-32 bg-outline-variant rounded" />
+                  <div className="h-3 w-24 bg-outline-variant rounded" />
+                </div>
+              </div>
+              <div className="h-6 w-24 bg-outline-variant rounded-full" />
             </div>
-            <div className="divide-y divide-outline-variant">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className={`p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:bg-surface-container-low transition-colors ${
-                    item.mismatch ? "bg-error-container/10" : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-secondary-container/20 flex items-center justify-center text-secondary">
-                      <item.icon className="w-8 h-8" />
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-bold text-on-surface">
-                        {item.name}
-                      </h4>
-                      <p className="text-xs text-on-surface-variant">
-                        {item.sub}
-                      </p>
-                    </div>
+            {/* Card skeletons */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="bg-surface border border-outline-variant rounded-xl p-4 space-y-3">
+                  <div className="flex justify-between">
+                    <div className="h-5 w-28 bg-outline-variant rounded-full" />
+                    <div className="h-4 w-16 bg-outline-variant rounded" />
                   </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-center">
-                      <span className="text-xs text-on-surface-variant block">
-                        Expected
-                      </span>
-                      <span className="text-xl font-bold text-on-surface">
-                        {item.expected}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-surface-container-high p-2 rounded-xl">
-                      <button
-                        onClick={() => updateQuantity(item.id, -1)}
-                        className="w-12 h-12 rounded-lg bg-surface-container-lowest text-primary border border-outline-variant flex items-center justify-center hover:bg-primary hover:text-on-primary active:scale-95 transition-all"
-                      >
-                        <Minus className="w-5 h-5" />
-                      </button>
-                      <input
-                        className="w-20 text-center text-xl font-bold bg-transparent border-none focus:ring-0 p-0"
-                        type="number"
-                        value={item.received}
-                        readOnly
-                      />
-                      <button
-                        onClick={() => updateQuantity(item.id, 1)}
-                        className="w-12 h-12 rounded-lg bg-surface-container-lowest text-primary border border-outline-variant flex items-center justify-center hover:bg-primary hover:text-on-primary active:scale-95 transition-all"
-                      >
-                        <Plus className="w-5 h-5" />
-                      </button>
-                    </div>
+                  <div className="h-5 w-40 bg-outline-variant rounded" />
+                  <div className="h-3 w-24 bg-outline-variant rounded" />
+                  <div className="flex gap-2">
+                    <div className="h-6 w-20 bg-outline-variant rounded-md" />
+                    <div className="h-6 w-20 bg-outline-variant rounded-md" />
                   </div>
+                  <div className="h-10 w-full bg-outline-variant rounded-lg" />
                 </div>
               ))}
             </div>
           </div>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
 
-          {/* Right Column */}
-          <div className="md:col-span-4 flex flex-col gap-6">
-            {/* Processing Status */}
-            <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm">
-              <h4 className="text-sm font-bold text-on-surface mb-4 uppercase tracking-widest">
-                Processing Status
-              </h4>
-              <div className="space-y-6 relative before:content-[''] before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-outline-variant">
-                <div className="flex items-start gap-4 relative">
-                  <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-on-primary z-10">
-                    <Check className="w-3 h-3" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold">Received & Sorted</p>
-                    <p className="text-xs text-on-surface-variant">
-                      10:45 AM by Sarah K.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4 relative">
-                  <div className="w-6 h-6 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container z-10 animate-pulse">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-primary">
-                      Washing Stage
-                    </p>
-                    <p className="text-xs text-on-surface-variant">
-                      In Progress - 32m remaining
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4 relative opacity-50">
-                  <div className="w-6 h-6 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center text-on-surface-variant z-10">
-                    <div className="w-2 h-2 rounded-full bg-outline-variant" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold">Drying</p>
-                    <p className="text-xs text-on-surface-variant">Pending</p>
-                  </div>
-                </div>
+  const cfg = stationConfig[station!];
+  const { Icon } = cfg;
+
+  const handleProcessClick = (orderId: string) => {
+    setSelectedOrderId(orderId);
+    setModalOpen(true);
+  };
+
+  const handleComplete = async (orderId: string, receivedQuantities: Record<string, number>) => {
+    const order = stationOrders.find((o) => o.id === orderId);
+    if (!order) return;
+
+    let hasMismatch = false;
+    for (const item of order.order_items) {
+      const received = receivedQuantities[item.id] ?? item.quantity;
+      if (received !== item.quantity) { hasMismatch = true; break; }
+    }
+
+    if (hasMismatch) {
+      const confirm = window.confirm(
+        "Terjadi ketidaksesuaian jumlah item. Lanjutkan proses?"
+      );
+      if (!confirm) return;
+    }
+
+    setProcessingId(orderId);
+    try {
+      await completeStation({ orderId, stationType: station! });
+      toast.success(`Order ${order.invoice_number} selesai diproses`);
+      setModalOpen(false);
+      refetch();
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error?.response?.data?.message || "Gagal menyelesaikan station");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background pb-24 lg:pb-0">
+      <WorkerSidebar />
+      <WorkerTopBar />
+      <main className="lg:pl-72 p-4 md:p-8">
+        <div className="max-w-5xl mx-auto space-y-6">
+
+          {/* Station header */}
+          <div className={`flex items-center justify-between p-4 rounded-2xl border ${cfg.accentClass}`}>
+            <div className="flex items-center gap-3">
+              <div className={`p-2.5 rounded-xl ${cfg.iconClass}`}>
+                <Icon className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-on-surface">{cfg.title}</h1>
+                <p className="text-sm text-on-surface-variant">{cfg.subtitle}</p>
               </div>
             </div>
-
-            {/* Discrepancy Action */}
-            <div className="bg-error-container/20 p-6 rounded-xl border-2 border-dashed border-error/30 flex flex-col gap-4">
-              <div className="flex items-start gap-4">
-                <AlertTriangle className="w-8 h-8 text-error" />
-                <div>
-                  <h4 className="text-sm font-bold text-error">
-                    Quantity Mismatch
-                  </h4>
-                  <p className="text-xs text-on-surface-variant">
-                    The processed quantity does not match the initial intake
-                    record.
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowBypassModal(true)}
-                className="w-full bg-error text-on-error py-3 rounded-lg font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-md"
-              >
-                <LockKeyhole className="w-5 h-5" />
-                Bypass Discrepancy
-              </button>
+            <div className="flex flex-col items-end gap-1.5">
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${cfg.badgeClass}`}>
+                {stationOrders.length} order menunggu
+              </span>
+              <span className={`flex items-center gap-1 text-[11px] ${isConnected ? "text-emerald-600" : "text-red-500"}`}>
+                {isConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+                {isConnected ? "Live" : "Offline"}
+              </span>
             </div>
           </div>
+
+          {/* Check-in gate */}
+          {!checkedIn ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center space-y-1">
+              <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
+              <p className="text-amber-700 font-semibold">Belum check-in</p>
+              <p className="text-sm text-amber-600">Lakukan check-in terlebih dahulu sebelum memproses order.</p>
+            </div>
+          ) : stationOrders.length === 0 ? (
+            /* Empty state */
+            <div className="flex flex-col items-center justify-center py-16 text-center bg-surface-container-low rounded-2xl border border-dashed border-outline-variant">
+              <div className={`p-4 rounded-2xl mb-4 ${cfg.iconClass}`}>
+                <Icon className="w-8 h-8" />
+              </div>
+              <p className="font-semibold text-on-surface">Tidak ada order saat ini</p>
+              <p className="text-sm text-on-surface-variant mt-1">
+                Order akan muncul otomatis saat masuk ke {cfg.title}.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {stationOrders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  onProcess={handleProcessClick}
+                  isProcessing={processingId === order.id || isCompleting}
+                />
+              ))}
+            </div>
+          )}
         </div>
-
-        {/* Bypass Modal */}
-        {showBypassModal && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-            <div className="bg-surface-container-lowest w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-outline-variant">
-              <div className="p-6 bg-surface-container-low border-b border-outline-variant flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                  <ShieldAlert className="w-6 h-6 text-error" />
-                  <h3 className="text-xl font-bold text-on-surface">
-                    Admin Authorization
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setShowBypassModal(false)}
-                  className="text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full transition-all"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="p-8 space-y-8 text-center">
-                <p className="text-base text-on-surface-variant">
-                  Enter Outlet Admin PIN to bypass the item quantity discrepancy
-                  for Order #ORD-5521.
-                </p>
-                <div className="flex justify-center gap-4">
-                  {pin.map((digit, i) => (
-                    <input
-                      key={i}
-                      className="w-14 h-16 text-center text-2xl font-bold bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary shadow-inner"
-                      maxLength={1}
-                      type="password"
-                      value={digit}
-                      onChange={(e) => {
-                        const newPin = [...pin];
-                        newPin[i] = e.target.value.replace(/\D/g, "");
-                        setPin(newPin);
-                      }}
-                    />
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => setShowBypassModal(false)}
-                    className="py-3 px-6 rounded-lg border border-outline font-bold text-on-surface hover:bg-surface-container-high transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log("Bypass confirmed", pin.join(""));
-                      setShowBypassModal(false);
-                    }}
-                    className="py-3 px-6 rounded-lg bg-primary text-on-primary font-bold shadow-lg hover:opacity-90 active:scale-95 transition-all"
-                  >
-                    Confirm Bypass
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </main>
-
       <BottomNav />
+
+      {modalOpen && selectedOrderId && (
+        <StationModal
+          orderId={selectedOrderId}
+          orders={stationOrders}
+          onClose={() => setModalOpen(false)}
+          onConfirm={handleComplete}
+          isProcessing={isCompleting}
+        />
+      )}
     </div>
   );
 }

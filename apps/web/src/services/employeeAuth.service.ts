@@ -41,4 +41,29 @@ export const employeeAuthService = {
       { withCredentials: true },
     );
   },
+
+  forgotPassword: async (email: string): Promise<{ message: string }> => {
+    const { data } = await axiosInstance.post<{ success: true; data: { message: string } }>(
+      "/v1/employee/auth/forgot-password",
+      { email },
+    );
+    return data.data;
+  },
+
+  resetPassword: async (token: string, newPassword: string): Promise<{ message: string }> => {
+    const { data } = await axiosInstance.post<{ success: true; data: { message: string } }>(
+      "/v1/employee/auth/reset-password",
+      { token, newPassword },
+    );
+    return data.data;
+  },
+
+  changePassword: async (oldPassword: string, newPassword: string): Promise<{ message: string }> => {
+    const { data } = await axiosInstance.post<{ success: true; data: { message: string } }>(
+      "/v1/employee/auth/change-password",
+      { oldPassword, newPassword },
+      { withCredentials: true },
+    );
+    return data.data;
+  },
 };

@@ -15,6 +15,7 @@ import {
   resetSchema,
   updateProfileSchema,
   changePasswordSchema,
+  verifyEmailChangeSchema,
 } from "../../validations/customer.validation.js";
 
 const router = Router();
@@ -34,5 +35,6 @@ router.get("/profile", authenticate, ProfileCtrl.getProfile);
 router.patch("/profile", authenticate, validate(updateProfileSchema), ProfileCtrl.updateProfile);
 router.patch("/profile/password", authenticate, validate(changePasswordSchema), ProfileCtrl.changePassword);
 router.post("/profile/avatar", authenticate, ProfileCtrl.uploadAvatarMiddleware, ProfileCtrl.uploadAvatar);
+router.post("/profile/verify-email-change", authRateLimiter, validate(verifyEmailChangeSchema), ProfileCtrl.verifyEmailChange);
 
 export default router;

@@ -46,3 +46,7 @@ export const changePasswordSchema = z.object({
     .regex(/[a-zA-Z]/, "Password harus mengandung huruf.")
     .regex(/\d/, "Password harus mengandung angka."),
 });
+
+export const verifyEmailChangeSchema = z.object({
+  token: z.string().min(1, "Token tidak boleh kosong."),
+});

@@ -20,6 +20,7 @@ interface AttendanceCardProps {
   error?: Error | null;
   canCheckIn?: boolean;
   canCheckOut?: boolean;
+  shiftEndTime?: string;
 }
 
 export function AttendanceCard({
@@ -32,6 +33,7 @@ export function AttendanceCard({
   error = null,
   canCheckIn = true,
   canCheckOut = true,
+  shiftEndTime,
 }: AttendanceCardProps) {
   return (
     <motion.div
@@ -83,37 +85,50 @@ export function AttendanceCard({
         </motion.div>
       )}
 
-      <div className="flex flex-col gap-3 sm:grid sm:grid-cols-2 sm:gap-3">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={onCheckIn}
-          disabled={checkedIn || loading || !canCheckIn}
-          className={`py-4 px-6 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
-            checkedIn || !canCheckIn
-              ? "bg-surface-container-high text-on-surface-variant cursor-not-allowed"
-              : "bg-primary text-on-primary hover:opacity-90 shadow-lg shadow-primary/20"
-          } ${loading ? "animate-pulse" : ""}`}
-        >
-          <LogIn className="w-5 h-5" />
-          {loading ? "Memproses..." : "Check In"}
-        </motion.button>
-
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={onCheckOut}
-          disabled={!checkedIn || loading || !canCheckOut}
-          className={`py-4 px-5 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
-            !checkedIn || !canCheckOut
-              ? "bg-surface-container-high text-on-surface-variant cursor-not-allowed"
-              : "bg-error text-on-error hover:opacity-90"
-          } ${loading ? "animate-pulse" : ""}`}
-        >
-          <LogOut className="w-5 h-5" />
-          {loading ? "Memproses..." : "Check Out"}
-        </motion.button>
+      <div>
+        {checkOutTime ? (
+          <div className="py-4 px-6 rounded-xl bg-surface-container-high text-on-surface-variant text-base font-semibold flex items-center justify-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-primary" />
+            Shift selesai
+          </div>
+        ) : checkedIn ? (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onCheckOut}
+            disabled={loading || !canCheckOut}
+            className={`w-full py-4 px-5 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
+              !canCheckOut
+                ? "bg-surface-container-high text-on-surface-variant cursor-not-allowed"
+                : "bg-error text-on-error hover:opacity-90"
+            }`}
+          >
+            <LogOut className="w-5 h-5" />
+            {loading ? "Memproses..." : "Check Out"}
+          </motion.button>
+        ) : (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={onCheckIn}
+            disabled={loading || !canCheckIn}
+            className={`w-full py-4 px-6 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
+              !canCheckIn
+                ? "bg-surface-container-high text-on-surface-variant cursor-not-allowed"
+                : "bg-primary text-on-primary hover:opacity-90 shadow-lg shadow-primary/20"
+            }`}
+          >
+            <LogIn className="w-5 h-5" />
+            {loading ? "Memproses..." : "Check In"}
+          </motion.button>
+        )}
       </div>
+
+      {checkedIn && !canCheckOut && !checkOutTime && shiftEndTime && (
+        <p className="mt-3 text-center text-xs text-on-surface-variant">
+          Checkout tersedia setelah shift selesai ({shiftEndTime})
+        </p>
+      )}
 
       {checkOutTime && (
         <motion.p

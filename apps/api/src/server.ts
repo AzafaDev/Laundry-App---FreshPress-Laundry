@@ -14,12 +14,13 @@ import "./cron/markAbsentAttendance.js";
 
 const app: Application = express();
 
+app.set("trust proxy", 1);
 app.use(helmet());
 app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: process.env.NODE_ENV === "production" ? 500 : 1000,
   standardHeaders: true,
   legacyHeaders: false,
 });

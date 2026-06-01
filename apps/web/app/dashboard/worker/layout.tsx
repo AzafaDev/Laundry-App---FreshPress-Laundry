@@ -52,9 +52,5 @@ export default function WorkerLayout({ children }: { children: ReactNode }) {
     };
   }, [user, on, queryClient]);
 
-  if (!_hasHydrated || !user || !accessToken || !WORKER_ROLES.includes(user.role)) {
-    return null;
-  }
-
   return <>{children}</>;
 }

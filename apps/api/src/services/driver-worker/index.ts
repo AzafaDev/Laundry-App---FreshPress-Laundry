@@ -10,11 +10,13 @@ import {
   determineAttendanceStatus,
   isWithinRadius,
   getTodayLocalStart,
-  toLocalMidnight,
+
   getShiftForDateTime,
   hasActiveDriverTask,
+  getNow,
+  getUpcomingShiftForDateTime,
 } from "./attendanceHelper.js";
-import { Prisma, OrderStatus } from "../../generated/prisma/client.js";
+import { Prisma, OrderStatus } from "../../../generated/prisma/client.js";
 
 const DRIVER_TASK_DETAIL_SELECT = {
   id: true,
@@ -88,7 +90,7 @@ function mapDriverTaskToActivePayload(task: any) {
 
 const attendanceService = {
   async checkIn(employeeId: string, body?: CheckInBody) {
-    const now = new Date();
+    const now = getNow();
     const today = getTodayLocalStart();
 
     const existing = await prisma.attendance.findUnique({
@@ -183,25 +185,22 @@ const attendanceService = {
       throw new AppError("Anda sudah check-out hari ini", 403);
     }
 
-    const now = new Date();
-    const attendanceLocalMidnight = toLocalMidnight(attendance.date);
-    const shift = await getEmployeeShiftForDate(employeeId, attendanceLocalMidnight);
-    if (!shift) {
-      throw new AppError("Tidak ada shift untuk tanggal absensi ini", 403);
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { role: true, full_name: true, outlet_id: true },
+    });
+    if (employee?.role === "driver") {
+      const hasActive = await hasActiveDriverTask(employeeId);
+      if (hasActive) {
+        throw new AppError("Selesaikan task aktif sebelum check-out", 403);
+      }
     }
 
-    if (!canCheckOut(now, shift.endTime)) {
-      throw new AppError("Check-out hanya dapat dilakukan setelah shift berakhir", 403);
-    }
+    const now = getNow();
 
     const updated = await prisma.attendance.update({
       where: { id: attendanceId },
       data: { check_out_time: now },
-    });
-
-    const employee = await prisma.employee.findUnique({
-      where: { id: employeeId },
-      select: { full_name: true, outlet_id: true },
     });
 
     if (employee?.outlet_id) {
@@ -349,8 +348,58 @@ const attendanceService = {
     return null;
   },
 
+  async getUpcomingOrActiveShift(employeeId: string) {
+    const now = getNow();
+    const today = getTodayLocalStart();
+    const shiftInfo = await getEmployeeShiftForDate(employeeId, today);
+    if (!shiftInfo) return null;
+
+    const { shiftName, startTime, endTime } = shiftInfo;
+    const outlet = await getEmployeeOutlet(employeeId);
+    const outletData = await prisma.outlet.findUnique({ where: { id: outlet } });
+
+    const isEnded = now > endTime;
+    const isActive = !isEnded && now >= startTime;
+    const isPreShift = now < startTime;
+    const phase: "pre_shift" | "active" | "ended" = isEnded ? "ended" : isActive ? "active" : "pre_shift";
+
+    let progressPercent = 0;
+    let remainingSeconds = 0;
+
+    if (isActive) {
+      const total = endTime.getTime() - startTime.getTime();
+      const elapsed = now.getTime() - startTime.getTime();
+      progressPercent = Math.min(100, Math.max(0, (elapsed / total) * 100));
+      remainingSeconds = Math.max(0, (endTime.getTime() - now.getTime()) / 1000);
+    } else if (isPreShift) {
+      remainingSeconds = Math.max(0, (startTime.getTime() - now.getTime()) / 1000);
+    } else {
+      progressPercent = 100;
+    }
+
+    const formatTime = (date: Date) =>
+      `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+
+    const canCheckInNow = canCheckIn(now, startTime, endTime, 15);
+    const canCheckOutNow = canCheckOut(now, endTime);
+
+    return {
+      shiftName,
+      startTime: formatTime(startTime),
+      endTime: formatTime(endTime),
+      isActive,
+      phase,
+      progressPercent: Math.round(progressPercent),
+      remainingSeconds,
+      outletName: outletData?.name ?? "",
+      outletId: outlet,
+      canCheckIn: canCheckInNow,
+      canCheckOut: canCheckOutNow,
+    };
+  },
+
   async getCurrentShift(employeeId: string) {
-    const now = new Date();
+    const now = getNow();
     const shiftInfo = await getShiftForDateTime(employeeId, now);
     if (!shiftInfo) return null;
 
@@ -405,10 +454,18 @@ const driverService = {
       throw new AppError("Anda sudah check-out hari ini, tidak dapat mengambil order baru", 403);
     }
 
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { outlet_id: true },
+    });
+    if (!employee?.outlet_id) throw new AppError("Outlet tidak ditemukan", 400);
+
     const tasks = await prisma.driverTask.findMany({
       where: {
+        task_type: "pickup",
         status: "available",
         driver_id: null,
+        order: { outlet_id: employee.outlet_id },
       },
       include: {
         order: {
@@ -437,12 +494,18 @@ const driverService = {
       throw new AppError("Anda sudah check-out hari ini, tidak dapat mengambil order baru", 403);
     }
 
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { outlet_id: true },
+    });
+    if (!employee?.outlet_id) throw new AppError("Outlet tidak ditemukan", 400);
+
     const tasks = await prisma.driverTask.findMany({
       where: {
         task_type: "delivery",
         status: "available",
         driver_id: null,
-        order: { status: "ready_for_delivery" },
+        order: { status: "ready_for_delivery", outlet_id: employee.outlet_id },
       },
       include: { order: { include: { customer: true, pickup_address: true } } },
     });

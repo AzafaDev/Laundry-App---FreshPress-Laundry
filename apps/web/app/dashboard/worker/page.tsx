@@ -1,101 +1,223 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Clock,
   CalendarDays,
-  Package,
-  ClipboardList,
-  ArrowRight,
-  CheckCircle2,
   User,
   Shirt,
+  Package,
+  Wheat,
+  ArrowRight,
+  UserX,
 } from "lucide-react";
 import { WorkerSidebar } from "@/components/dashboard/WorkerSidebar";
 import { WorkerTopBar } from "@/components/dashboard/WorkerTopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { useAuthStore } from "@/stores/authStore";
+import { CheckInPrompt } from "@/components/dashboard/CheckInPrompt";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { useAttendance } from "@/hooks/useAttendance";
+import { useWorkerStation } from "@/hooks/useWorkerStation";
+import { useSocket } from "@/hooks/useSocket";
+import { useQueryClient } from "@tanstack/react-query";
+
+const stationMeta = {
+  washing: {
+    label: "Stasiun Cuci",
+    icon: Shirt,
+    color: "text-primary",
+    bg: "bg-primary/10",
+    border: "border-primary/20",
+    cta: "Ke Stasiun Cuci",
+  },
+  ironing: {
+    label: "Stasiun Setrika",
+    icon: Wheat,
+    color: "text-secondary",
+    bg: "bg-secondary/10",
+    border: "border-secondary/20",
+    cta: "Ke Stasiun Setrika",
+  },
+  packing: {
+    label: "Stasiun Packing",
+    icon: Package,
+    color: "text-tertiary",
+    bg: "bg-tertiary/10",
+    border: "border-tertiary/20",
+    cta: "Ke Stasiun Packing",
+  },
+} as const;
+
+function StationStatusCard({
+  count,
+  stationType,
+  isLoading,
+}: {
+  count: number;
+  stationType: "washing" | "ironing" | "packing" | null;
+  isLoading: boolean;
+}) {
+  if (!stationType) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center justify-center bg-surface border border-outline-variant rounded-2xl p-10 text-center"
+      >
+        <div className="w-14 h-14 rounded-2xl bg-outline-variant/20 flex items-center justify-center mb-4">
+          <UserX className="w-7 h-7 text-outline" />
+        </div>
+        <p className="text-base font-semibold text-on-surface">Belum di-assign ke stasiun</p>
+        <p className="text-sm text-on-surface-variant mt-1">Hubungi supervisor untuk mendapatkan assignment</p>
+      </motion.div>
+    );
+  }
+
+  const meta = stationMeta[stationType];
+  const Icon = meta.icon;
+
+  if (isLoading) {
+    return (
+      <div className="bg-surface border border-outline-variant rounded-2xl p-6 animate-pulse">
+        <div className="h-4 w-32 bg-outline-variant/50 rounded mb-4" />
+        <div className="h-16 w-24 bg-outline-variant/50 rounded mb-4" />
+        <div className="h-12 bg-outline-variant/50 rounded-xl" />
+      </div>
+    );
+  }
+
+  if (count === 0) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center justify-center bg-surface border border-outline-variant rounded-2xl p-10 text-center"
+      >
+        <div className={`w-14 h-14 rounded-2xl ${meta.bg} flex items-center justify-center mb-4`}>
+          <Icon className={`w-7 h-7 ${meta.color}`} />
+        </div>
+        <p className="text-base font-semibold text-on-surface">Tidak ada pekerjaan saat ini</p>
+        <p className="text-sm text-on-surface-variant mt-1">{meta.label} sedang kosong</p>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`bg-surface border-2 ${meta.border} rounded-2xl p-6 shadow-sm`}
+    >
+      <div className="flex items-center gap-2 mb-5">
+        <div className={`w-8 h-8 rounded-lg ${meta.bg} flex items-center justify-center`}>
+          <Icon className={`w-4 h-4 ${meta.color}`} />
+        </div>
+        <span className="text-sm font-semibold text-on-surface-variant">{meta.label}</span>
+      </div>
+
+      {/* Bold count */}
+      <div className="mb-6">
+        <div className="flex items-end gap-2">
+          <span className={`text-6xl font-black leading-none ${meta.color}`}>{count}</span>
+          <span className="text-base text-on-surface-variant mb-1.5 font-medium">
+            {count === 1 ? "item" : "item"} menunggu
+          </span>
+        </div>
+        <p className="text-xs text-on-surface-variant mt-2">
+          Segera proses agar tidak menumpuk
+        </p>
+      </div>
+
+      <Link
+        href="/dashboard/worker/station"
+        className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl font-bold text-sm text-on-primary transition-all active:scale-[0.98] ${
+          stationType === "washing"
+            ? "bg-primary hover:opacity-90"
+            : stationType === "ironing"
+            ? "bg-secondary hover:opacity-90"
+            : "bg-tertiary hover:opacity-90"
+        }`}
+      >
+        {meta.cta}
+        <ArrowRight className="w-4 h-4" />
+      </Link>
+    </motion.div>
+  );
+}
 
 export default function WorkerDashboardPage() {
-  const { _hasHydrated, user } = useAuthStore();
-  if (!_hasHydrated) {
-    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
-  }
+  const { _hasHydrated, user } = useEmployeeAuthStore();
   const { currentShift, checkedIn, checkInTime } = useAttendance();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const { stationOrders, stationType, isLoading: isLoadingStation } = useWorkerStation();
+  const { on } = useSocket();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(timer);
-  }, []);
+    const unsub = on("station:order-updated", () => {
+      queryClient.invalidateQueries({ queryKey: ["worker", "station"] });
+    });
+    return () => unsub();
+  }, [on, queryClient]);
 
-  const stats = [
-    {
-      label: "Pesanan Diproses",
-      value: 0,
-      color: "text-primary",
-      icon: Package,
-    },
-    { label: "Selesai", value: 0, color: "text-secondary", icon: CheckCircle2 },
-    { label: "Menunggu", value: 0, color: "text-tertiary", icon: Clock },
-  ];
+  if (!_hasHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-on-surface-variant text-sm">
+        Memuat...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-24 lg:pb-0">
       <WorkerSidebar />
       <WorkerTopBar />
-      <main className="lg:pl-80 p-4 md:p-8 space-y-6">
-        {/* Welcome Banner with Shift Info */}
+      <main className="lg:pl-80 p-4 md:p-8 space-y-5">
+
+        {/* Welcome Banner — secondary/blue identity */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-primary/10 to-primary-container/20 p-5 rounded-2xl border border-primary/20"
+          className="relative overflow-hidden bg-gradient-to-br from-primary to-primary-container rounded-2xl p-5 shadow-md shadow-primary/15"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-on-primary">
-                <User className="w-6 h-6" />
+          <div className="absolute top-0 right-0 w-40 h-40 rounded-full bg-on-primary/5 -translate-y-1/2 translate-x-1/4 pointer-events-none" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-on-primary/20 flex items-center justify-center">
+                <User className="w-5 h-5 text-on-primary" />
               </div>
               <div>
-                <p className="text-sm text-on-surface-variant">
-                  Selamat datang,
-                </p>
-                <h2 className="text-xl font-bold text-on-surface">
+                <p className="text-xs text-on-primary/70">Selamat datang,</p>
+                <h2 className="text-lg font-bold text-on-primary leading-tight">
                   {user?.full_name ?? "Worker"}
                 </h2>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
               {currentShift && (
-                <div className="flex items-center gap-2 text-sm bg-surface/80 px-3 py-1.5 rounded-full">
-                  <Clock className="w-4 h-4 text-primary" />
-                  <span className="text-on-surface-variant">
-                    Shift: {currentShift.shiftName}
-                  </span>
-                  <span className="text-primary font-medium">
-                    {currentShift.startTime} - {currentShift.endTime}
-                  </span>
+                <div className="flex items-center gap-1.5 text-xs bg-on-primary/15 text-on-primary px-3 py-1.5 rounded-full">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>{currentShift.shiftName}</span>
+                  <span className="font-semibold">{currentShift.startTime}–{currentShift.endTime}</span>
                 </div>
               )}
               <Link
                 href="/dashboard/worker/attendance"
-                className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${
+                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                   checkedIn
-                    ? "bg-primary text-on-primary"
-                    : "bg-surface-container-high text-on-surface-variant hover:bg-primary/10 hover:text-primary"
+                    ? "bg-on-primary text-primary"
+                    : "bg-on-primary/20 text-on-primary hover:bg-on-primary/30"
                 }`}
               >
-                {checkedIn ? `Check In: ${checkInTime}` : "Belum Check In"}
+                {checkedIn ? `✓ ${checkInTime}` : "Belum Check In"}
               </Link>
             </div>
           </div>
-          <div className="mt-3 flex items-center gap-2 text-xs text-on-surface-variant">
-            <CalendarDays className="w-4 h-4" />
+          <div className="mt-3 flex items-center gap-1.5 text-xs text-on-primary/60 relative">
+            <CalendarDays className="w-3.5 h-3.5" />
             <span>
-              {currentTime.toLocaleDateString("id-ID", {
+              {new Date().toLocaleDateString("id-ID", {
                 weekday: "long",
                 day: "numeric",
                 month: "long",
@@ -105,81 +227,23 @@ export default function WorkerDashboardPage() {
           </div>
         </motion.div>
 
-        {/* Quick Actions Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[
-            {
-              href: "/dashboard/worker/attendance",
-              icon: Clock,
-              title: "Absensi",
-              desc: "Check-in / check-out dan lihat riwayat absensi",
-              color: "primary",
-            },
-            {
-              href: "/dashboard/worker/station",
-              icon: ClipboardList,
-              title: "Station Kerja",
-              desc: "Proses cuci, setrika, dan kelola item pesanan",
-              color: "secondary",
-            },
-            {
-              href: "/dashboard/worker/packing",
-              icon: Package,
-              title: "Packing",
-              desc: "Kemas pesanan yang siap diantar",
-              color: "tertiary",
-            },
-            {
-              href: "/dashboard/worker/history",
-              icon: CheckCircle2,
-              title: "Riwayat",
-              desc: "Lihat riwayat pekerjaan yang sudah selesai",
-              color: "surface",
-            },
-          ].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="bg-surface border border-outline-variant rounded-2xl p-6 hover:shadow-md transition-all group"
-            >
-              <div className="flex items-start justify-between">
-                <div
-                  className={`w-12 h-12 rounded-xl bg-${item.color}/10 flex items-center justify-center text-${item.color} group-hover:scale-110 transition-transform`}
-                >
-                  <item.icon className="w-6 h-6" />
-                </div>
-                <ArrowRight className="w-5 h-5 text-outline group-hover:text-primary transition-colors" />
-              </div>
-              <h3 className="text-lg font-bold text-on-surface mt-4">
-                {item.title}
-              </h3>
-              <p className="text-sm text-on-surface-variant">{item.desc}</p>
-            </Link>
-          ))}
+        {/* Check-in prompt */}
+        {!checkedIn && (
+          <CheckInPrompt href="/dashboard/worker/attendance" />
+        )}
+
+        {/* Station status */}
+        <div>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-on-surface-variant mb-3">
+            Station Kamu
+          </h2>
+          <StationStatusCard
+            count={stationOrders.length}
+            stationType={stationType}
+            isLoading={isLoadingStation}
+          />
         </div>
 
-        {/* Today's Summary */}
-        <section className="bg-surface border border-outline-variant rounded-2xl p-6">
-          <h2 className="text-lg font-bold text-on-surface mb-4 flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-primary" /> Ringkasan Hari Ini
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {stats.map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-surface-container-low p-4 rounded-xl text-center"
-              >
-                <stat.icon className={`w-8 h-8 mx-auto ${stat.color} mb-2`} />
-                <p className={`text-3xl font-bold ${stat.color}`}>
-                  {stat.value}
-                </p>
-                <p className="text-sm text-on-surface-variant mt-1">
-                  {stat.label}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
       </main>
       <BottomNav />
     </div>

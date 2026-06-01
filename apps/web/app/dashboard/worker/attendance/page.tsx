@@ -21,15 +21,29 @@ import { useAttendance } from "@/hooks/useAttendance";
 import { toLogRecord } from "@/utils/formatDate";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { SkeletonAttendaceCard, SkeletonShiftCard, SkeletonText } from "@/components/ui/Skeleton";
 
 export default function WorkerAttendancePage() {
   const { _hasHydrated, user } = useEmployeeAuthStore();
-  if (!_hasHydrated) {
-    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
-  }
-
   const att = useAttendance();
   const { latitude, longitude, permissionDenied } = useGeolocation();
+
+  if (!_hasHydrated || att.isLoading) {
+    return (
+      <div className="min-h-screen bg-background pb-24 lg:pb-0">
+        <WorkerSidebar />
+        <WorkerTopBar />
+        <main className="lg:pl-72 p-4 md:p-8">
+          <div className="max-w-2xl mx-auto space-y-6">
+            <SkeletonText className="h-6 w-40 mb-4" />
+            <SkeletonAttendaceCard />
+            <SkeletonShiftCard />
+          </div>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
 
   const locationStatus =
     permissionDenied
@@ -131,6 +145,11 @@ export default function WorkerAttendancePage() {
                 )}
               </div>
             </div>
+            {locationStatus === "denied" && (
+              <div className="mt-3 bg-error/10 border border-error/20 rounded-lg px-3 py-2 text-xs text-error">
+                Izinkan akses lokasi di browser untuk check-in: klik ikon kunci/info di address bar → izinkan Lokasi → refresh halaman.
+              </div>
+            )}
           </motion.div>
 
           <ShiftCard currentShift={att.currentShift ?? null} />
@@ -145,7 +164,8 @@ export default function WorkerAttendancePage() {
             loading={att.isCheckingIn || att.isCheckingOut}
             error={att.error}
             canCheckIn={att.currentShift?.canCheckIn ?? false}
-            canCheckOut={att.currentShift?.canCheckOut ?? false}
+            canCheckOut={att.checkedIn && !att.checkOutTime && (att.currentShift?.canCheckOut ?? false)}
+            shiftEndTime={att.currentShift?.endTime}
           />
 
           {/* Riwayat Absensi */}

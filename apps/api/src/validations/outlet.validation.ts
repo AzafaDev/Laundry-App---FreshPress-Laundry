@@ -17,7 +17,6 @@ export const createOutletSchema = z.object({
   city: z.string().min(2, "Kota wajib diisi."),
   district: z.string().min(2, "Kecamatan wajib diisi."),
   postal_code: z.string().optional(),
-  phone: z.string().optional(),
   latitude: latitudeSchema.optional(),
   longitude: longitudeSchema.optional(),
   service_radius_km: z

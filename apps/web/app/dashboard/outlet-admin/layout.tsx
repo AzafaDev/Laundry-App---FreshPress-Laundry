@@ -51,14 +51,6 @@ export default function OutletAdminLayout({
     };
   }, [user, on, queryClient]);
 
-  if (!_hasHydrated || !user || !accessToken || user.role !== "outlet_admin") {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <span className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background text-on-surface">
       <AdminSidebar />

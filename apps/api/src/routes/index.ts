@@ -8,7 +8,7 @@ const router = Router();
 
 router.use("/v1/customer", customerRoutes);
 router.use("/v1/employee", employeeRoutes);
-router.use("/v1", driverWorkerRoutes);
 router.use("/v1", adminRoutes);
+router.use("/v1", driverWorkerRoutes);
 
 export default router;

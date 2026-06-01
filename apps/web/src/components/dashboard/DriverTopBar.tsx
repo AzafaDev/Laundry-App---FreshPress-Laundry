@@ -106,7 +106,7 @@ export function DriverTopBar({
             {dropdownOpen && (
               <div className="absolute right-0 top-full mt-2 w-52 bg-surface border border-outline-variant rounded-xl shadow-lg overflow-hidden z-50">
                 <Link
-                  href="/profile"
+                  href="/dashboard/profile"
                   onClick={() => setDropdownOpen(false)}
                   className="flex items-center gap-2 px-4 py-3 text-sm text-on-surface hover:bg-surface-container-low transition-colors"
                 >
