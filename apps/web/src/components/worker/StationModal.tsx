@@ -43,7 +43,7 @@ export function StationModal({ orderId, orders, onClose, onConfirm, isProcessing
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-100 flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="bg-surface-container-lowest w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl border border-outline-variant flex flex-col max-h-[90dvh]">
+      <div className="bg-surface-container-lowest w-full sm:max-w-[32rem] rounded-t-2xl sm:rounded-2xl shadow-2xl border border-outline-variant flex flex-col max-h-[90dvh]">
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant shrink-0">
