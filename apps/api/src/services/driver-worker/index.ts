@@ -14,7 +14,6 @@ import {
   getShiftForDateTime,
   hasActiveDriverTask,
   getNow,
-  getUpcomingShiftForDateTime,
 } from "./attendanceHelper.js";
 import { Prisma, OrderStatus } from "../../../generated/prisma/client.js";
 
@@ -381,7 +380,7 @@ const attendanceService = {
       `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 
     const canCheckInNow = canCheckIn(now, startTime, endTime, 15);
-    const canCheckOutNow = canCheckOut(now, endTime);
+    const canCheckOutNow = canCheckOut(now, startTime, endTime);
 
     return {
       shiftName,
@@ -422,7 +421,7 @@ const attendanceService = {
       `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 
     const canCheckInNow = canCheckIn(now, startTime, endTime, 15);
-    const canCheckOutNow = canCheckOut(now, endTime);
+    const canCheckOutNow = canCheckOut(now, startTime, endTime);
 
     return {
       shiftName,
@@ -727,6 +726,12 @@ export const workerService = {
       throw new AppError("Sudah check-out, tidak dapat memproses order", 403);
     }
 
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { outlet_id: true },
+    });
+    if (!employee?.outlet_id) throw new AppError("Outlet tidak ditemukan", 400);
+
     let orderStatus: string;
     switch (stationType) {
       case "washing": orderStatus = "washing"; break;
@@ -736,7 +741,7 @@ export const workerService = {
     }
 
     const orders = await prisma.order.findMany({
-      where: { status: orderStatus as any },
+      where: { status: orderStatus as any, outlet_id: employee.outlet_id },
       include: {
         customer: true,
         order_items: { include: { laundry_item: true } },
@@ -758,6 +763,12 @@ export const workerService = {
     if (!todayAttendance?.check_in_time) throw new AppError("Belum check-in", 403);
     if (todayAttendance.check_out_time) throw new AppError("Sudah check-out", 403);
 
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { outlet_id: true },
+    });
+    if (!employee?.outlet_id) throw new AppError("Outlet tidak ditemukan", 400);
+
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
@@ -766,6 +777,7 @@ export const workerService = {
       },
     });
     if (!order) throw new AppError("Order tidak ditemukan", 404);
+    if (order.outlet_id !== employee.outlet_id) throw new AppError("Order bukan dari outlet Anda", 403);
 
     const validStatus: Record<string, OrderStatus> = {
       washing: "washing",
