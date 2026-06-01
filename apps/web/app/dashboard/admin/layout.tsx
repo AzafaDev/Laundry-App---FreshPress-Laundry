@@ -16,18 +16,21 @@ export default function AdminDashboardLayout({
 
   useEffect(() => {
     if (!_hasHydrated) return;
-
     if (!accessToken || !user) {
       router.replace("/employee/login");
       return;
     }
     if (user.role !== "super_admin") {
-      router.replace("/access-denied");
+      router.replace("/employee/login");
     }
   }, [user, accessToken, _hasHydrated, router]);
 
   if (!_hasHydrated || !user || !accessToken || user.role !== "super_admin") {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
   return (

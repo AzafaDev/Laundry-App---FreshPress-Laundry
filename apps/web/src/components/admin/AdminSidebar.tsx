@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -70,7 +70,13 @@ const NAV: NavItem[] = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, clearAuth } = useEmployeeAuthStore();
+
+  const handleLogout = () => {
+    clearAuth();
+    router.push("/employee/login");
+  };
 
   const role = user?.role as "super_admin" | "outlet_admin" | undefined;
   const items = NAV.filter((n) =>
@@ -139,7 +145,7 @@ export function AdminSidebar() {
           Settings
         </button>
         <button
-          onClick={clearAuth}
+          onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-error hover:bg-error-container/30 rounded-lg transition-colors"
         >
           <LogOut className="w-5 h-5" />

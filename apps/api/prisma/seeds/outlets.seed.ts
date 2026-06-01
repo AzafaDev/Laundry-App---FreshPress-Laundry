@@ -1,5 +1,5 @@
 import { prisma } from '../../src/lib/prisma.js';
-import type { Outlet } from '@prisma/client';
+import type { Outlet } from '../../generated/prisma/index.js';
 
 export async function seedOutlets(): Promise<Outlet[]> {
   const outletsData = [
