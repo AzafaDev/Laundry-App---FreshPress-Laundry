@@ -4,6 +4,14 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ok, created, noContent } from "../../utils/apiResponse.js";
 import * as AddressService from "../../services/customer/address.service.js";
 
+function getParamId(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) {
+    return value[0] ?? "";
+  }
+
+  return value ?? "";
+}
+
 export const listAddresses = asyncHandler(async (req: Request, res: Response) => {
   const customerId = req.user!.userId;
   const addresses = await AddressService.listAddresses(customerId);
@@ -18,21 +26,21 @@ export const createAddress = asyncHandler(async (req: Request, res: Response) =>
 
 export const updateAddress = asyncHandler(async (req: Request, res: Response) => {
   const customerId = req.user!.userId;
-  const { id } = req.params;
+  const id = getParamId(req.params.id);
   const address = await AddressService.updateAddress(customerId, id, req.body);
   ok(res, address, "Alamat berhasil diperbarui.");
 });
 
 export const setPrimaryAddress = asyncHandler(async (req: Request, res: Response) => {
   const customerId = req.user!.userId;
-  const { id } = req.params;
+  const id = getParamId(req.params.id);
   const address = await AddressService.setPrimaryAddress(customerId, id);
   ok(res, address, "Alamat utama berhasil diatur.");
 });
 
 export const deleteAddress = asyncHandler(async (req: Request, res: Response) => {
   const customerId = req.user!.userId;
-  const { id } = req.params;
+  const id = getParamId(req.params.id);
   await AddressService.deleteAddress(customerId, id);
   noContent(res);
 });
@@ -49,7 +57,7 @@ export const geocodeSearch = asyncHandler(async (req: Request, res: Response) =>
 
 export const estimateDeliveryFee = asyncHandler(async (req: Request, res: Response) => {
   const customerId = req.user!.userId;
-  const { id } = req.params;
+  const id = getParamId(req.params.id);
   const estimate = await AddressService.estimateDeliveryFee(customerId, id);
   ok(res, estimate, "Estimasi ongkos kirim berhasil dihitung.");
 });

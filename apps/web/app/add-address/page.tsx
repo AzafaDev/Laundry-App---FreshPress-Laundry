@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -35,7 +35,7 @@ const DEFAULT_LAT = -7.250445;
 const DEFAULT_LNG = 112.768845;
 const ADDRESS_LABELS = ["Rumah", "Kantor", "Apartemen"] as const;
 
-export default function AddAddressPage() {
+function AddAddressPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
@@ -397,5 +397,13 @@ export default function AddAddressPage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function AddAddressPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>}>
+      <AddAddressPageInner />
+    </Suspense>
   );
 }

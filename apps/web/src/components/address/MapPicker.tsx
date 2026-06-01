@@ -34,8 +34,8 @@ export default function MapPicker({
   height = "240px",
 }: MapPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const markerRef = useRef<L.Marker | null>(null);
+  const mapRef = useRef<ReturnType<typeof L.map> | null>(null);
+  const markerRef = useRef<ReturnType<typeof L.marker> | null>(null);
   // Keep callback ref up-to-date without restarting the map
   const onPinRef = useRef(onPin);
   useEffect(() => { onPinRef.current = onPin; });
@@ -72,7 +72,7 @@ export default function MapPicker({
       onPinRef.current(ll.lat, ll.lng);
     });
 
-    map.on("click", (e: L.LeafletMouseEvent) => {
+    map.on("click", (e: { latlng: { lat: number; lng: number } }) => {
       onPinRef.current(e.latlng.lat, e.latlng.lng);
     });
 
