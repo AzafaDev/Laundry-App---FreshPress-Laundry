@@ -7,9 +7,9 @@ export interface Outlet {
   district: string;
   postal_code?: string | null;
   phone?: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  service_radius_km: number | null;
+  latitude: number | string | null;
+  longitude: number | string | null;
+  service_radius_km: number | string | null;
   is_active: boolean;
   created_at: string;
 }

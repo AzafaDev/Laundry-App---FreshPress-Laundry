@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, UserPlus } from "lucide-react";
+import { X, UserPlus, Mail } from "lucide-react";
 import { useCreateUser, useUpdateUser } from "@/hooks/useUsers";
 import type {
   CreateUserPayload,
@@ -70,17 +70,13 @@ export function UserFormModal({ user, onClose }: Props) {
         await update.mutateAsync({ id: user.id, payload });
         onClose();
       } else {
-        if (!form.password.trim()) {
-          setError("Password wajib diisi untuk membuat akun baru.");
-          return;
-        }
         const payload: CreateUserPayload = {
           full_name: form.full_name,
           email: form.email,
           phone: form.phone || undefined,
           role: form.role,
-          password: form.password,
           is_active: form.is_active,
+          // no password — backend will send invite email
         };
         await create.mutateAsync(payload);
         onClose();
@@ -96,6 +92,7 @@ export function UserFormModal({ user, onClose }: Props) {
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
       <div className="bg-surface-container-lowest w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-outline-variant">
+        {/* Header */}
         <div className="p-6 bg-surface-container-low border-b border-outline-variant flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -115,6 +112,16 @@ export function UserFormModal({ user, onClose }: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Invite info banner — only shown on create */}
+          {!isEdit && (
+            <div className="flex items-start gap-3 bg-primary/8 border border-primary/20 rounded-xl px-4 py-3">
+              <Mail className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+              <p className="text-sm text-primary/90 leading-snug">
+                Email undangan akan dikirim ke karyawan untuk membuat password mereka sendiri.
+              </p>
+            </div>
+          )}
+
           <Field label="Nama Lengkap">
             <input
               type="text"
@@ -161,22 +168,18 @@ export function UserFormModal({ user, onClose }: Props) {
             </select>
           </Field>
 
-          <Field
-            label={
-              isEdit
-                ? "Password Baru (opsional)"
-                : "Password"
-            }
-          >
-            <input
-              type="password"
-              value={form.password}
-              required={!isEdit}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder={isEdit ? "Kosongkan jika tidak diubah" : "Min. 8 karakter"}
-              className={inputClass}
-            />
-          </Field>
+          {/* Password field only shown when editing */}
+          {isEdit && (
+            <Field label="Password Baru (opsional)">
+              <input
+                type="password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="Kosongkan jika tidak diubah"
+                className={inputClass}
+              />
+            </Field>
+          )}
 
           <label className="flex items-center gap-2 text-sm text-on-surface-variant">
             <input
@@ -206,7 +209,11 @@ export function UserFormModal({ user, onClose }: Props) {
               disabled={pending}
               className="py-3 px-6 rounded-xl bg-primary text-on-primary font-bold hover:opacity-90 disabled:opacity-60 transition-all shadow-lg shadow-primary/20"
             >
-              {pending ? "Menyimpan..." : "Simpan"}
+              {pending
+                ? "Menyimpan..."
+                : isEdit
+                  ? "Simpan"
+                  : "Buat & Kirim Undangan"}
             </button>
           </div>
         </form>

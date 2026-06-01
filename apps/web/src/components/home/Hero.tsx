@@ -98,3 +98,10 @@ export const Hero = () => {
     </section>
   );
 };
+        </div>
+      </div>
+    </section>
+  );
+}
+
+}

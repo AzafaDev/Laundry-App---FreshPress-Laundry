@@ -1,7 +1,6 @@
 import { Router } from "express";
 import * as AuthCtrl from "../../controllers/customer/auth.controller.js";
 import * as ProfileCtrl from "../../controllers/customer/profile.controller.js";
-import * as AddressCtrl from "../../controllers/customer/address.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import {
@@ -17,8 +16,6 @@ import {
   updateProfileSchema,
   changePasswordSchema,
   verifyEmailChangeSchema,
-  createAddressSchema,
-  updateAddressSchema,
 } from "../../validations/customer.validation.js";
 
 const router = Router();
@@ -39,16 +36,5 @@ router.patch("/profile", authenticate, validate(updateProfileSchema), ProfileCtr
 router.patch("/profile/password", authenticate, validate(changePasswordSchema), ProfileCtrl.changePassword);
 router.post("/profile/avatar", authenticate, ProfileCtrl.uploadAvatarMiddleware, ProfileCtrl.uploadAvatar);
 router.post("/profile/verify-email-change", authRateLimiter, validate(verifyEmailChangeSchema), ProfileCtrl.verifyEmailChange);
-
-// Address Routes (protected)
-router.get("/addresses", authenticate, AddressCtrl.listAddresses);
-router.post("/addresses", authenticate, validate(createAddressSchema), AddressCtrl.createAddress);
-router.patch("/addresses/:id", authenticate, validate(updateAddressSchema), AddressCtrl.updateAddress);
-router.patch("/addresses/:id/primary", authenticate, AddressCtrl.setPrimaryAddress);
-router.delete("/addresses/:id", authenticate, AddressCtrl.deleteAddress);
-router.get("/addresses/:id/delivery-estimate", authenticate, AddressCtrl.estimateDeliveryFee);
-
-// Geocode proxy (protected — keeps OPENCAGE_API_KEY server-side)
-router.get("/geocode", authenticate, AddressCtrl.geocodeSearch);
 
 export default router;

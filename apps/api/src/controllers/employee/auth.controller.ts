@@ -75,7 +75,7 @@ export const resetPasswordHandler = async (
 ): Promise<void> => {
   try {
     const { token, newPassword } = resetPasswordSchema.parse(req.body);
-    const result = await resetPassword(token, newPassword);
+    const result = await resetPassword(token, newPassword, res);
     res.status(200).json({ success: true, data: result });
   } catch (error) {
     next(error);

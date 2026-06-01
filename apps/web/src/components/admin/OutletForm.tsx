@@ -34,9 +34,9 @@ export function OutletForm({ outlet, onClose }: Props) {
     district: outlet?.district ?? "",
     postal_code: outlet?.postal_code ?? "",
     phone: outlet?.phone ?? "",
-    latitude: outlet?.latitude ?? null,
-    longitude: outlet?.longitude ?? null,
-    service_radius_km: outlet?.service_radius_km ?? 5,
+    latitude: outlet?.latitude != null ? Number(outlet.latitude) : null,
+    longitude: outlet?.longitude != null ? Number(outlet.longitude) : null,
+    service_radius_km: outlet?.service_radius_km != null ? Number(outlet.service_radius_km) : 5,
     is_active: outlet?.is_active ?? true,
   });
   const [error, setError] = useState<string | null>(null);
@@ -56,9 +56,9 @@ export function OutletForm({ outlet, onClose }: Props) {
         district: outlet.district,
         postal_code: outlet.postal_code ?? "",
         phone: outlet.phone ?? "",
-        latitude: outlet.latitude,
-        longitude: outlet.longitude,
-        service_radius_km: outlet.service_radius_km ?? 5,
+        latitude: outlet.latitude != null ? Number(outlet.latitude) : null,
+        longitude: outlet.longitude != null ? Number(outlet.longitude) : null,
+        service_radius_km: outlet.service_radius_km != null ? Number(outlet.service_radius_km) : 5,
         is_active: outlet.is_active,
       });
     }

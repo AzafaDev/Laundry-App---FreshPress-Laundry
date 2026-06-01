@@ -839,12 +839,12 @@ export const workerService = {
     if (order.customer?.id) {
       emitToUser(order.customer.id, "order:status-updated", {
         orderId,
-        status: finalStatus,
-        message: `Order Anda telah melewati station ${station}`,
+        newStatus: finalStatus,
+        stationName: station,
       });
     }
 
-    return { order: updatedOrder, createdDeliveryTask: shouldCreateDeliveryTask };
+    return updatedOrder;
   },
 };
 

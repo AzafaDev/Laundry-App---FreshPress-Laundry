@@ -389,21 +389,15 @@ function AddAddressPageInner() {
         <button
           type="button"
           onClick={handleSave}
-          disabled={saving}
-          className="w-full h-12 bg-primary text-on-primary rounded-xl text-sm font-bold shadow flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-primary/90 transition-all active:scale-[0.98]"
+          className="w-full h-12 bg-primary text-on-primary rounded-xl text-sm font-bold shadow flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {saving ? "Menyimpan..." : isEditMode ? "Simpan Perubahan" : "Simpan Alamat"}
+          {saving ? (
+            <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            "Simpan Alamat"
+          )}
         </button>
       </div>
     </div>
-  );
-}
-
-export default function AddAddressPage() {
-  return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>}>
-      <AddAddressPageInner />
-    </Suspense>
   );
 }
