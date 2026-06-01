@@ -1,10 +1,11 @@
 import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
 
-const transporter = nodemailer.createTransport({
+const transporter = nodemailer.createTransport(<any>{
   host: "smtp.gmail.com",
   port: 587,
   secure: false,
+  family: 4,
   auth: { user: env.NODEMAILER_USER, pass: env.NODEMAILER_PASS },
   connectionTimeout: 5000,
   greetingTimeout: 5000,
