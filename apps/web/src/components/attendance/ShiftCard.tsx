@@ -13,24 +13,32 @@ function useClientProgress(currentShift: CurrentShift | null) {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    if (!currentShift || currentShift.phase !== "active") return;
-    const timer = setInterval(() => setNow(new Date()), 60000);
+    if (!currentShift || (currentShift.phase !== "active" && currentShift.phase !== "pre_shift")) return;
+    const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, [currentShift]);
 
-  if (!currentShift || currentShift.phase !== "active") {
-    return { progressPercent: currentShift?.progressPercent ?? 0, remainingSeconds: currentShift?.remainingSeconds ?? 0 };
+  if (!currentShift) {
+    return { progressPercent: 0, remainingSeconds: 0 };
   }
 
   const [startH, startM] = currentShift.startTime.split(":").map(Number);
   const [endH, endM] = currentShift.endTime.split(":").map(Number);
   const todayBase = new Date(now);
-  todayBase.setSeconds(0, 0);
 
   const start = new Date(todayBase);
   start.setHours(startH, startM, 0, 0);
   const end = new Date(todayBase);
   end.setHours(endH, endM, 0, 0);
+
+  if (currentShift.phase === "pre_shift") {
+    const remainingSeconds = Math.max(0, Math.round((start.getTime() - now.getTime()) / 1000));
+    return { progressPercent: currentShift.progressPercent ?? 0, remainingSeconds };
+  }
+
+  if (currentShift.phase !== "active") {
+    return { progressPercent: currentShift.progressPercent ?? 0, remainingSeconds: currentShift.remainingSeconds ?? 0 };
+  }
 
   const total = end.getTime() - start.getTime();
   const elapsed = now.getTime() - start.getTime();
