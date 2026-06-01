@@ -21,6 +21,7 @@ interface AttendanceCardProps {
   canCheckIn?: boolean;
   canCheckOut?: boolean;
   shiftEndTime?: string;
+  shiftEnded?: boolean;
 }
 
 export function AttendanceCard({
@@ -34,6 +35,7 @@ export function AttendanceCard({
   canCheckIn = true,
   canCheckOut = true,
   shiftEndTime,
+  shiftEnded = false,
 }: AttendanceCardProps) {
   return (
     <motion.div
@@ -64,11 +66,13 @@ export function AttendanceCard({
         </motion.div>
         <div>
           <h3 className="text-xl font-bold text-on-surface">
-            {checkedIn ? "Sedang Bertugas" : "Belum Check In"}
+            {checkedIn ? "Sedang Bertugas" : shiftEnded ? "Tidak Hadir" : "Belum Check In"}
           </h3>
           <p className="text-sm text-on-surface-variant">
             {checkedIn && checkInTime
               ? `Check in: ${formatTime(checkInTime)}`
+              : shiftEnded
+              ? "Shift sudah berakhir, waktu check-in telah lewat"
               : "Silakan check in untuk memulai shift"}
           </p>
         </div>

@@ -135,6 +135,11 @@ export function useAttendance() {
   });
 
   const today = todayQuery.data;
+
+  useEffect(() => {
+    if (today?.check_out_time != null) setOptimisticCheckedIn(false);
+  }, [today?.check_out_time]);
+
   const checkedIn =
     optimisticCheckedIn || (today?.check_in_time != null && today.check_out_time == null);
 
