@@ -15,7 +15,9 @@ const PUBLIC_EMPLOYEE_SELECT = {
   phone: true,
   avatar_url: true,
   role: true,
+  outlet_id: true,
   is_active: true,
+  is_occupied: true,
   deleted_at: true,
   created_at: true,
   updated_at: true,
@@ -61,14 +63,14 @@ export const listUsers = async (query: ListUserQuery) => {
   };
 };
 
-/** Get a single employee by id (must be active). */
+/** Get a single employee by id. */
 export const getUserById = async (id: string) => {
   const user = await prisma.employee.findFirst({
     where: { id, deleted_at: null },
     select: PUBLIC_EMPLOYEE_SELECT,
   });
-  if (!employee) throw new AppError("User tidak ditemukan.", 404);
-  return employee;
+  if (!user) throw new AppError("User tidak ditemukan.", 404);
+  return user;
 };
 
 /** Create a new employee account. */
@@ -82,13 +84,16 @@ export const createUser = async (input: CreateUserInput) => {
     data: {
       full_name: input.full_name,
       email: input.email,
-      phone: input.phone,
+      phone: input.phone ?? null,
       role: input.role as any,
       password_hash,
-      is_active: !isInvite,
+      is_active: input.is_active ?? true,
+      outlet_id: input.outlet_id ?? null,
     },
     select: PUBLIC_EMPLOYEE_SELECT,
   });
+
+  return user;
 };
 
 /** Patch an existing employee. */
@@ -112,7 +117,8 @@ export const updateUser = async (id: string, input: UpdateUserInput) => {
     ...(input.email !== undefined && { email: input.email }),
     ...(input.phone !== undefined && { phone: input.phone }),
     ...(input.role !== undefined && { role: input.role as any }),
-    ...(input.is_verified !== undefined && { is_active: input.is_verified }),
+    ...(input.outlet_id !== undefined && { outlet_id: input.outlet_id }),
+    ...(input.is_active !== undefined && { is_active: input.is_active }),
     ...(input.password && { password_hash: await hashPassword(input.password) }),
   };
 

@@ -76,9 +76,7 @@ export const getOutletById = async (id: string) => {
   return outlet;
 };
 
-/**
- * Create outlet. If lat/lng not supplied, geocode the address via OpenCage.
- */
+/** Create outlet. If lat/lng not supplied, geocode the address via OpenCage. */
 export const createOutlet = async (input: CreateOutletInput) => {
   let { latitude, longitude } = input;
 
@@ -98,17 +96,14 @@ export const createOutlet = async (input: CreateOutletInput) => {
       postal_code: input.postal_code,
       latitude,
       longitude,
-      service_radius_km: input.max_service_km,
+      service_radius_km: input.service_radius_km,
       is_active: input.is_active ?? true,
     },
     select: OUTLET_SELECT,
   });
 };
 
-/**
- * Update outlet. If re_geocode is true and address changed and lat/lng not provided,
- * we re-geocode the new address.
- */
+/** Update outlet. If re_geocode is true and address changed and lat/lng not provided, re-geocode. */
 export const updateOutlet = async (id: string, input: UpdateOutletInput) => {
   const existing = await prisma.outlet.findUnique({ where: { id } });
   if (!existing) throw new AppError("Outlet tidak ditemukan.", 404);
@@ -137,8 +132,8 @@ export const updateOutlet = async (id: string, input: UpdateOutletInput) => {
       ...(input.phone !== undefined && { phone: input.phone }),
       ...(latitude !== undefined && { latitude }),
       ...(longitude !== undefined && { longitude }),
-      ...(input.max_service_km !== undefined && {
-        service_radius_km: input.max_service_km,
+      ...(input.service_radius_km !== undefined && {
+        service_radius_km: input.service_radius_km,
       }),
       ...(input.is_active !== undefined && { is_active: input.is_active }),
     },
@@ -157,9 +152,7 @@ export const deactivateOutlet = async (id: string) => {
   });
 };
 
-/**
- * Assign an employee to an outlet by updating their outlet_id.
- */
+/** Assign an employee to an outlet by updating their outlet_id. */
 export const assignUserToOutlet = async (outletId: string, userId: string) => {
   const [outlet, employee] = await Promise.all([
     prisma.outlet.findUnique({ where: { id: outletId } }),
@@ -176,15 +169,11 @@ export const assignUserToOutlet = async (outletId: string, userId: string) => {
   return { outlet_id: outletId, user_id: userId };
 };
 
-/**
- * Returns up to limit candidate places matching the free-text query.
- */
+/** Returns up to limit candidate places matching the free-text query. */
 export const searchAddress = async (q: string, limit = 5) =>
   searchAddressUtil(q, limit);
 
-/**
- * List employees currently assigned to an outlet.
- */
+/** List employees currently assigned to an outlet. */
 export const listOutletAssignments = async (outletId: string) => {
   const outlet = await prisma.outlet.findUnique({ where: { id: outletId } });
   if (!outlet) throw new AppError("Outlet tidak ditemukan.", 404);
@@ -207,9 +196,7 @@ export const listOutletAssignments = async (outletId: string) => {
   });
 };
 
-/**
- * Unassign: set employee outlet_id to null.
- */
+/** Unassign: set employee outlet_id to null. */
 export const unassignUserFromOutlet = async (
   outletId: string,
   userId: string,

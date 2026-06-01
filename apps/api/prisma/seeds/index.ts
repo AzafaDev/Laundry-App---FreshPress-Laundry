@@ -18,6 +18,8 @@ export async function runAllSeeds() {
   await prisma.customer.deleteMany({ where: { email: 'testcustomer@freshpress.com' } });
   await prisma.attendance.deleteMany({});
   await prisma.employeeShift.deleteMany({});
+  await prisma.processLog.deleteMany({});
+  await prisma.passwordResetToken.deleteMany({});
   await prisma.employee.deleteMany({});
   await prisma.workShift.deleteMany({});
   await prisma.outlet.deleteMany({});
