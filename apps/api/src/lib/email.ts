@@ -1,6 +1,14 @@
 import { Resend } from "resend";
 import { env } from "../config/env.js";
 
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    if (!env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is not set in environment variables");
+    _resend = new Resend(env.RESEND_API_KEY);
+  }
+  return _resend;
+}
 const FROM = "FreshPress Laundry <noreply@azafadev.web.id>";
 
 // Lazy initialisation — avoids crash on startup when RESEND_API_KEY is not set.

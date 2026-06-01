@@ -50,3 +50,17 @@ export const changePasswordSchema = z.object({
 export const verifyEmailChangeSchema = z.object({
   token: z.string().min(1, "Token tidak boleh kosong."),
 });
+
+export const createAddressSchema = z.object({
+  label: z.string().min(1, "Label wajib diisi.").max(50),
+  address: z.string().min(5, "Alamat lengkap wajib diisi."),
+  province: z.string().min(2, "Provinsi wajib diisi.").max(100),
+  city: z.string().min(2, "Kota wajib diisi.").max(100),
+  district: z.string().min(2, "Kecamatan wajib diisi.").max(100),
+  postal_code: z.string().regex(/^\d{5}$/, "Kode pos harus 5 digit angka.").optional(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  is_primary: z.boolean().optional().default(false),
+});
+
+export const updateAddressSchema = createAddressSchema.partial();
