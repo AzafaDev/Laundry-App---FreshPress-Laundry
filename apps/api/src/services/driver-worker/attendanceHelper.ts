@@ -53,12 +53,12 @@ export async function getEmployeeShiftForDate(
   }
 
   const shift = employeeShift.shift;
-  const startHour = shift.start_time.getHours();
-  const startMinute = shift.start_time.getMinutes();
-  const startSecond = shift.start_time.getSeconds();
-  const endHour = shift.end_time.getHours();
-  const endMinute = shift.end_time.getMinutes();
-  const endSecond = shift.end_time.getSeconds();
+  const startHour = shift.start_time.getUTCHours();
+  const startMinute = shift.start_time.getUTCMinutes();
+  const startSecond = shift.start_time.getUTCSeconds();
+  const endHour = shift.end_time.getUTCHours();
+  const endMinute = shift.end_time.getUTCMinutes();
+  const endSecond = shift.end_time.getUTCSeconds();
 
   const startTime = new Date(
     localDate.getFullYear(),
@@ -97,8 +97,8 @@ export function canCheckIn(
   return now >= allowedStart && now <= shiftEnd;
 }
 
-export function canCheckOut(now: Date, shiftEnd: Date): boolean {
-  return now >= shiftEnd;
+export function canCheckOut(now: Date, shiftStart: Date, shiftEnd: Date): boolean {
+  return now >= shiftStart && now <= shiftEnd;
 }
 
 export function isLate(
@@ -162,12 +162,12 @@ export async function getShiftForDateTime(
 
   for (const es of employeeShifts) {
     const shift = es.shift;
-    const startHour = shift.start_time.getHours();
-    const startMinute = shift.start_time.getMinutes();
-    const startSecond = shift.start_time.getSeconds();
-    const endHour = shift.end_time.getHours();
-    const endMinute = shift.end_time.getMinutes();
-    const endSecond = shift.end_time.getSeconds();
+    const startHour = shift.start_time.getUTCHours();
+    const startMinute = shift.start_time.getUTCMinutes();
+    const startSecond = shift.start_time.getUTCSeconds();
+    const endHour = shift.end_time.getUTCHours();
+    const endMinute = shift.end_time.getUTCMinutes();
+    const endSecond = shift.end_time.getUTCSeconds();
 
     const startTotal = startHour * 60 + startMinute;
     let endTotal = endHour * 60 + endMinute;
@@ -224,17 +224,17 @@ export async function getUpcomingShiftForDateTime(
     const shift = es.shift;
     const startDate = new Date(targetDate);
     startDate.setHours(
-      shift.start_time.getHours(),
-      shift.start_time.getMinutes(),
-      shift.start_time.getSeconds(),
+      shift.start_time.getUTCHours(),
+      shift.start_time.getUTCMinutes(),
+      shift.start_time.getUTCSeconds(),
       0,
     );
 
     let endDate = new Date(targetDate);
     endDate.setHours(
-      shift.end_time.getHours(),
-      shift.end_time.getMinutes(),
-      shift.end_time.getSeconds(),
+      shift.end_time.getUTCHours(),
+      shift.end_time.getUTCMinutes(),
+      shift.end_time.getUTCSeconds(),
       0,
     );
 
