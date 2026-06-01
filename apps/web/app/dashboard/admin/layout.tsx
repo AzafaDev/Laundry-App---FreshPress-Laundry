@@ -16,13 +16,12 @@ export default function AdminDashboardLayout({
 
   useEffect(() => {
     if (!_hasHydrated) return;
-
     if (!accessToken || !user) {
       router.replace("/employee/login");
       return;
     }
     if (user.role !== "super_admin") {
-      router.replace("/access-denied");
+      router.replace("/employee/login");
     }
   }, [user, accessToken, _hasHydrated, router]);
 

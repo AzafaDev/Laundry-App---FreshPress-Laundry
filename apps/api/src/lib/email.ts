@@ -11,6 +11,16 @@ function getResend(): Resend {
 }
 const FROM = "FreshPress Laundry <noreply@azafadev.web.id>";
 
+// Lazy initialisation — avoids crash on startup when RESEND_API_KEY is not set.
+const getResend = (): Resend => {
+  if (!env.RESEND_API_KEY) {
+    throw new Error(
+      "RESEND_API_KEY is not set. Add it to .env to enable email sending.",
+    );
+  }
+  return new Resend(env.RESEND_API_KEY);
+};
+
 export const sendVerificationEmail = async (
   to: string,
   token: string,

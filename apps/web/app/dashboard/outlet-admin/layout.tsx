@@ -21,13 +21,12 @@ export default function OutletAdminLayout({
 
   useEffect(() => {
     if (!_hasHydrated) return;
-
     if (!accessToken || !user) {
       router.replace("/employee/login");
       return;
     }
     if (user.role !== "outlet_admin") {
-      router.replace("/access-denied");
+      router.replace("/employee/login");
     }
   }, [user, accessToken, _hasHydrated, router]);
 
@@ -36,13 +35,13 @@ export default function OutletAdminLayout({
 
     const unsubscribeCheckin = on("attendance:checkin", (data: any) => {
       if (data.outletId !== user.outlet_id) return;
-      toast.success(`✅ ${data.employeeName || "Karyawan"} check-in pukul ${data.checkInTime}`);
+      toast.success(`${data.employeeName || "Karyawan"} check-in pukul ${data.checkInTime}`);
       queryClient.invalidateQueries({ queryKey: ["attendance", "report"] });
     });
 
     const unsubscribeCheckout = on("attendance:checkout", (data: any) => {
       if (data.outletId !== user.outlet_id) return;
-      toast.success(`✅ ${data.employeeName || "Karyawan"} check-out`);
+      toast.success(`${data.employeeName || "Karyawan"} check-out`);
       queryClient.invalidateQueries({ queryKey: ["attendance", "report"] });
     });
 

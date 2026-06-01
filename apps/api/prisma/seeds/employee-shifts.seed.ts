@@ -1,5 +1,5 @@
 import { prisma } from '../../src/lib/prisma.js';
-import type { Employee, WorkShift } from '@prisma/client';
+import type { Employee, WorkShift } from '../../generated/prisma/index.js';
 
 export async function seedEmployeeShifts(
   employees: Employee[],

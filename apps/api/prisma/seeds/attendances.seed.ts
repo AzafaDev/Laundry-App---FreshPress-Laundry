@@ -1,6 +1,6 @@
 import { prisma } from '../../src/lib/prisma.js';
 import { getRandomDateInRange } from './helpers.js';
-import type { Employee, WorkShift } from '@prisma/client';
+import type { Employee, WorkShift } from '../../generated/prisma/index.js';
 
 function generateAttendanceTimes(
   shift: WorkShift,

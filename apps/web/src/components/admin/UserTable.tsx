@@ -8,18 +8,21 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  Calendar,
 } from "lucide-react";
 import { useUsers, useDeleteUser } from "@/hooks/useUsers";
 import type { User, UserRole } from "@/types/user.types";
 import { UserFormModal } from "./UserFormModal";
+import { EmployeeShiftModal } from "./EmployeeShiftModal";
 
 const ROLE_FILTERS: Array<{ value: UserRole | "all"; label: string }> = [
   { value: "all", label: "Semua" },
   { value: "super_admin", label: "Super Admin" },
   { value: "outlet_admin", label: "Outlet Admin" },
-  { value: "worker", label: "Worker" },
+  { value: "washing_worker", label: "Washing Worker" },
+  { value: "ironing_worker", label: "Ironing Worker" },
+  { value: "packing_worker", label: "Packing Worker" },
   { value: "driver", label: "Driver" },
-  { value: "customer", label: "Customer" },
 ];
 
 export function UserTable() {
@@ -28,6 +31,7 @@ export function UserTable() {
   const [role, setRole] = useState<UserRole | "all">("all");
   const [editing, setEditing] = useState<User | null>(null);
   const [creating, setCreating] = useState(false);
+  const [shiftEmployee, setShiftEmployee] = useState<User | null>(null);
 
   const { data, isFetching, isError } = useUsers({
     page,
@@ -127,25 +131,35 @@ export function UserTable() {
                     {u.full_name}
                   </td>
                   <td className="px-4 py-3 text-on-surface-variant">{u.email}</td>
-                  <td className="px-4 py-3 text-on-surface-variant">{u.phone}</td>
+                  <td className="px-4 py-3 text-on-surface-variant">
+                    {u.phone ?? "—"}
+                  </td>
                   <td className="px-4 py-3">
                     <span className="px-2 py-1 text-xs rounded-md bg-primary-container/15 text-primary font-medium capitalize">
-                      {u.role.replace("_", " ")}
+                      {u.role.replace(/_/g, " ")}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {u.is_verified ? (
+                    {u.is_active ? (
                       <span className="px-2 py-1 text-xs rounded-md bg-primary/10 text-primary">
-                        Verified
+                        Aktif
                       </span>
                     ) : (
                       <span className="px-2 py-1 text-xs rounded-md bg-error-container/40 text-on-error-container">
-                        Pending
+                        Nonaktif
                       </span>
                     )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => setShiftEmployee(u)}
+                        className="p-2 rounded-md hover:bg-primary/10 text-primary"
+                        aria-label="Jadwal shift"
+                        title="Atur jadwal shift"
+                      >
+                        <Calendar className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={() => setEditing(u)}
                         className="p-2 rounded-md hover:bg-surface-container-high text-on-surface-variant"
@@ -206,6 +220,12 @@ export function UserTable() {
             setCreating(false);
             setEditing(null);
           }}
+        />
+      )}
+      {shiftEmployee && (
+        <EmployeeShiftModal
+          employee={shiftEmployee}
+          onClose={() => setShiftEmployee(null)}
         />
       )}
     </div>

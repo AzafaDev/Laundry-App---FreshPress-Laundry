@@ -15,6 +15,11 @@ const OUTLET_SELECT = {
   id: true,
   name: true,
   address: true,
+  province: true,
+  city: true,
+  district: true,
+  postal_code: true,
+  phone: true,
   latitude: true,
   longitude: true,
   service_radius_km: true,
@@ -22,7 +27,7 @@ const OUTLET_SELECT = {
   created_at: true,
 } satisfies Prisma.OutletSelect;
 
-/** List outlets — paginated, optional `search` over name/address, optional is_active filter. */
+/** List outlets — paginated, optional search over name/address, optional is_active filter. */
 export const listOutlets = async (query: ListOutletQuery) => {
   const { page, limit, search, is_active } = query;
   const skip = (page - 1) * limit;
@@ -34,6 +39,7 @@ export const listOutlets = async (query: ListOutletQuery) => {
           OR: [
             { name: { contains: search, mode: "insensitive" } },
             { address: { contains: search, mode: "insensitive" } },
+            { city: { contains: search, mode: "insensitive" } },
           ],
         }
       : {}),
@@ -70,9 +76,7 @@ export const getOutletById = async (id: string) => {
   return outlet;
 };
 
-/**
- * Create outlet. If lat/lng not supplied, geocode the address via OpenCage.
- */
+/** Create outlet. If lat/lng not supplied, geocode the address via OpenCage. */
 export const createOutlet = async (input: CreateOutletInput) => {
   let { latitude, longitude } = input;
 
@@ -92,17 +96,14 @@ export const createOutlet = async (input: CreateOutletInput) => {
       postal_code: input.postal_code,
       latitude,
       longitude,
-      service_radius_km: input.max_service_km,
+      service_radius_km: input.service_radius_km,
       is_active: input.is_active ?? true,
     },
     select: OUTLET_SELECT,
   });
 };
 
-/**
- * Update outlet. If `re_geocode` is true and `address` changed and lat/lng not provided,
- * we re-geocode the new address.
- */
+/** Update outlet. If re_geocode is true and address changed and lat/lng not provided, re-geocode. */
 export const updateOutlet = async (id: string, input: UpdateOutletInput) => {
   const existing = await prisma.outlet.findUnique({ where: { id } });
   if (!existing) throw new AppError("Outlet tidak ditemukan.", 404);
@@ -124,10 +125,15 @@ export const updateOutlet = async (id: string, input: UpdateOutletInput) => {
     data: {
       ...(input.name !== undefined && { name: input.name }),
       ...(input.address !== undefined && { address: input.address }),
+      ...(input.province !== undefined && { province: input.province }),
+      ...(input.city !== undefined && { city: input.city }),
+      ...(input.district !== undefined && { district: input.district }),
+      ...(input.postal_code !== undefined && { postal_code: input.postal_code }),
+      ...(input.phone !== undefined && { phone: input.phone }),
       ...(latitude !== undefined && { latitude }),
       ...(longitude !== undefined && { longitude }),
-      ...(input.max_service_km !== undefined && {
-        service_radius_km: input.max_service_km,
+      ...(input.service_radius_km !== undefined && {
+        service_radius_km: input.service_radius_km,
       }),
       ...(input.is_active !== undefined && { is_active: input.is_active }),
     },
@@ -135,7 +141,7 @@ export const updateOutlet = async (id: string, input: UpdateOutletInput) => {
   });
 };
 
-/** Soft-deactivate (set is_active = false). Hard delete is intentionally not exposed. */
+/** Soft-deactivate (set is_active = false). */
 export const deactivateOutlet = async (id: string) => {
   const existing = await prisma.outlet.findUnique({ where: { id } });
   if (!existing) throw new AppError("Outlet tidak ditemukan.", 404);
@@ -146,12 +152,7 @@ export const deactivateOutlet = async (id: string) => {
   });
 };
 
-/**
- * Assign a user (typically an outlet_admin / worker / driver) to an outlet by
- * promoting their role + recording the outlet via UserShift seed (a single
- * "default" shift row is created if no shifts exist for this outlet). This
- * keeps the schema unchanged but provides an explicit assignment trail.
- */
+/** Assign an employee to an outlet by updating their outlet_id. */
 export const assignUserToOutlet = async (outletId: string, userId: string) => {
   const [outlet, employee] = await Promise.all([
     prisma.outlet.findUnique({ where: { id: outletId } }),
@@ -168,18 +169,11 @@ export const assignUserToOutlet = async (outletId: string, userId: string) => {
   return { outlet_id: outletId, user_id: userId };
 };
 
-/**
- * Returns up to `limit` candidate places matching the free-text query.
- * Used by the address autocomplete in the outlet form.
- */
+/** Returns up to limit candidate places matching the free-text query. */
 export const searchAddress = async (q: string, limit = 5) =>
   searchAddressUtil(q, limit);
 
-/**
- * List users currently assigned to an outlet. We look up UserShift rows joined
- * with their Shift, filter by outlet_id and is_active=true, and de-dupe per user
- * (a worker might have multiple shift entries on the same outlet).
- */
+/** List employees currently assigned to an outlet. */
 export const listOutletAssignments = async (outletId: string) => {
   const outlet = await prisma.outlet.findUnique({ where: { id: outletId } });
   if (!outlet) throw new AppError("Outlet tidak ditemukan.", 404);
@@ -202,10 +196,7 @@ export const listOutletAssignments = async (outletId: string) => {
   });
 };
 
-/**
- * Unassign: mark all UserShift rows for (outlet, user) as inactive. Keeps the
- * audit trail rather than hard-deleting.
- */
+/** Unassign: set employee outlet_id to null. */
 export const unassignUserFromOutlet = async (
   outletId: string,
   userId: string,
@@ -217,5 +208,6 @@ export const unassignUserFromOutlet = async (
     where: { id: userId },
     data: { outlet_id: null },
   });
+
   return { outlet_id: outletId, user_id: userId };
 };

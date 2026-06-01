@@ -1,5 +1,5 @@
 import { prisma } from '../../src/lib/prisma.js';
-import type { WorkShift } from '@prisma/client';
+import type { WorkShift } from '../../generated/prisma/index.js';
 
 export async function seedShifts(): Promise<WorkShift[]> {
   const shiftsData = [

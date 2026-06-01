@@ -1,11 +1,15 @@
-// Outlet type definitions
 export interface Outlet {
   id: string;
   name: string;
   address: string;
+  province: string;
+  city: string;
+  district: string;
+  postal_code?: string | null;
+  phone?: string | null;
   latitude: number | null;
   longitude: number | null;
-  max_service_km: number | null;
+  service_radius_km: number | null;
   is_active: boolean;
   created_at: string;
 }
@@ -32,9 +36,14 @@ export interface OutletListQuery {
 export interface CreateOutletPayload {
   name: string;
   address: string;
+  province: string;
+  city: string;
+  district: string;
+  postal_code?: string;
+  phone?: string;
   latitude?: number;
   longitude?: number;
-  max_service_km: number;
+  service_radius_km: number;
   is_active?: boolean;
 }
 

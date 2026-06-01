@@ -32,12 +32,14 @@ export default function EmployeeLoginPage() {
   useEffect(() => {
     if (!_hasHydrated || !accessToken || !user) return;
     const paths: Record<string, string> = {
+      super_admin: "/dashboard/admin",
+      outlet_admin: "/dashboard/outlet-admin",
       driver: "/dashboard/driver",
       washing_worker: "/dashboard/worker",
       ironing_worker: "/dashboard/worker",
       packing_worker: "/dashboard/worker",
     };
-    router.replace(paths[user.role] ?? "/dashboard");
+    router.replace(paths[user.role] ?? "/dashboard/admin");
   }, [_hasHydrated, accessToken, user, router]);
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {

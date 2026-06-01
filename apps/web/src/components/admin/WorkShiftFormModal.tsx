@@ -1,56 +1,56 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, UserPlus } from "lucide-react";
-import { useCreateUser, useUpdateUser } from "@/hooks/useUsers";
+import { X, Clock } from "lucide-react";
+import { useCreateWorkShift, useUpdateWorkShift } from "@/hooks/useShifts";
 import type {
-  CreateUserPayload,
-  UpdateUserPayload,
-  User,
-  UserRole,
-} from "@/types/user.types";
-
-const ROLES: Array<{ value: UserRole; label: string }> = [
-  { value: "super_admin", label: "Super Admin" },
-  { value: "outlet_admin", label: "Outlet Admin" },
-  { value: "washing_worker", label: "Washing Worker" },
-  { value: "ironing_worker", label: "Ironing Worker" },
-  { value: "packing_worker", label: "Packing Worker" },
-  { value: "driver", label: "Driver" },
-];
+  WorkShift,
+  CreateWorkShiftPayload,
+  UpdateWorkShiftPayload,
+} from "@/types/shift.types";
 
 interface Props {
-  user: User | null;
+  shift: WorkShift | null;
   onClose: () => void;
 }
 
-export function UserFormModal({ user, onClose }: Props) {
-  const isEdit = !!user;
-  const create = useCreateUser();
-  const update = useUpdateUser();
+/** Format a DB time string (ISO or HH:MM:SS) to HH:MM for the time input. */
+function toTimeInput(timeStr: string): string {
+  // Could be "1970-01-01T08:00:00.000Z" or "08:00:00" or "08:00"
+  if (timeStr.includes("T")) {
+    const d = new Date(timeStr);
+    const h = String(d.getUTCHours()).padStart(2, "0");
+    const m = String(d.getUTCMinutes()).padStart(2, "0");
+    return `${h}:${m}`;
+  }
+  return timeStr.slice(0, 5); // "08:00:00" → "08:00"
+}
+
+export function WorkShiftFormModal({ shift, onClose }: Props) {
+  const isEdit = !!shift;
+  const create = useCreateWorkShift();
+  const update = useUpdateWorkShift();
 
   const [form, setForm] = useState({
-    full_name: "",
-    email: "",
-    phone: "",
-    role: "outlet_admin" as UserRole,
-    password: "",
+    name: "",
+    start_time: "08:00",
+    end_time: "16:00",
+    description: "",
     is_active: true,
   });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
+    if (shift) {
       setForm({
-        full_name: user.full_name,
-        email: user.email,
-        phone: user.phone ?? "",
-        role: user.role,
-        password: "",
-        is_active: user.is_active ?? true,
+        name: shift.name,
+        start_time: toTimeInput(shift.start_time),
+        end_time: toTimeInput(shift.end_time),
+        description: shift.description ?? "",
+        is_active: shift.is_active,
       });
     }
-  }, [user]);
+  }, [shift]);
 
   const pending = create.isPending || update.isPending;
 
@@ -58,33 +58,26 @@ export function UserFormModal({ user, onClose }: Props) {
     e.preventDefault();
     setError(null);
     try {
-      if (isEdit && user) {
-        const payload: UpdateUserPayload = {
-          full_name: form.full_name,
-          email: form.email,
-          phone: form.phone || undefined,
-          role: form.role,
+      if (isEdit && shift) {
+        const payload: UpdateWorkShiftPayload = {
+          name: form.name,
+          start_time: form.start_time,
+          end_time: form.end_time,
+          description: form.description || undefined,
           is_active: form.is_active,
-          ...(form.password ? { password: form.password } : {}),
         };
-        await update.mutateAsync({ id: user.id, payload });
-        onClose();
+        await update.mutateAsync({ id: shift.id, payload });
       } else {
-        if (!form.password.trim()) {
-          setError("Password wajib diisi untuk membuat akun baru.");
-          return;
-        }
-        const payload: CreateUserPayload = {
-          full_name: form.full_name,
-          email: form.email,
-          phone: form.phone || undefined,
-          role: form.role,
-          password: form.password,
+        const payload: CreateWorkShiftPayload = {
+          name: form.name,
+          start_time: form.start_time,
+          end_time: form.end_time,
+          description: form.description || undefined,
           is_active: form.is_active,
         };
         await create.mutateAsync(payload);
-        onClose();
       }
+      onClose();
     } catch (err) {
       const msg =
         (err as { response?: { data?: { message?: string } } }).response?.data
@@ -99,10 +92,10 @@ export function UserFormModal({ user, onClose }: Props) {
         <div className="p-6 bg-surface-container-low border-b border-outline-variant flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
-              <UserPlus className="w-5 h-5 text-primary" />
+              <Clock className="w-5 h-5 text-primary" />
             </div>
             <h3 className="text-xl font-bold text-on-surface">
-              {isEdit ? "Edit User" : "Tambah User"}
+              {isEdit ? "Edit Shift" : "Tambah Shift"}
             </h3>
           </div>
           <button
@@ -115,66 +108,51 @@ export function UserFormModal({ user, onClose }: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <Field label="Nama Lengkap">
+          <Field label="Nama Shift">
             <input
               type="text"
               required
-              value={form.full_name}
-              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+              placeholder="Shift Pagi"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
               className={inputClass}
             />
           </Field>
 
-          <Field label="Email">
-            <input
-              type="email"
-              required
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className={inputClass}
-            />
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Mulai (HH:MM)">
+              <input
+                type="time"
+                required
+                value={form.start_time}
+                onChange={(e) =>
+                  setForm({ ...form, start_time: e.target.value })
+                }
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Selesai (HH:MM)">
+              <input
+                type="time"
+                required
+                value={form.end_time}
+                onChange={(e) =>
+                  setForm({ ...form, end_time: e.target.value })
+                }
+                className={inputClass}
+              />
+            </Field>
+          </div>
 
-          <Field label="Nomor Telepon (opsional)">
-            <input
-              type="tel"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              placeholder="08xxxxxxxxxx"
-              className={inputClass}
-            />
-          </Field>
-
-          <Field label="Role">
-            <select
-              value={form.role}
+          <Field label="Deskripsi (opsional)">
+            <textarea
+              rows={2}
+              value={form.description}
               onChange={(e) =>
-                setForm({ ...form, role: e.target.value as UserRole })
+                setForm({ ...form, description: e.target.value })
               }
-              className={inputClass}
-            >
-              {ROLES.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <Field
-            label={
-              isEdit
-                ? "Password Baru (opsional)"
-                : "Password"
-            }
-          >
-            <input
-              type="password"
-              value={form.password}
-              required={!isEdit}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder={isEdit ? "Kosongkan jika tidak diubah" : "Min. 8 karakter"}
-              className={inputClass}
+              placeholder="Keterangan tambahan tentang shift ini..."
+              className={`${inputClass} resize-none`}
             />
           </Field>
 
@@ -184,7 +162,7 @@ export function UserFormModal({ user, onClose }: Props) {
               checked={form.is_active}
               onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
             />
-            Akun aktif
+            Shift aktif
           </label>
 
           {error && (

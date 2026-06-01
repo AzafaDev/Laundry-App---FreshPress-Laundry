@@ -10,7 +10,6 @@ const longitudeSchema = z
   .min(-180, "Longitude harus antara -180 dan 180.")
   .max(180, "Longitude harus antara -180 dan 180.");
 
-// Either supply coordinates explicitly, or rely on server-side geocoding of `address`.
 export const createOutletSchema = z.object({
   name: z.string().min(2, "Nama outlet minimal 2 karakter."),
   address: z.string().min(5, "Alamat minimal 5 karakter."),
@@ -20,7 +19,7 @@ export const createOutletSchema = z.object({
   postal_code: z.string().optional(),
   latitude: latitudeSchema.optional(),
   longitude: longitudeSchema.optional(),
-  max_service_km: z
+  service_radius_km: z
     .number()
     .positive("Radius layanan harus lebih dari 0.")
     .max(100, "Radius layanan maksimal 100 km."),
@@ -31,11 +30,16 @@ export const updateOutletSchema = z
   .object({
     name: z.string().min(2).optional(),
     address: z.string().min(5).optional(),
+    province: z.string().min(2).optional(),
+    city: z.string().min(2).optional(),
+    district: z.string().min(2).optional(),
+    postal_code: z.string().optional(),
+    phone: z.string().optional(),
     latitude: latitudeSchema.optional(),
     longitude: longitudeSchema.optional(),
-    max_service_km: z.number().positive().max(100).optional(),
+    service_radius_km: z.number().positive().max(100).optional(),
     is_active: z.boolean().optional(),
-    re_geocode: z.boolean().optional(), // when true and address changed, server re-geocodes
+    re_geocode: z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: "Setidaknya satu field harus diubah.",
@@ -51,7 +55,6 @@ export const listOutletQuerySchema = z.object({
     .transform((v) => (v === undefined ? undefined : v === "true")),
 });
 
-// Used by the admin user-assignment endpoint
 export const assignUserToOutletSchema = z.object({
   user_id: z.string().uuid("user_id harus UUID."),
 });
