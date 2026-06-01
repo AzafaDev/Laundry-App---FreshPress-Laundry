@@ -23,6 +23,7 @@ export const Navbar = () => {
   const navLinks = [
     { label: "Cara Kerja", href: "/#how-it-works" },
     { label: "Harga & Layanan", href: "/#services" },
+    { label: "Alamat", href: "/customer/locations" }
   ];
 
   return (

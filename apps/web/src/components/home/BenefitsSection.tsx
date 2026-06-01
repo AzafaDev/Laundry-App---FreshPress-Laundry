@@ -35,6 +35,7 @@ export const BenefitsSection = () => (
               src="/images/laundry-process.jpg"
               alt="Tim FreshPress bekerja"
               fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover rounded-3xl shadow-xl"
             />
           </div>

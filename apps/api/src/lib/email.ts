@@ -1,7 +1,14 @@
 import { Resend } from "resend";
 import { env } from "../config/env.js";
 
-const resend = new Resend(env.RESEND_API_KEY);
+let _resend: Resend | null = null;
+function getResend(): Resend {
+  if (!_resend) {
+    if (!env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is not set in environment variables");
+    _resend = new Resend(env.RESEND_API_KEY);
+  }
+  return _resend;
+}
 const FROM = "FreshPress Laundry <noreply@azafadev.web.id>";
 
 export const sendVerificationEmail = async (
@@ -9,7 +16,7 @@ export const sendVerificationEmail = async (
   token: string,
 ): Promise<void> => {
   const link = `${env.CLIENT_URL}/verify?token=${token}`;
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: "Verifikasi Akun FreshPress Laundry",
@@ -29,7 +36,7 @@ export const sendEmployeeResetPasswordEmail = async (
   token: string,
 ): Promise<void> => {
   const link = `${env.CLIENT_URL}/employee/reset-password?token=${token}`;
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: "Reset Password Akun Karyawan FreshPress",
@@ -49,7 +56,7 @@ export const sendResetPasswordEmail = async (
   token: string,
 ): Promise<void> => {
   const link = `${env.CLIENT_URL}/reset-password?token=${token}`;
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: "Reset Password FreshPress Laundry",
@@ -69,7 +76,7 @@ export const sendEmailChangeVerification = async (
   token: string,
 ): Promise<void> => {
   const link = `${env.CLIENT_URL}/verify-email-change?token=${token}`;
-  await resend.emails.send({
+  await getResend().emails.send({
     from: FROM,
     to,
     subject: "Konfirmasi Perubahan Email FreshPress Laundry",
