@@ -1,24 +1,16 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { env } from "../config/env.js";
 
-const transporter = nodemailer.createTransport(<any>{
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  family: 4,
-  auth: { user: env.NODEMAILER_USER, pass: env.NODEMAILER_PASS },
-  connectionTimeout: 5000,
-  greetingTimeout: 5000,
-  socketTimeout: 5000,
-});
+const resend = new Resend(env.RESEND_API_KEY);
+const FROM = "FreshPress Laundry <noreply@azafadev.web.id>";
 
 export const sendVerificationEmail = async (
   to: string,
   token: string,
 ): Promise<void> => {
   const link = `${env.CLIENT_URL}/verify?token=${token}`;
-  await transporter.sendMail({
-    from: `"FreshPress Laundry" <${env.NODEMAILER_USER}>`,
+  await resend.emails.send({
+    from: FROM,
     to,
     subject: "Verifikasi Akun FreshPress Laundry",
     html: `
@@ -37,8 +29,8 @@ export const sendEmployeeResetPasswordEmail = async (
   token: string,
 ): Promise<void> => {
   const link = `${env.CLIENT_URL}/employee/reset-password?token=${token}`;
-  await transporter.sendMail({
-    from: `"FreshPress Laundry" <${env.NODEMAILER_USER}>`,
+  await resend.emails.send({
+    from: FROM,
     to,
     subject: "Reset Password Akun Karyawan FreshPress",
     html: `
@@ -57,8 +49,8 @@ export const sendResetPasswordEmail = async (
   token: string,
 ): Promise<void> => {
   const link = `${env.CLIENT_URL}/reset-password?token=${token}`;
-  await transporter.sendMail({
-    from: `"FreshPress Laundry" <${env.NODEMAILER_USER}>`,
+  await resend.emails.send({
+    from: FROM,
     to,
     subject: "Reset Password FreshPress Laundry",
     html: `
@@ -77,8 +69,8 @@ export const sendEmailChangeVerification = async (
   token: string,
 ): Promise<void> => {
   const link = `${env.CLIENT_URL}/verify-email-change?token=${token}`;
-  await transporter.sendMail({
-    from: `"FreshPress Laundry" <${env.NODEMAILER_USER}>`,
+  await resend.emails.send({
+    from: FROM,
     to,
     subject: "Konfirmasi Perubahan Email FreshPress Laundry",
     html: `
