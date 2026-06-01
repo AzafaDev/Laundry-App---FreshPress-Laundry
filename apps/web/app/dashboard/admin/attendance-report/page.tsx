@@ -348,11 +348,16 @@ export default function AttendanceReportPage() {
                         {att.check_out_time ?? "-"}
                       </td>
                       <td className="px-6 py-4">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-bold ${STATUS_COLOR[att.status]}`}
-                        >
-                          {STATUS_LABEL[att.status]}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-bold w-fit ${STATUS_COLOR[att.status]}`}
+                          >
+                            {STATUS_LABEL[att.status]}
+                          </span>
+                          {att.status === "absent" && att.notes?.includes("Auto") && (
+                            <span className="text-xs text-on-surface-variant">Auto</span>
+                          )}
+                        </div>
                       </td>
                     </motion.tr>
                   ))}
