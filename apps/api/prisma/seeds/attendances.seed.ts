@@ -11,7 +11,7 @@ function generateAttendanceTimes(
 
   const startTime = shift.start_time;
   const endTime = shift.end_time;
-  const isOvernight = endTime.getHours() < startTime.getHours();
+  const isOvernight = endTime.getUTCHours() < startTime.getUTCHours();
 
   const checkIn = new Date(date);
   checkIn.setUTCHours(startTime.getUTCHours(), startTime.getUTCMinutes(), 0);

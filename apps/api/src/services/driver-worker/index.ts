@@ -48,18 +48,26 @@ const DRIVER_TASK_DETAIL_SELECT = {
   },
 } satisfies Prisma.DriverTaskSelect;
 
+const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+function toWIB(date: Date): Date {
+  return new Date(date.getTime() + WIB_OFFSET_MS);
+}
+
 function formatLocalDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const wib = toWIB(date);
+  const year = wib.getUTCFullYear();
+  const month = String(wib.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(wib.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
 function formatLocalTime(date: Date | null): string | null {
   if (!date) return null;
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const seconds = String(date.getSeconds()).padStart(2, "0");
+  const wib = toWIB(date);
+  const hours = String(wib.getUTCHours()).padStart(2, "0");
+  const minutes = String(wib.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(wib.getUTCSeconds()).padStart(2, "0");
   return `${hours}:${minutes}:${seconds}`;
 }
 
@@ -376,8 +384,10 @@ const attendanceService = {
       progressPercent = 100;
     }
 
-    const formatTime = (date: Date) =>
-      `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    const formatTime = (date: Date) => {
+      const w = toWIB(date);
+      return `${String(w.getUTCHours()).padStart(2, "0")}:${String(w.getUTCMinutes()).padStart(2, "0")}`;
+    };
 
     const canCheckInNow = canCheckIn(now, startTime, endTime, 15);
     const canCheckOutNow = canCheckOut(now, startTime, endTime);
@@ -417,8 +427,10 @@ const attendanceService = {
       remainingSeconds = Math.max(0, (endTime.getTime() - now.getTime()) / 1000);
     }
 
-    const formatTime = (date: Date) =>
-      `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    const formatTime = (date: Date) => {
+      const w = toWIB(date);
+      return `${String(w.getUTCHours()).padStart(2, "0")}:${String(w.getUTCMinutes()).padStart(2, "0")}`;
+    };
 
     const canCheckInNow = canCheckIn(now, startTime, endTime, 15);
     const canCheckOutNow = canCheckOut(now, startTime, endTime);
