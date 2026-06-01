@@ -65,6 +65,7 @@ export const Hero = () => {
                 src="/images/slide-1.png"
                 alt="FreshPress Laundry Service"
                 fill
+                sizes="(max-width: 768px) 100vw, 50vw"
                 className="object-cover rounded-3xl shadow-xl"
                 priority
               />
