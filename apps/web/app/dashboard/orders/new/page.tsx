@@ -11,10 +11,13 @@ import { SchedulePicker } from "@/components/orders/SchedulePicker";
 import { PromoCard } from "@/components/orders/PromoCard";
 
 export default function NewOrderPage() {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedService, setSelectedService] = useState("wash-and-fold");
   const [weight, setWeight] = useState(15);
-  const [selectedDate, setSelectedDate] = useState("today");
+  const [selectedDate, setSelectedDate] = useState(today);
   const [selectedTime, setSelectedTime] = useState("10:00 AM - 12:00 PM");
 
   return (

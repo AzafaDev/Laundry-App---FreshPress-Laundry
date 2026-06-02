@@ -16,7 +16,7 @@ export const WeightSelector = ({ weight, onChange, onNext, onBack }: Props) => (
     <div className="flex flex-col md:flex-row gap-6 items-center">
       <div className="w-full md:w-1/2 space-y-2">
         <label className="text-sm font-bold text-on-surface-variant">
-          Weight in Pounds (lb)
+          Berat dalam Kilogram (kg)
         </label>
         <div className="flex items-center gap-3">
           <button
@@ -41,9 +41,9 @@ export const WeightSelector = ({ weight, onChange, onNext, onBack }: Props) => (
       </div>
       <div className="w-full md:w-1/2 bg-surface-container-low p-4 rounded-xl border border-primary-fixed-dim/30">
         <p className="text-sm text-on-surface-variant">
-          <span className="font-bold text-primary">Pro Tip:</span> A typical
-          large laundry bag is approximately 15-20 lbs. We will weigh your items
-          precisely upon arrival.
+          <span className="font-bold text-primary">Pro Tip:</span> Satu kantong
+          laundry besar biasanya sekitar 5-7 kg. Berat final akan kami ukur saat
+          pickup.
         </p>
       </div>
     </div>

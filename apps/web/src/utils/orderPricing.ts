@@ -1,0 +1,3 @@
+export const WASH_AND_FOLD_RATE_PER_KG = 7000;
+export const DRY_CLEANING_START_PRICE = 25000;
+export const SERVICE_FEE = 2000;

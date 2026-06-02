@@ -8,7 +8,7 @@ const services = [
     desc: "Cuci bersih dan lipat rapi. Ideal untuk pakaian harian.",
     tag: "Terpopuler",
     tagColor: "bg-primary text-white",
-    price: "Rp 10.000",
+    price: "Rp 7.000",
     unit: "/kg",
   },
   {
