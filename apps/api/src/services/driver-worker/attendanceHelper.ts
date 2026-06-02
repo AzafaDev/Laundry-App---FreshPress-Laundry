@@ -28,12 +28,12 @@ export function getNow(): Date {
 
 export function getTodayLocalStart(): Date {
   const wib = toWIBView(getNow());
-  return new Date(Date.UTC(wib.getUTCFullYear(), wib.getUTCMonth(), wib.getUTCDate()) - WIB_OFFSET_MS);
+  return new Date(Date.UTC(wib.getUTCFullYear(), wib.getUTCMonth(), wib.getUTCDate()));
 }
 
 export function toLocalMidnight(date: Date): Date {
   const wib = toWIBView(date);
-  return new Date(Date.UTC(wib.getUTCFullYear(), wib.getUTCMonth(), wib.getUTCDate()) - WIB_OFFSET_MS);
+  return new Date(Date.UTC(wib.getUTCFullYear(), wib.getUTCMonth(), wib.getUTCDate()));
 }
 
 export async function getEmployeeOutlet(employeeId: string): Promise<string> {

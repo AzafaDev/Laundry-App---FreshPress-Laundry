@@ -22,6 +22,7 @@ export interface CurrentShift {
   outletId?: string;
   canCheckIn: boolean;
   canCheckOut: boolean;
+  serverNow?: string;
 }
 
 // Helper untuk mendapatkan token employee (walaupun interceptor sudah handle)

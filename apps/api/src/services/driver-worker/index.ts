@@ -5,7 +5,6 @@ import {
   getEmployeeOutlet,
   getEmployeeShiftForDate,
   canCheckIn,
-  canCheckOut,
   isLate,
   determineAttendanceStatus,
   isWithinRadius,
@@ -55,10 +54,9 @@ function toWIB(date: Date): Date {
 }
 
 function formatLocalDate(date: Date): string {
-  const wib = toWIB(date);
-  const year = wib.getUTCFullYear();
-  const month = String(wib.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(wib.getUTCDate()).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -358,7 +356,13 @@ const attendanceService = {
   async getUpcomingOrActiveShift(employeeId: string) {
     const now = getNow();
     const today = getTodayLocalStart();
-    const shiftInfo = await getEmployeeShiftForDate(employeeId, today);
+    const [shiftInfo, todayAttendance] = await Promise.all([
+      getEmployeeShiftForDate(employeeId, today),
+      prisma.attendance.findUnique({
+        where: { employee_id_date: { employee_id: employeeId, date: today } },
+        select: { check_in_time: true, check_out_time: true },
+      }),
+    ]);
     if (!shiftInfo) return null;
 
     const { shiftName, startTime, endTime } = shiftInfo;
@@ -389,8 +393,10 @@ const attendanceService = {
       return `${String(w.getUTCHours()).padStart(2, "0")}:${String(w.getUTCMinutes()).padStart(2, "0")}`;
     };
 
-    const canCheckInNow = canCheckIn(now, startTime, endTime, 15);
-    const canCheckOutNow = canCheckOut(now, startTime, endTime);
+    const alreadyCheckedIn = !!todayAttendance?.check_in_time;
+    const alreadyCheckedOut = !!todayAttendance?.check_out_time;
+    const canCheckInNow = !alreadyCheckedIn && canCheckIn(now, startTime, endTime, 15);
+    const canCheckOutNow = alreadyCheckedIn && !alreadyCheckedOut && now > endTime;
 
     return {
       shiftName,
@@ -404,12 +410,20 @@ const attendanceService = {
       outletId: outlet,
       canCheckIn: canCheckInNow,
       canCheckOut: canCheckOutNow,
+      serverNow: now.toISOString(),
     };
   },
 
   async getCurrentShift(employeeId: string) {
     const now = getNow();
-    const shiftInfo = await getShiftForDateTime(employeeId, now);
+    const today = getTodayLocalStart();
+    const [shiftInfo, todayAttendance] = await Promise.all([
+      getShiftForDateTime(employeeId, now),
+      prisma.attendance.findUnique({
+        where: { employee_id_date: { employee_id: employeeId, date: today } },
+        select: { check_in_time: true, check_out_time: true },
+      }),
+    ]);
     if (!shiftInfo) return null;
 
     const { shiftName, startTime, endTime } = shiftInfo;
@@ -432,8 +446,10 @@ const attendanceService = {
       return `${String(w.getUTCHours()).padStart(2, "0")}:${String(w.getUTCMinutes()).padStart(2, "0")}`;
     };
 
-    const canCheckInNow = canCheckIn(now, startTime, endTime, 15);
-    const canCheckOutNow = canCheckOut(now, startTime, endTime);
+    const alreadyCheckedIn = !!todayAttendance?.check_in_time;
+    const alreadyCheckedOut = !!todayAttendance?.check_out_time;
+    const canCheckInNow = !alreadyCheckedIn && canCheckIn(now, startTime, endTime, 15);
+    const canCheckOutNow = alreadyCheckedIn && !alreadyCheckedOut && now > endTime;
 
     return {
       shiftName,
@@ -446,6 +462,7 @@ const attendanceService = {
       outletId: outlet,
       canCheckIn: canCheckInNow,
       canCheckOut: canCheckOutNow,
+      serverNow: now.toISOString(),
     };
   },
 };
@@ -658,9 +675,6 @@ const driverService = {
   },
 
   async completeTask(employeeId: string, taskId: string) {
-    const currentShift = await attendanceService.getCurrentShift(employeeId);
-    if (!currentShift?.isActive) throw new AppError("Shift tidak aktif", 403);
-
     const todayAttendance = await attendanceService.checkTodayAttendance(employeeId);
     if (!todayAttendance?.check_in_time) throw new AppError("Belum check-in", 403);
     if (todayAttendance.check_out_time) throw new AppError("Sudah check-out", 403);

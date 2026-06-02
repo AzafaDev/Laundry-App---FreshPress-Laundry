@@ -10,11 +10,15 @@ interface ShiftCardProps {
 }
 
 function useClientProgress(currentShift: CurrentShift | null) {
-  const [now, setNow] = useState(() => new Date());
+  const fetchTime = useState(() => Date.now())[0];
+  const serverBase = currentShift?.serverNow ? new Date(currentShift.serverNow).getTime() : Date.now();
+  const [now, setNow] = useState(() => new Date(serverBase + (Date.now() - fetchTime)));
 
   useEffect(() => {
     if (!currentShift || (currentShift.phase !== "active" && currentShift.phase !== "pre_shift")) return;
-    const timer = setInterval(() => setNow(new Date()), 1000);
+    const timer = setInterval(() => {
+      setNow(new Date(serverBase + (Date.now() - fetchTime)));
+    }, 1000);
     return () => clearInterval(timer);
   }, [currentShift]);
 
