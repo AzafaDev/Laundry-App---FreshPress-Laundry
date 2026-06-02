@@ -33,6 +33,11 @@ export interface GeocodeResult {
   longitude: number;
   formatted: string;
   confidence?: number;
+  street?: string;
+  district?: string;
+  city?: string;
+  province?: string;
+  postal_code?: string;
 }
 
 export interface OutletDistance {

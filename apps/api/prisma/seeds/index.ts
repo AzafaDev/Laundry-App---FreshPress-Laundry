@@ -2,6 +2,7 @@ import { prisma } from '../../src/lib/prisma.js';
 import { seedOutlets } from './outlets.seed.js';
 import { seedShifts } from './shifts.seed.js';
 import { seedEmployees } from './employees.seed.js';
+import { seedCustomers, seededCustomerEmails } from './customers.seed.js';
 import { seedEmployeeShifts } from './employee-shifts.seed.js';
 import { seedAttendances } from './attendances.seed.js';
 import { seedOrders } from './orders.seed.js';
@@ -14,8 +15,8 @@ export async function runAllSeeds() {
   await prisma.orderItem.deleteMany({ where: { order: { invoice_number: { startsWith: 'INV-SEED-' } } } });
   await prisma.orderStatusHistory.deleteMany({ where: { order: { invoice_number: { startsWith: 'INV-SEED-' } } } });
   await prisma.order.deleteMany({ where: { invoice_number: { startsWith: 'INV-SEED-' } } });
-  await prisma.customerAddress.deleteMany({ where: { customer: { email: 'testcustomer@freshpress.com' } } });
-  await prisma.customer.deleteMany({ where: { email: 'testcustomer@freshpress.com' } });
+  await prisma.customerAddress.deleteMany({ where: { customer: { email: { in: [...seededCustomerEmails] } } } });
+  await prisma.customer.deleteMany({ where: { email: { in: [...seededCustomerEmails] } } });
   await prisma.attendance.deleteMany({});
   await prisma.employeeShift.deleteMany({});
   await prisma.processLog.deleteMany({});
@@ -29,6 +30,8 @@ export async function runAllSeeds() {
   const mainOutlet = outlets[0];
 
   const shifts = await seedShifts();
+
+  const customers = await seedCustomers();
 
   const employees = await seedEmployees(mainOutlet.id);
 
@@ -52,6 +55,9 @@ export async function runModuleSeed(moduleName: string) {
     case 'employees':
       const outlets = await seedOutlets();
       await seedEmployees(outlets[0].id);
+      break;
+    case 'customers':
+      await seedCustomers();
       break;
     case 'orders': {
       const outletList = await prisma.outlet.findMany({ take: 1 });
