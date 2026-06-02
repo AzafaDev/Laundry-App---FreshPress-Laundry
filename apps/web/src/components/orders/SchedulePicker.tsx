@@ -1,11 +1,38 @@
+"use client";
+
 import { Calendar } from "lucide-react";
 
-const dates = [
-  { label: "Today", day: "24", month: "Oct", value: "today" },
-  { label: "Fri", day: "25", month: "Oct", value: "fri" },
-  { label: "Sat", day: "26", month: "Oct", value: "sat" },
-  { label: "Sun", day: "27", month: "Oct", value: "sun" },
-];
+const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+  day: "2-digit",
+  month: "short",
+});
+
+const weekdayFormatter = new Intl.DateTimeFormat("id-ID", {
+  weekday: "short",
+});
+
+const toDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const dates = Array.from({ length: 4 }, (_, offset) => {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+
+  const parts = dateFormatter.formatToParts(date);
+  const day = parts.find((part) => part.type === "day")?.value ?? "";
+  const month = parts.find((part) => part.type === "month")?.value ?? "";
+
+  return {
+    label: offset === 0 ? "Hari ini" : weekdayFormatter.format(date),
+    day,
+    month,
+    value: toDateKey(date),
+  };
+});
 
 const timeSlots = [
   "08:00 AM - 10:00 AM",

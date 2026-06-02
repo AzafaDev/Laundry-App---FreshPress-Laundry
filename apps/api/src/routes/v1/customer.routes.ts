@@ -2,6 +2,7 @@ import { Router } from "express";
 import * as AuthCtrl from "../../controllers/customer/auth.controller.js";
 import * as ProfileCtrl from "../../controllers/customer/profile.controller.js";
 import * as AddressCtrl from "../../controllers/customer/address.controller.js";
+import * as OrderCtrl from "../../controllers/customer/order.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import {
@@ -19,6 +20,7 @@ import {
   verifyEmailChangeSchema,
   createAddressSchema,
   updateAddressSchema,
+  createOrderSchema,
 } from "../../validations/customer.validation.js";
 
 const router = Router();
@@ -50,5 +52,10 @@ router.get("/addresses/:id/delivery-estimate", authenticate, AddressCtrl.estimat
 
 // Geocode proxy (protected — keeps OPENCAGE_API_KEY server-side)
 router.get("/geocode", authenticate, AddressCtrl.geocodeSearch);
+
+// Order Routes (protected)
+router.post("/orders", authenticate, validate(createOrderSchema), OrderCtrl.createOrder);
+router.get("/orders", authenticate, OrderCtrl.listOrders);
+router.get("/orders/:id", authenticate, OrderCtrl.getOrderById);
 
 export default router;

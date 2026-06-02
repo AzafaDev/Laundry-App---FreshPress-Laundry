@@ -1,5 +1,6 @@
-import { Employee, Outlet } from '../../generated/prisma/client.js';
+import { Customer, Employee, Outlet, OrderStatus } from '../../generated/prisma/client.js';
 import { prisma } from '../../src/lib/prisma.js';
+import { seededCustomerEmails } from './customers.seed.js';
 
 // Seed orders untuk testing Sprint 2:
 // - 2 order status waiting_pickup_driver + DriverTask available  → driver claim test
@@ -8,40 +9,45 @@ import { prisma } from '../../src/lib/prisma.js';
 // - 1 order status packing                                        → packing worker test
 // - 1 order status ready_for_delivery + DriverTask available      → driver delivery test
 
-export async function seedOrders(outlet: Outlet, employees: Employee[]) {
-  const driver = employees.find(e => e.email === 'driver.morning@freshpress.com');
-  if (!driver) throw new Error('Driver seed employee not found');
+export async function seedOrders(outlet: Outlet, employees: Employee[], customers: Customer[]) {
+  const hasDriver = employees.some(e => e.email === 'driver.morning@freshpress.com');
+  if (!hasDriver) throw new Error('Driver seed employee not found');
 
-  // Buat customer dummy jika belum ada
-  const customer = await prisma.customer.upsert({
-    where: { email: 'testcustomer@freshpress.com' },
-    update: {},
-    create: {
-      email: 'testcustomer@freshpress.com',
-      full_name: 'Test Customer',
-      phone: '08111222333',
-      password_hash: 'dummy',
-      is_verified: true,
-    },
+  const customerEmails = customers.length > 0
+    ? customers.map(customer => customer.email)
+    : [...seededCustomerEmails];
+
+  const existingCustomers = await prisma.customer.findMany({
+    where: { email: { in: customerEmails } },
+    orderBy: { created_at: 'asc' },
   });
 
-  // Buat address dummy
-  const existingAddress = await prisma.customerAddress.findFirst({
-    where: { customer_id: customer.id },
-  });
-  const address = existingAddress ?? await prisma.customerAddress.create({
-    data: {
-      customer_id: customer.id,
-      label: 'Rumah',
-      address: 'Jl. Test No. 1, Jakarta',
-      province: 'DKI Jakarta',
-      city: 'Jakarta Selatan',
-      district: 'Kebayoran Baru',
-      latitude: -6.2,
-      longitude: 106.816666,
-      is_primary: true,
-    },
-  });
+  if (existingCustomers.length === 0) {
+    throw new Error('Customer seed data is empty, run customer seed first');
+  }
+
+  const customerAddressMap = new Map<string, string>();
+  for (const [index, customer] of existingCustomers.entries()) {
+    const existingAddress = await prisma.customerAddress.findFirst({
+      where: { customer_id: customer.id },
+    });
+
+    const address = existingAddress ?? await prisma.customerAddress.create({
+      data: {
+        customer_id: customer.id,
+        label: index === 0 ? 'Rumah' : 'Alamat Utama',
+        address: `Jl. Customer ${index + 1} No. ${index + 10}, Jakarta`,
+        province: 'DKI Jakarta',
+        city: 'Jakarta Selatan',
+        district: 'Kebayoran Baru',
+        latitude: -6.2 + index * 0.005,
+        longitude: 106.816666 + index * 0.005,
+        is_primary: true,
+      },
+    });
+
+    customerAddressMap.set(customer.id, address.id);
+  }
 
   // Buat laundry items dummy jika belum ada
   const laundryItems = await Promise.all([
@@ -64,12 +70,18 @@ export async function seedOrders(outlet: Outlet, employees: Employee[]) {
 
   // Helper buat order
   async function createOrder(
+    customerId: string,
     suffix: string,
-    status: string,
+    status: OrderStatus,
     withPickupTask = false,
     withDeliveryTask = false,
   ) {
     const invoiceNumber = `INV-SEED-${suffix}`;
+    const pickupAddressId = customerAddressMap.get(customerId);
+    if (!pickupAddressId) {
+      throw new Error(`Primary address for customer ${customerId} not found`);
+    }
+
     const existing = await prisma.order.findFirst({
       where: { invoice_number: invoiceNumber },
       include: { order_items: true },
@@ -94,10 +106,10 @@ export async function seedOrders(outlet: Outlet, employees: Employee[]) {
     const order = await prisma.order.create({
       data: {
         invoice_number: invoiceNumber,
-        customer_id: customer.id,
+        customer_id: customerId,
         outlet_id: outlet.id,
-        pickup_address_id: address.id,
-        status: status as any,
+        pickup_address_id: pickupAddressId,
+        status,
         pickup_schedule: new Date(),
         total_weight_kg: 3.5,
         total_price: 35000,
@@ -142,12 +154,19 @@ export async function seedOrders(outlet: Outlet, employees: Employee[]) {
     return order;
   }
 
-  await createOrder('PICKUP-1', 'waiting_pickup_driver', true);
-  await createOrder('PICKUP-2', 'waiting_pickup_driver', true);
-  await createOrder('WASHING-1', 'washing');
-  await createOrder('IRONING-1', 'ironing');
-  await createOrder('PACKING-1', 'packing');
-  await createOrder('DELIVERY-1', 'ready_for_delivery', false, true);
+  const orderScenarios: Array<{ suffix: string; status: OrderStatus; pickup?: boolean; delivery?: boolean }> = [
+    { suffix: 'PICKUP-1', status: 'waiting_pickup_driver', pickup: true },
+    { suffix: 'PICKUP-2', status: 'waiting_pickup_driver', pickup: true },
+    { suffix: 'WASHING-1', status: 'washing' },
+    { suffix: 'IRONING-1', status: 'ironing' },
+    { suffix: 'PACKING-1', status: 'packing' },
+    { suffix: 'DELIVERY-1', status: 'ready_for_delivery', delivery: true },
+  ];
+
+  for (const [index, scenario] of orderScenarios.entries()) {
+    const customer = existingCustomers[index % existingCustomers.length];
+    await createOrder(customer.id, scenario.suffix, scenario.status, scenario.pickup, scenario.delivery);
+  }
 
   console.log('✅ Sprint 2 test orders seeded');
 }
