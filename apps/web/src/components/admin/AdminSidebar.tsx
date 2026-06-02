@@ -12,6 +12,8 @@ import {
   Settings,
   LogOut,
   Shirt,
+  ShoppingBag,
+  PlayCircle,
   type LucideIcon,
 } from "lucide-react";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
@@ -40,7 +42,13 @@ const NAV: NavItem[] = [
     href: "/dashboard/admin/outlets",
     label: "Outlets",
     icon: Store,
-    roles: ["super_admin", "outlet_admin"],
+    roles: ["super_admin"],
+  },
+  {
+    href: "/dashboard/admin/laundry-items",
+    label: "Laundry Items",
+    icon: ShoppingBag,
+    roles: ["super_admin"],
   },
   {
     href: "/dashboard/admin/shifts",
@@ -53,6 +61,12 @@ const NAV: NavItem[] = [
     label: "Orders",
     icon: Receipt,
     roles: ["super_admin", "outlet_admin"],
+  },
+  {
+    href: "/dashboard/admin/orders/create",
+    label: "Proses Order Masuk",
+    icon: PlayCircle,
+    roles: ["outlet_admin"],
   },
   {
     href: "/dashboard/admin/reports",
@@ -80,9 +94,7 @@ export function AdminSidebar() {
 
   const role = user?.role as "super_admin" | "outlet_admin" | undefined;
   const items = NAV.filter((n) =>
-    role && (role === "super_admin" || role === "outlet_admin")
-      ? n.roles.includes(role)
-      : false,
+    role ? n.roles.includes(role) : false,
   );
 
   return (

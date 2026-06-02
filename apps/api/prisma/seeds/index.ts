@@ -10,18 +10,21 @@ export async function runAllSeeds() {
   console.log('🌱 Starting database seeding...\n');
 
   console.log('🗑️ Cleaning up existing data...');
-  await prisma.driverTask.deleteMany({ where: { order: { invoice_number: { startsWith: 'INV-SEED-' } } } });
-  await prisma.orderItem.deleteMany({ where: { order: { invoice_number: { startsWith: 'INV-SEED-' } } } });
-  await prisma.orderStatusHistory.deleteMany({ where: { order: { invoice_number: { startsWith: 'INV-SEED-' } } } });
-  await prisma.order.deleteMany({ where: { invoice_number: { startsWith: 'INV-SEED-' } } });
-  await prisma.customerAddress.deleteMany({ where: { customer: { email: 'testcustomer@freshpress.com' } } });
-  await prisma.customer.deleteMany({ where: { email: 'testcustomer@freshpress.com' } });
+  // Delete leaf-level records first (no outgoing FKs to core tables)
+  await prisma.notification.deleteMany({});
+  await prisma.driverTask.deleteMany({});
+  await prisma.orderItem.deleteMany({});
+  await prisma.orderStatusHistory.deleteMany({});
+  await prisma.processLog.deleteMany({});
+  await prisma.order.deleteMany({});
+  await prisma.customerAddress.deleteMany({});
+  await prisma.customer.deleteMany({});
   await prisma.attendance.deleteMany({});
   await prisma.employeeShift.deleteMany({});
-  await prisma.processLog.deleteMany({});
   await prisma.passwordResetToken.deleteMany({});
   await prisma.employee.deleteMany({});
   await prisma.workShift.deleteMany({});
+  await prisma.laundryItem.deleteMany({});
   await prisma.outlet.deleteMany({});
   console.log('✅ Data cleaned.\n');
 
