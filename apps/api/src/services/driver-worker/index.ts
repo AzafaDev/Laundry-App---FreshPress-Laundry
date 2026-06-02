@@ -5,6 +5,7 @@ import {
   getEmployeeOutlet,
   getEmployeeShiftForDate,
   canCheckIn,
+  canCheckOut,
   isLate,
   determineAttendanceStatus,
   isWithinRadius,
@@ -190,6 +191,16 @@ const attendanceService = {
       throw new AppError("Anda sudah check-out hari ini", 403);
     }
 
+    const shift = await getEmployeeShiftForDate(employeeId, attendance.date);
+    if (!shift) {
+      throw new AppError("Data shift tidak ditemukan untuk absensi ini", 400);
+    }
+
+    const now = getNow();
+    if (!canCheckOut(now, shift.endTime)) {
+      throw new AppError("Check-out hanya dapat dilakukan setelah shift selesai", 403);
+    }
+
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
       select: { role: true, full_name: true, outlet_id: true },
@@ -200,8 +211,6 @@ const attendanceService = {
         throw new AppError("Selesaikan task aktif sebelum check-out", 403);
       }
     }
-
-    const now = getNow();
 
     const updated = await prisma.attendance.update({
       where: { id: attendanceId },
