@@ -101,8 +101,8 @@ export function canCheckIn(
   return now >= allowedStart && now <= shiftEnd;
 }
 
-export function canCheckOut(now: Date, shiftStart: Date, shiftEnd: Date): boolean {
-  return now >= shiftStart && now <= shiftEnd;
+export function canCheckOut(now: Date, shiftEnd: Date): boolean {
+  return now > shiftEnd;
 }
 
 export function isLate(
