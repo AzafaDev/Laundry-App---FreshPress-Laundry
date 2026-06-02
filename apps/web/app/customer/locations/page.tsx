@@ -9,27 +9,14 @@ import {
   Star,
   StarOff,
   Pencil,
-  ChevronDown,
-  ChevronUp,
   ArrowLeft,
   Loader2,
-  Store,
-  Navigation,
   AlertCircle,
-  CheckCircle2,
 } from "lucide-react";
 import { addressService } from "@/services/address.service";
-import type { CustomerAddress, DeliveryEstimate } from "@/services/address.service";
+import type { CustomerAddress } from "@/services/address.service";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
-
-function formatRupiah(value: number) {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    minimumFractionDigits: 0,
-  }).format(value);
-}
 
 export default function LocationsPage() {
   const router = useRouter();
@@ -43,11 +30,6 @@ export default function LocationsPage() {
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Per-address delivery estimate state
-  const [estimates, setEstimates] = useState<Record<string, DeliveryEstimate | null>>({});
-  const [estimateLoading, setEstimateLoading] = useState<Record<string, boolean>>({});
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Action feedback
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -90,30 +72,10 @@ export default function LocationsPage() {
     try {
       await addressService.remove(id);
       setAddresses((prev) => prev.filter((a) => a.id !== id));
-      if (expandedId === id) setExpandedId(null);
     } catch {
       setActionError("Gagal menghapus alamat.");
     } finally {
       setActionLoading(null);
-    }
-  };
-
-  const handleToggleEstimate = async (id: string) => {
-    if (expandedId === id) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(id);
-    if (estimates[id] !== undefined) return; // already loaded
-
-    setEstimateLoading((prev) => ({ ...prev, [id]: true }));
-    try {
-      const estimate = await addressService.estimateDeliveryFee(id);
-      setEstimates((prev) => ({ ...prev, [id]: estimate }));
-    } catch {
-      setEstimates((prev) => ({ ...prev, [id]: null }));
-    } finally {
-      setEstimateLoading((prev) => ({ ...prev, [id]: false }));
     }
   };
 
@@ -190,9 +152,6 @@ export default function LocationsPage() {
         {!loading && !error && addresses.length > 0 && (
           <div className="flex flex-col gap-md">
             {addresses.map((addr) => {
-              const isExpanded = expandedId === addr.id;
-              const estimate = estimates[addr.id];
-              const loadingEstimate = estimateLoading[addr.id];
               const actioning = actionLoading === addr.id;
 
               return (
@@ -256,95 +215,6 @@ export default function LocationsPage() {
                     </div>
                   </div>
 
-                  {/* Delivery Estimate Toggle */}
-                  <button
-                    onClick={() => handleToggleEstimate(addr.id)}
-                    className="w-full flex items-center justify-between px-md py-sm bg-surface-container-low border-t border-outline-variant hover:bg-surface-container-high transition-colors text-left"
-                  >
-                    <span className="text-label-sm font-medium text-primary flex items-center gap-xs">
-                      <Navigation className="w-4 h-4" />
-                      Estimasi Ongkos Kirim
-                    </span>
-                    {isExpanded ? <ChevronUp className="w-4 h-4 text-on-surface-variant" /> : <ChevronDown className="w-4 h-4 text-on-surface-variant" />}
-                  </button>
-
-                  {/* Delivery Estimate Panel */}
-                  {isExpanded && (
-                    <div className="px-md pb-md pt-sm border-t border-outline-variant bg-surface-container-low">
-                      {loadingEstimate && (
-                        <div className="flex items-center gap-sm py-sm text-on-surface-variant text-body-sm">
-                          <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                          Menghitung estimasi...
-                        </div>
-                      )}
-
-                      {!loadingEstimate && estimate === null && (
-                        <div className="flex items-center gap-sm py-sm text-red-600 text-body-sm">
-                          <AlertCircle className="w-4 h-4 shrink-0" />
-                          Gagal memuat estimasi. Pastikan ada outlet aktif.
-                        </div>
-                      )}
-
-                      {!loadingEstimate && estimate && (
-                        <div className="flex flex-col gap-sm">
-                          {/* Nearest outlet highlight */}
-                          <div className={`rounded-xl p-sm flex items-start gap-sm border ${estimate.nearest_outlet.within_service_area ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}`}>
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${estimate.nearest_outlet.within_service_area ? "bg-green-100" : "bg-amber-100"}`}>
-                              <Store className={`w-4 h-4 ${estimate.nearest_outlet.within_service_area ? "text-green-700" : "text-amber-700"}`} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-sm">
-                                <p className="text-label-md font-bold text-on-surface truncate">{estimate.nearest_outlet.outlet_name}</p>
-                                {estimate.nearest_outlet.within_service_area
-                                  ? <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                                  : <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                                }
-                              </div>
-                              <p className="text-label-sm text-on-surface-variant truncate">{estimate.nearest_outlet.outlet_city}</p>
-                              <div className="flex items-center justify-between mt-xs">
-                                <span className="text-label-sm text-outline">{estimate.nearest_outlet.distance_km} km</span>
-                                <span className="text-label-md font-bold text-primary">{formatRupiah(estimate.nearest_outlet.delivery_fee)}</span>
-                              </div>
-                              {!estimate.nearest_outlet.within_service_area && (
-                                <p className="text-label-xs text-amber-700 mt-xs">Di luar area layanan outlet ini.</p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Pricing note */}
-                          <p className="text-label-xs text-outline">
-                            Biaya dasar {formatRupiah(estimate.base_fee)} + {formatRupiah(estimate.rate_per_km)}/km. Harga final dapat berbeda.
-                          </p>
-
-                          {/* Other outlets */}
-                          {estimate.all_outlets.length > 1 && (
-                            <details className="group">
-                              <summary className="text-label-sm text-primary cursor-pointer list-none flex items-center gap-xs hover:underline">
-                                <ChevronDown className="w-3 h-3 group-open:rotate-180 transition-transform" />
-                                Lihat semua outlet ({estimate.all_outlets.length})
-                              </summary>
-                              <div className="mt-sm flex flex-col gap-xs">
-                                {estimate.all_outlets.slice(1).map((o) => (
-                                  <div key={o.outlet_id} className="flex items-center justify-between py-xs px-sm bg-surface-container-lowest rounded-lg border border-outline-variant">
-                                    <div>
-                                      <p className="text-label-sm font-medium text-on-surface">{o.outlet_name}</p>
-                                      <p className="text-label-xs text-outline">{o.outlet_city} · {o.distance_km} km</p>
-                                    </div>
-                                    <div className="text-right">
-                                      <p className="text-label-sm font-bold text-on-surface">{formatRupiah(o.delivery_fee)}</p>
-                                      {!o.within_service_area && (
-                                        <p className="text-label-xs text-amber-600">Di luar area</p>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </details>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               );
             })}
