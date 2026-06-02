@@ -60,6 +60,19 @@ export async function runModuleSeed(moduleName: string) {
       await seedOrders(outletList[0], empList);
       break;
     }
+    case 'attendances': {
+      const employees = await prisma.employee.findMany();
+      const shifts = await prisma.workShift.findMany();
+      if (employees.length === 0) throw new Error('No employees found — run full seed first');
+      if (shifts.length === 0) throw new Error('No shifts found — run full seed first');
+      await prisma.$transaction(async (tx) => {
+        console.log('🗑️ Cleaning up existing attendance data...');
+        await tx.attendance.deleteMany({});
+        console.log('✅ Attendance data cleaned.\n');
+        await seedAttendances(employees, shifts, tx as any);
+      });
+      break;
+    }
     default:
       console.log(`Module ${moduleName} not recognized`);
   }
