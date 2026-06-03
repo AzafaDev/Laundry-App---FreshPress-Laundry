@@ -14,3 +14,7 @@ export const LATE_THRESHOLD_MINUTES = 30; // late if after 08:30
 export const DEFAULT_TIMEZONE = "Asia/Jakarta";
 export const CHECKIN_RADIUS_METERS =
   Number(process.env.CHECKIN_RADIUS_METERS) || 500;
+
+export const MAX_BYPASS_PHOTO_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+export const MAX_BYPASS_PHOTO_COUNT = 5;
+export const ALLOWED_BYPASS_PHOTO_MIME_TYPES = ["image/jpeg", "image/png"];
