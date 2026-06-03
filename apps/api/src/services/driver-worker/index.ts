@@ -790,6 +790,7 @@ export const workerService = {
     employeeId: string,
     station: "washing" | "ironing" | "packing",
     orderId: string,
+    actualItems?: { laundry_item_id: string; actual_quantity: number }[],
   ) {
     const currentShift = await attendanceService.getCurrentShift(employeeId);
     if (!currentShift?.isActive) throw new AppError("Shift tidak aktif", 403);
@@ -857,6 +858,16 @@ export const workerService = {
       },
     });
 
+    await prisma.processLog.create({
+      data: {
+        order_id: orderId,
+        station: station as any,
+        employee_id: employeeId,
+        input_items: actualItems ?? [],
+        completed_at: new Date(),
+      },
+    });
+
     if (shouldCreateDeliveryTask) {
       await driverService.createDeliveryTask(orderId);
     }
@@ -880,6 +891,79 @@ export const workerService = {
     }
 
     return { order: updatedOrder, createdDeliveryTask: shouldCreateDeliveryTask };
+  },
+
+  async getOrderItemsForStation(orderId: string) {
+    const items = await prisma.orderItem.findMany({
+      where: { order_id: orderId },
+      include: { laundry_item: true },
+    });
+
+    const kiloan = items.filter((i) => i.laundry_item.unit === "kg");
+    const satuan = items.filter((i) => i.laundry_item.unit !== "kg");
+
+    return { kiloan, satuan };
+  },
+
+  async validateActualItems(
+    orderId: string,
+    actualItems: { laundry_item_id: string; actual_quantity: number }[],
+  ) {
+    const { satuan } = await this.getOrderItemsForStation(orderId);
+
+    const discrepancies: {
+      laundry_item_id: string;
+      name: string;
+      expected: number;
+      actual: number;
+    }[] = [];
+
+    for (const item of satuan) {
+      const submitted = actualItems.find((a) => a.laundry_item_id === item.laundry_item_id);
+      const actual = submitted?.actual_quantity ?? 0;
+      const expected = Number(item.quantity);
+      if (actual !== expected) {
+        discrepancies.push({
+          laundry_item_id: item.laundry_item_id,
+          name: item.laundry_item.name,
+          expected,
+          actual,
+        });
+      }
+    }
+
+    return { isMatch: discrepancies.length === 0, discrepancies };
+  },
+
+  async submitItems(
+    employeeId: string,
+    station: "washing" | "ironing" | "packing",
+    orderId: string,
+    actualItems: { laundry_item_id: string; actual_quantity: number }[],
+  ) {
+    const currentShift = await attendanceService.getCurrentShift(employeeId);
+    if (!currentShift?.isActive) throw new AppError("Shift tidak aktif", 403);
+
+    const todayAttendance = await attendanceService.checkTodayAttendance(employeeId);
+    if (!todayAttendance?.check_in_time) throw new AppError("Belum check-in", 403);
+    if (todayAttendance.check_out_time) throw new AppError("Sudah check-out", 403);
+
+    const { isMatch, discrepancies } = await this.validateActualItems(orderId, actualItems);
+
+    if (!isMatch) {
+      return { success: false as const, requiresBypass: true, discrepancies };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const pendingBypass = await tx.bypassRequest.findFirst({
+        where: { order_id: orderId, station: station as any, status: "pending" },
+      });
+      if (pendingBypass) {
+        throw new AppError("Terdapat BypassRequest pending untuk order ini, tunggu review admin", 409);
+      }
+    });
+
+    return await this.completeStation(employeeId, station, orderId, actualItems);
   },
 };
 
