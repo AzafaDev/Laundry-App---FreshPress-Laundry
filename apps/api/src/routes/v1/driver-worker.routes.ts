@@ -9,7 +9,7 @@ import {
   getCurrentShift,
 } from "../../controllers/driver-worker/attendance.controller.js";
 import { getAvailablePickups, getAvailableDeliveries, getActiveTask, claimTask, completeTask } from "../../controllers/driver-worker/driver.controller.js";
-import { getStationOrders, completeStation } from "../../controllers/driver-worker/worker.controller.js";
+import { getStationOrders, completeStation, submitItems } from "../../controllers/driver-worker/worker.controller.js";
 
 const router = Router();
 
@@ -71,6 +71,11 @@ router.get(
   "/worker/station/:station",
   requireRole("washing_worker", "ironing_worker", "packing_worker"),
   getStationOrders,
+);
+router.post(
+  "/worker/station/:station/orders/:orderId/submit-items",
+  requireRole("washing_worker", "ironing_worker", "packing_worker"),
+  submitItems,
 );
 router.patch(
   "/worker/station/:station/orders/:orderId/complete",

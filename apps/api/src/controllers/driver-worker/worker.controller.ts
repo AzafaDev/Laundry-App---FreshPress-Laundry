@@ -26,6 +26,30 @@ export const getStationOrders = async (req: Request, res: Response, next: NextFu
   } catch (err) { next(err); }
 };
 
+export const submitItems = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const employeeId = req.user?.userId;
+    if (!employeeId) throw new AppError("Unauthorized", 401);
+
+    const station = req.params.station as string;
+    const orderId = req.params.orderId as string;
+    assertStationAccess(req.user!.role, station);
+
+    const { actual_items } = req.body as {
+      actual_items: { laundry_item_id: string; actual_quantity: number }[];
+    };
+    if (!Array.isArray(actual_items)) throw new AppError("actual_items harus berupa array", 400);
+
+    const result = await workerService.submitItems(employeeId, station, orderId, actual_items);
+
+    if ("requiresBypass" in result) {
+      return res.status(409).json(result);
+    }
+
+    res.json({ success: true, data: result });
+  } catch (err) { next(err); }
+};
+
 export const completeStation = async (
   req: Request,
   res: Response,
