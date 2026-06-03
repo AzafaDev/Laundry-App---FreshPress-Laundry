@@ -139,9 +139,17 @@ export const softDeleteUser = async (id: string, requesterId: string) => {
     throw new AppError("User tidak ditemukan.", 404);
   }
 
-  return prisma.employee.update({
-    where: { id },
-    data: { deleted_at: new Date() },
-    select: PUBLIC_EMPLOYEE_SELECT,
-  });
+  const [updated] = await prisma.$transaction([
+    prisma.employee.update({
+      where: { id },
+      data: { deleted_at: new Date() },
+      select: PUBLIC_EMPLOYEE_SELECT,
+    }),
+    prisma.refreshToken.updateMany({
+      where: { user_id: id, user_type: "employee", revoked_at: null },
+      data: { revoked_at: new Date() },
+    }),
+  ]);
+
+  return updated;
 };

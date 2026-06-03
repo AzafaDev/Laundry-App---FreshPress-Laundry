@@ -37,8 +37,8 @@ export const loginEmployee = async (
   password: string,
   res: Response,
 ) => {
-  const employee = await prisma.employee.findUnique({
-    where: { email },
+  const employee = await prisma.employee.findFirst({
+    where: { email, deleted_at: null },
   });
 
   if (!employee) {
@@ -48,6 +48,10 @@ export const loginEmployee = async (
   const isValid = await bcrypt.compare(password, employee.password_hash);
   if (!isValid) {
     throw new AppError("Email atau password salah.", 401);
+  }
+
+  if (!employee.is_active) {
+    throw new AppError("Akun Anda tidak aktif.", 403);
   }
 
   const accessToken = signAccessToken({

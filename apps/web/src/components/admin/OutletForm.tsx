@@ -34,9 +34,9 @@ export function OutletForm({ outlet, onClose }: Props) {
     district: outlet?.district ?? "",
     postal_code: outlet?.postal_code ?? "",
     phone: outlet?.phone ?? "",
-    latitude: outlet?.latitude ?? null,
-    longitude: outlet?.longitude ?? null,
-    service_radius_km: outlet?.service_radius_km ?? 5,
+    latitude: outlet?.latitude != null ? Number(outlet.latitude) : null,
+    longitude: outlet?.longitude != null ? Number(outlet.longitude) : null,
+    service_radius_km: outlet?.service_radius_km != null ? Number(outlet.service_radius_km) : 5,
     is_active: outlet?.is_active ?? true,
   });
   const [error, setError] = useState<string | null>(null);
@@ -56,9 +56,9 @@ export function OutletForm({ outlet, onClose }: Props) {
         district: outlet.district,
         postal_code: outlet.postal_code ?? "",
         phone: outlet.phone ?? "",
-        latitude: outlet.latitude,
-        longitude: outlet.longitude,
-        service_radius_km: outlet.service_radius_km ?? 5,
+        latitude: outlet.latitude != null ? Number(outlet.latitude) : null,
+        longitude: outlet.longitude != null ? Number(outlet.longitude) : null,
+        service_radius_km: outlet.service_radius_km != null ? Number(outlet.service_radius_km) : 5,
         is_active: outlet.is_active,
       });
     }
@@ -311,7 +311,7 @@ export function OutletForm({ outlet, onClose }: Props) {
             />
             <p className="text-xs text-on-surface-variant mt-1 ml-1">
               {form.latitude != null && form.longitude != null
-                ? `Pin: ${form.latitude.toFixed(5)}, ${form.longitude.toFixed(5)}`
+                ? `Pin: ${Number(form.latitude).toFixed(5)}, ${Number(form.longitude).toFixed(5)}`
                 : "Belum ada pin — pilih dari hasil pencarian atau klik di peta."}
             </p>
           </Field>
@@ -324,11 +324,13 @@ export function OutletForm({ outlet, onClose }: Props) {
               max="100"
               required
               value={form.service_radius_km}
-              onChange={(e) =>
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
                 setForm({
                   ...form,
-                  service_radius_km: parseFloat(e.target.value),
-                })
+                  service_radius_km: isNaN(val) ? form.service_radius_km : val,
+                });
+              }
               }
               className={inputClass}
             />
