@@ -16,8 +16,8 @@
 
 ## Prerequisites (Global)
 
-- Server running: `apps/api` on `http://localhost:3000`
-- Frontend running: `apps/web` on `http://localhost:3001`
+- Server running: `apps/api` on `http://localhost:8080`
+- Frontend running: `apps/web` on `http://localhost:3000`
 - Database migrated & seeded
 - Mailtrap (or equivalent) open in browser for email capture
 - Browser: Chrome / Edge (DevTools available)
@@ -38,7 +38,7 @@
 
 **TC-A-POS-01 · Register with valid data**
 
-1. Navigate to `http://localhost:3001/register`
+1. Navigate to `http://localhost:3000/customer/register`
 2. Fill in: Nama Lengkap, Email (new unique email), No. HP
 3. Click Submit
 
@@ -59,8 +59,9 @@ Expected:
 4. Click Submit
 
 Expected:
-- Success toast ("Email verified successfully" or similar)
-- Redirected to `/login`
+- Success state shown on the same page (no redirect)
+- Success message visible ("Email verified successfully" or similar)
+- Login link or button available to proceed
 
 ---
 
@@ -68,12 +69,12 @@ Expected:
 
 **TC-A-POS-03 · Login with valid credentials**
 
-1. Navigate to `/login`
+1. Navigate to `http://localhost:3000/customer/login`
 2. Enter email + password from TC-A-POS-02
 3. Click Masuk
 
 Expected:
-- Redirected to `/customer` dashboard
+- Redirected to `/dashboard`
 - User is logged in (name/email visible in UI)
 
 ---
@@ -138,7 +139,7 @@ Expected:
 
 **TC-A-POS-08 · Landing page loads correctly**
 
-1. Navigate to `http://localhost:3001/`
+1. Navigate to `http://localhost:3000/`
 2. When browser prompts for geolocation — click Allow
 
 Expected:
@@ -153,9 +154,9 @@ Expected:
 **TC-A-POS-09 · Unauthenticated user redirected from protected route**
 
 1. Clear all cookies/localStorage (DevTools → Application → Clear site data)
-2. Navigate to `http://localhost:3001/customer`
+2. Navigate to `http://localhost:3000/dashboard`
 
-Expected: Redirected to `/login` · No customer content visible
+Expected: Redirected to `/customer/login` · No dashboard content visible
 
 ---
 
@@ -220,7 +221,7 @@ Expected: Error "Password too weak" / minimum length error · Submission blocked
 
 **TC-A-NEG-08 · Login with wrong password**
 
-1. Navigate to `/login`
+1. Navigate to `/customer/login`
 2. Enter valid email + wrong password · Click Masuk
 
 Expected: Error toast "Invalid email or password" · Stays on login page
@@ -233,16 +234,19 @@ Expected: Same generic error as TC-A-NEG-08 (no hint about whether email exists)
 
 **TC-A-NEG-10 · Login with unverified account**
 
+> ⚠️ **Catatan implementasi:** `loginCustomer()` tidak mengecek `is_verified`. Akun yang belum diverifikasi punya temp password hash acak yang di-generate saat register, sehingga login gagal dengan pesan generic, bukan pesan "belum verifikasi".
+> ⚠️ **Backlog:** Ini adalah security gap — jika customer mengetahui passwordnya (misal via reset token), mereka bisa login tanpa verifikasi email. Rekomendasi: tambah pengecekan `is_verified` di `loginCustomer()` sebelum validasi password.
+
 1. Register a new account (TC-A-POS-01) but do NOT verify it
 2. Navigate to `/login` · Enter that email + any password · Click Masuk
 
-Expected: Error "Please verify your email before logging in"
+Expected: Error "Email atau password salah." · Stays on login page · (bukan pesan spesifik tentang verifikasi)
 
-**TC-A-NEG-11 · Already-logged-in user visits /login**
+**TC-A-NEG-11 · Already-logged-in user visits /customer/login**
 
-1. Log in as customer · Manually navigate to `/login`
+1. Log in as customer · Manually navigate to `/customer/login`
 
-Expected: Auto-redirected to `/customer` dashboard · Login page not shown
+Expected: Auto-redirected to `/dashboard` · Login page not shown
 
 ---
 
@@ -266,7 +270,7 @@ Expected: Validation error "Passwords do not match"
 
 **TC-A-NEG-14 · Geolocation denied — graceful fallback**
 
-1. Navigate to `http://localhost:3001/`
+1. Navigate to `http://localhost:3000/`
 2. When prompted for geolocation — click Block/Deny
 
 Expected: No crash · App still usable · No blank page · Graceful fallback message or null location state
@@ -324,7 +328,7 @@ Expected: No crash · App still usable · No blank page · Graceful fallback mes
 
 **TC-B-POS-01 · Super Admin login**
 
-1. Navigate to `http://localhost:3001/employee/login`
+1. Navigate to `http://localhost:3000/employee/login`
 2. Enter email: `superadmin@freshpress.com` · Password: `Password123`
 3. Click Masuk
 
@@ -360,21 +364,23 @@ Expected: Auto-redirected to `/dashboard/admin` · Login page not shown
 
 ### 2. User Management
 
-**TC-B-POS-06 · Create new employee — invite email sent**
+**TC-B-POS-06 · Create new employee**
+
+> ⚠️ **Catatan implementasi:** Invite email flow tidak ada di codebase. `createUser` service langsung membuat akun dengan password yang di-input admin — tidak ada email terkirim, tidak ada activation link. Password wajib diisi.
 
 1. Go to User Management · Click Tambah User
-2. Fill Nama Lengkap, Email, Role · Leave password blank
-3. Click Buat & Kirim Undangan
+2. Fill Nama Lengkap, Email, Role, **Password** (wajib diisi)
+3. Click Simpan / Submit
 
-Expected: Employee appears in table · Invite email received in Mailtrap
+Expected: Employee appears in table · No error shown · Tidak ada email terkirim ke Mailtrap
 
-**TC-B-POS-07 · Employee activates account via invite link**
+**TC-B-POS-07 · Employee login dengan akun yang baru dibuat**
 
-1. Open invite email in Mailtrap · Click 'Buat Password & Aktifkan Akun'
-2. Enter & confirm new password · Click Simpan & Masuk
+> ⚠️ **Catatan implementasi:** Tidak ada activation link. Employee langsung bisa login dengan password yang di-set admin di TC-B-POS-06.
 
-Expected: Auto-logged in · Redirected to role-specific dashboard
+1. Login ke `/employee/login` dengan email + password yang di-set admin di TC-B-POS-06
 
+Expected: Login berhasil · Redirected ke role-specific dashboard
 **TC-B-POS-08 · Edit employee — change role**
 
 1. Find employee in table · Click Edit
@@ -393,7 +399,7 @@ Expected: Success · Employee can log in with new password
 
 1. Find active employee · Click delete icon · Confirm
 
-Expected: Employee disappears from default list · No error shown
+Expected: Employee disappears from default list · No error shown · Semua refresh token aktif employee langsung di-revoke (tidak bisa refresh session lagi)
 
 **TC-B-POS-11 · Filter users by role**
 
@@ -410,6 +416,8 @@ Expected: Table filters to matching employees in real time
 ---
 
 ### 3. Outlet Management
+
+> ⚠️ **Known Issue — Akurasi Geocoding:** Provider saat ini (OpenCage) tidak dapat me-resolve alamat Indonesia sampai level blok/nomor rumah. Hasil geocode hanya akurat sampai level kecamatan/kabupaten. Autocomplete dropdown juga sering return kosong untuk alamat yang sangat spesifik. Fix yang direkomendasikan: migrasi ke Google Maps Geocoding API (ada free tier $200/bulan ≈ 40.000 request). Dicatat sebagai backlog.
 
 **TC-B-POS-13 · Create outlet with all fields + map pin**
 
@@ -481,6 +489,44 @@ Expected: Shift created · Appears in list without error
 
 ---
 
+### 5. Staff Assignment (Outlet)
+
+**TC-B-POS-23 · Assign employee to outlet**
+
+> ⚠️ **Backlog (consider):** Tidak ada validasi bahwa employee yang sudah ter-assign ke outlet lain tidak bisa di-assign ulang. Employee bisa punya `outlet_id` dari assignment lama sementara attendance check-in menggunakan `employee.outlet_id` (single value) — berpotensi menyebabkan data inconsistency. Rekomendasi: tambah cek existing `outlet_id` sebelum assign.
+
+1. Go to Outlet Management · Find outlet · Click tombol Assign Staff / kelola staff
+2. Cari employee by name · Click Assign / Tambahkan
+
+Expected: Employee muncul di daftar staff outlet · No error
+
+**TC-B-POS-24 · Unassign employee from outlet**
+
+1. Pada modal assign staff outlet · Temukan employee yang sudah ter-assign · Click Remove / Hapus
+
+Expected: Employee hilang dari daftar staff outlet · `outlet_id` employee menjadi null
+
+---
+
+### 6. Employee Shift Assignment
+
+**TC-B-POS-25 · Assign shift ke employee**
+
+Prerequisites: Employee sudah ter-assign ke outlet (TC-B-POS-23) · Minimal satu shift aktif ada
+
+1. Go to User Management · Find employee · Click tombol kelola shift / Assign Shift
+2. Pilih Shift dari dropdown · Pilih Hari (day of week) · Click Simpan
+
+Expected: Jadwal shift muncul di daftar shift employee · No error
+
+**TC-B-POS-26 · Remove shift assignment dari employee**
+
+1. Pada modal assign shift employee · Temukan jadwal shift yang ada · Click Remove / Hapus
+
+Expected: Jadwal shift hilang dari daftar · Employee tidak lagi punya shift di hari tersebut
+
+---
+
 ## Negative Tests
 
 ### 1. Authentication & Login
@@ -495,13 +541,15 @@ Expected: Error 'Email atau password salah.' · Stays on login page
 
 1. Enter unregistered email + any password · Click Masuk
 
-Expected: Error 'Akun tidak ditemukan.'
+Expected: Error 'Email atau password salah.' · (generic, sama seperti TC-B-NEG-01 — sengaja tidak memberi hint apakah email terdaftar)
 
 **TC-B-NEG-03 · Login with deactivated account**
 
 1. Enter email of inactive employee + correct password · Click Masuk
 
-Expected: Error 'Akun Anda tidak aktif.'
+Expected: Error 'Akun Anda tidak aktif.' · Stays on login page
+- Akun dengan `deleted_at` tidak null → Error 'Email atau password salah.' (generic)
+- Akun dengan `is_active: false` → Error 'Akun Anda tidak aktif.' (403)
 
 **TC-B-NEG-04 · Access admin dashboard without auth**
 
@@ -515,13 +563,13 @@ Expected: Redirected to `/employee/login`
 
 **TC-B-NEG-05 · Create user with duplicate email**
 
-1. Click Tambah User · Enter already-registered email · Click Buat & Kirim Undangan
+1. Click Tambah User · Enter already-registered email · Fill password · Click Simpan
 
 Expected: Error 'Email sudah terdaftar.' · User NOT created
 
 **TC-B-NEG-06 · Create user with invalid email format**
 
-1. Enter `notanemail` in Email field · Click Buat & Kirim Undangan
+1. Enter `notanemail` in Email field · Click Simpan
 
 Expected: Validation error shown · Submission blocked
 
@@ -533,13 +581,11 @@ Expected: Error 'Tidak dapat menghapus akun sendiri.' · Account not deleted
 
 **TC-B-NEG-08 · Invite link expires after 24 hours**
 
-1. Create new user (invite sent) · Wait 24+ hours · Click invite link
-
-Expected: Error 'Token tidak valid atau sudah kadaluarsa.'
+> ⚠️ **Catatan implementasi:** Test ini tidak applicable — invite link flow tidak diimplementasi (lihat TC-B-POS-06). Skip test ini.
 
 **TC-B-NEG-09 · Create user with invalid phone format**
 
-1. Click Tambah User · Enter phone: `abcdef` · Click Buat & Kirim Undangan
+1. Click Tambah User · Enter phone: `abcdef` · Click Simpan
 
 Expected: Validation error for phone format · User NOT created
 
@@ -555,9 +601,12 @@ Expected: Validation error shown · Outlet NOT created
 
 **TC-B-NEG-11 · Create outlet — duplicate name**
 
+> ⚠️ **Catatan implementasi:** Fitur ini belum diimplementasi. Schema `Outlet` tidak punya `@@unique` pada field `name`, dan `createOutlet()` tidak mengecek duplikat nama. Test ini akan **FAIL** — outlet dengan nama sama bisa dibuat.
+
 1. Enter name identical to existing outlet · Fill other fields · Click Simpan
 
-Expected: Error for duplicate name · Outlet NOT created
+Expected (seharusnya): Error for duplicate name · Outlet NOT created
+Actual saat ini: Outlet berhasil dibuat (bug — tidak ada unique constraint pada nama)
 
 ---
 
@@ -577,6 +626,20 @@ Expected: Validation error: name is required · Shift NOT created
 
 ---
 
+### 5. Staff & Shift Assignment
+
+**TC-B-NEG-14 · Assign shift ke employee tanpa outlet**
+
+> ⚠️ **Backlog (consider):** `assignEmployeeShift` menggunakan composite unique key `(employee_id, shift_id, day_of_week)` — bukan `(employee_id, day_of_week)`. Artinya satu employee bisa punya dua shift berbeda di hari yang sama tanpa error, yang akan menyebabkan cron `markAbsentAttendance` hanya membuat satu absence record (menggunakan `findFirst`). Rekomendasi: tambah `@@unique([employee_id, day_of_week])` di schema Prisma atau validasi di service — `apps/api/src/services/admin/shift.service.ts:139`.
+
+Prerequisites: Employee belum ter-assign ke outlet manapun (`outlet_id = null`)
+
+1. Buka modal assign shift untuk employee tersebut · Coba assign shift
+
+Expected: Error "Employee belum di-assign ke outlet manapun." · Assignment blocked
+
+---
+
 ## Summary Checklist — Feature 2
 
 | ID | Test Case | Type | Pass |
@@ -586,8 +649,8 @@ Expected: Validation error: name is required · Shift NOT created
 | TC-B-POS-03 | Worker login redirect | POSITIVE | ☐ |
 | TC-B-POS-04 | Driver login redirect | POSITIVE | ☐ |
 | TC-B-POS-05 | Already-logged-in redirect | POSITIVE | ☐ |
-| TC-B-POS-06 | Create employee + invite email | POSITIVE | ☐ |
-| TC-B-POS-07 | Activate account via invite | POSITIVE | ☐ |
+| TC-B-POS-06 | Create employee (password langsung) | POSITIVE | ☐ |
+| TC-B-POS-07 | Employee login dengan akun baru | POSITIVE | ☐ |
 | TC-B-POS-08 | Edit employee — change role | POSITIVE | ☐ |
 | TC-B-POS-09 | Edit employee — reset password | POSITIVE | ☐ |
 | TC-B-POS-10 | Soft-delete employee | POSITIVE | ☐ |
@@ -603,6 +666,10 @@ Expected: Validation error: name is required · Shift NOT created
 | TC-B-POS-20 | Edit shift end time | POSITIVE | ☐ |
 | TC-B-POS-21 | Delete unassigned shift | POSITIVE | ☐ |
 | TC-B-POS-22 | Create overnight shift | POSITIVE | ☐ |
+| TC-B-POS-23 | Assign employee to outlet | POSITIVE | ☐ |
+| TC-B-POS-24 | Unassign employee from outlet | POSITIVE | ☐ |
+| TC-B-POS-25 | Assign shift ke employee | POSITIVE | ☐ |
+| TC-B-POS-26 | Remove shift assignment | POSITIVE | ☐ |
 | TC-B-NEG-01 | Login wrong password | NEGATIVE | ☐ |
 | TC-B-NEG-02 | Login unregistered email | NEGATIVE | ☐ |
 | TC-B-NEG-03 | Login deactivated account | NEGATIVE | ☐ |
@@ -610,12 +677,13 @@ Expected: Validation error: name is required · Shift NOT created
 | TC-B-NEG-05 | Create user duplicate email | NEGATIVE | ☐ |
 | TC-B-NEG-06 | Create user invalid email format | NEGATIVE | ☐ |
 | TC-B-NEG-07 | Admin delete own account | NEGATIVE | ☐ |
-| TC-B-NEG-08 | Invite link expired | NEGATIVE | ☐ |
+| TC-B-NEG-08 | Invite link expired *(SKIP — tidak diimplementasi)* | NEGATIVE | N/A |
 | TC-B-NEG-09 | Create user invalid phone format | NEGATIVE | ☐ |
 | TC-B-NEG-10 | Create outlet missing name | NEGATIVE | ☐ |
 | TC-B-NEG-11 | Create outlet duplicate name | NEGATIVE | ☐ |
 | TC-B-NEG-12 | Create shift duplicate name | NEGATIVE | ☐ |
 | TC-B-NEG-13 | Create shift empty name | NEGATIVE | ☐ |
+| TC-B-NEG-14 | Assign shift — employee tanpa outlet | NEGATIVE | ☐ |
 
 ---
 
@@ -656,6 +724,7 @@ Remove or comment out `MOCK_NOW` to return to real time.
 - Each employee has an assigned outlet
 - Each employee has an `EmployeeShift` for today's day of week (`is_active = true`)
 - Example shift: `Shift Pagi` — start `08:00`, end `16:00`
+- **Geolocation must be allowed in browser** — the UI blocks check-in if location is denied. To allow: click the lock/info icon in the address bar → allow Location → refresh page.
 
 ---
 
@@ -668,7 +737,8 @@ Remove or comment out `MOCK_NOW` to return to real time.
 Setup: Set `MOCK_NOW=2026-06-02T00:45:00Z` in `.env` · Restart server
 
 1. Login as driver/worker at `/employee/login`
-2. Navigate to dashboard · Click tombol Check-in
+2. Navigate to `/dashboard/driver/attendance` (driver) or `/dashboard/worker/attendance` (worker)
+3. Allow geolocation when prompted · Click tombol Check-in
 
 Expected:
 - Success message/toast shown
@@ -679,7 +749,7 @@ Expected:
 
 Setup: `MOCK_NOW=2026-06-02T01:00:00Z`
 
-1. Login · Navigate to dashboard · Click Check-in
+1. Login · Navigate to attendance page · Allow geolocation · Click Check-in
 
 Expected: Success · Status "On Time"
 
@@ -687,13 +757,13 @@ Expected: Success · Status "On Time"
 
 Setup: `MOCK_NOW=2026-06-02T01:35:00Z`
 
-1. Login · Navigate to dashboard · Click Check-in
+1. Login · Navigate to attendance page · Allow geolocation · Click Check-in
 
 Expected: Success · Status shows "Late" / "Terlambat"
 
 **TC-C-POS-04 · Check-in works for all four roles**
 
-Repeat TC-C-POS-01 for each role: `driver`, `washing_worker`, `ironing_worker`, `packing_worker`
+Repeat TC-C-POS-01 for each role: `driver` → `/dashboard/driver/attendance`, `washing_worker` / `ironing_worker` / `packing_worker` → `/dashboard/worker/attendance`
 
 Expected: All four roles can check-in successfully
 
@@ -705,7 +775,7 @@ Expected: All four roles can check-in successfully
 
 Setup: `MOCK_NOW=2026-06-02T09:05:00Z` · Employee has already checked in (run TC-C-POS-01 first)
 
-1. Navigate to dashboard · Click tombol Check-out
+1. Navigate to `/dashboard/driver/attendance` or `/dashboard/worker/attendance` · Click tombol Check-out
 
 Expected:
 - Success message/toast shown
@@ -736,11 +806,11 @@ Expected: At least one record visible with date, check-in time, check-out time, 
 
 ### 4. Current Shift Info
 
-**TC-C-POS-08 · Current shift displayed on dashboard**
+**TC-C-POS-08 · Current shift displayed on attendance page**
 
-1. Login as worker · Navigate to dashboard
+1. Login as worker · Navigate to `/dashboard/worker/attendance`
 
-Expected: Shift name, start time, end time visible in Absensi UI (e.g. "Shift Pagi · 08:00 – 16:00")
+Expected: Shift name, start time, end time visible (e.g. "Shift Pagi · 08:00 – 16:00")
 
 ---
 
@@ -749,14 +819,16 @@ Expected: Shift name, start time, end time visible in Absensi UI (e.g. "Shift Pa
 **TC-C-POS-09 · Driver dashboard loads after login**
 
 1. Login as driver employee at `/employee/login`
+2. After redirect to `/dashboard/driver`, navigate to `/dashboard/driver/attendance`
 
-Expected: Redirected to `/dashboard/driver` · Dashboard renders without error · Absensi section visible
+Expected: Attendance page renders without error · ShiftCard and AttendanceCard visible
 
 **TC-C-POS-10 · Worker dashboard loads after login**
 
 1. Login as `washing_worker` at `/employee/login`
+2. After redirect to `/dashboard/worker`, navigate to `/dashboard/worker/attendance`
 
-Expected: Redirected to `/dashboard/worker` · Dashboard renders without error · Absensi section visible
+Expected: Attendance page renders without error · ShiftCard and AttendanceCard visible
 
 ---
 
@@ -768,9 +840,9 @@ Expected: Redirected to `/dashboard/worker` · Dashboard renders without error �
 
 Setup: `MOCK_NOW=2026-06-02T00:30:00Z` (07:30 WIB — 30 min before shift)
 
-1. Login as worker · Navigate to dashboard · Click Check-in
+1. Login as worker · Navigate to `/dashboard/worker/attendance` · Allow geolocation · Click Check-in
 
-Expected: Error message shown "Check-in hanya dapat dilakukan maksimal 15 menit sebelum shift dimulai" · Status does not change
+Expected: Toast error "Check-in hanya dapat dilakukan maksimal 15 menit sebelum shift dimulai" · Status does not change
 
 **TC-C-NEG-02 · Check-in twice in the same day**
 
@@ -778,24 +850,24 @@ Prerequisites: Employee already checked in today (TC-C-POS-01 done)
 
 Setup: `MOCK_NOW=2026-06-02T01:00:00Z`
 
-1. Navigate to dashboard · Click Check-in again
+1. Navigate to `/dashboard/worker/attendance` · Click Check-in again
 
-Expected: Error "Anda sudah melakukan check-in hari ini." · UI reflects already-checked-in state
+Expected: Toast error "Anda sudah melakukan check-in hari ini." · UI reflects already-checked-in state
 
 **TC-C-NEG-03 · Check-in with no active shift today**
 
 Prerequisites: Use an employee account that has no `EmployeeShift` for today's day of week
 
-1. Login as that employee · Navigate to dashboard · Click Check-in
+1. Login as that employee · Navigate to attendance page · Allow geolocation · Click Check-in
 
-Expected: Error "Anda tidak memiliki shift yang aktif hari ini" · Check-in blocked
+Expected: Toast error "Anda tidak memiliki shift yang aktif hari ini" · Check-in blocked
 
-**TC-C-NEG-04 · Dashboard inaccessible without login**
+**TC-C-NEG-04 · Attendance page inaccessible without login**
 
 1. Clear all cookies/localStorage (DevTools → Application → Clear site data)
-2. Navigate to `/dashboard/driver` or `/dashboard/worker`
+2. Navigate to `/dashboard/driver/attendance` or `/dashboard/worker/attendance`
 
-Expected: Redirected to `/employee/login` · No dashboard content shown
+Expected: Redirected to `/employee/login` · No attendance content shown
 
 ---
 
@@ -807,17 +879,27 @@ Prerequisites: Employee has NOT checked in today (fresh day or use a different a
 
 Setup: `MOCK_NOW=2026-06-02T09:05:00Z`
 
-1. Login · Navigate to dashboard · Attempt check-out
+1. Login · Navigate to `/dashboard/worker/attendance` · Attempt check-out
 
-Expected: Error shown · Check-out blocked · UI does not update to checked-out state
+Expected: Toast error shown · Check-out blocked · UI does not update to checked-out state
 
 **TC-C-NEG-06 · Check-out twice**
 
 Prerequisites: Employee already checked out today (TC-C-POS-05 done)
 
-1. Navigate to dashboard · Attempt check-out again
+1. Navigate to `/dashboard/worker/attendance` · Attempt check-out again
 
 Expected: Error "Anda sudah check-out hari ini" · UI reflects already-checked-out state
+
+**TC-C-NEG-07 · Check-in blocked when geolocation denied**
+
+Setup: `MOCK_NOW=2026-06-02T01:00:00Z`
+
+1. Navigate to `/dashboard/worker/attendance`
+2. When browser prompts for geolocation — click Block/Deny (or set to Blocked via address bar)
+3. Click tombol Check-in
+
+Expected: Toast error "Aktifkan akses lokasi untuk check-in" · Check-in blocked · "Lokasi ditolak" warning banner visible on page
 
 ---
 
@@ -841,3 +923,4 @@ Expected: Error "Anda sudah check-out hari ini" · UI reflects already-checked-o
 | TC-C-NEG-04 | Dashboard without login | NEGATIVE | ☐ |
 | TC-C-NEG-05 | Check-out without check-in | NEGATIVE | ☐ |
 | TC-C-NEG-06 | Check-out twice | NEGATIVE | ☐ |
+| TC-C-NEG-07 | Check-in blocked — geolocation denied | NEGATIVE | ☐ |
