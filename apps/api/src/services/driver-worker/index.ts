@@ -893,6 +893,81 @@ export const workerService = {
     return { order: updatedOrder, createdDeliveryTask: shouldCreateDeliveryTask };
   },
 
+  async createBypassRequest(
+    employeeId: string,
+    station: "washing" | "ironing" | "packing",
+    orderId: string,
+    discrepancyDescription: string,
+    actualItemsRaw: { laundry_item_id: string; actual_quantity: number }[],
+    photoUrls: string[],
+  ) {
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { outlet_id: true },
+    });
+    if (!employee?.outlet_id) throw new AppError("Outlet tidak ditemukan", 400);
+
+    const statusForStation: Record<string, string> = {
+      washing: "washing",
+      ironing: "ironing",
+      packing: "packing",
+    };
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { order_items: { include: { laundry_item: true } } },
+    });
+    if (!order) throw new AppError("Order tidak ditemukan", 404);
+    if (order.outlet_id !== employee.outlet_id) throw new AppError("Order bukan dari outlet Anda", 403);
+    if (order.status !== statusForStation[station]) {
+      throw new AppError(`Order tidak sedang di station ${station}`, 400);
+    }
+
+    const existing = await prisma.bypassRequest.findFirst({
+      where: { order_id: orderId, station: station as any, status: "pending" },
+    });
+    if (existing) throw new AppError("Sudah ada bypass request pending untuk order ini, tunggu review admin", 409);
+
+    const expectedItems = order.order_items.map((item) => ({
+      laundry_item_id: item.laundry_item_id,
+      name: item.laundry_item.name,
+      quantity: Number(item.quantity),
+      unit: item.laundry_item.unit,
+    }));
+
+    const laundryItemMap = new Map(
+      order.order_items.map((i) => [i.laundry_item_id, i.laundry_item]),
+    );
+    const actualItems = actualItemsRaw.map((a) => ({
+      laundry_item_id: a.laundry_item_id,
+      name: laundryItemMap.get(a.laundry_item_id)?.name ?? "",
+      actual_quantity: a.actual_quantity,
+      unit: laundryItemMap.get(a.laundry_item_id)?.unit ?? "",
+    }));
+
+    const bypass = await prisma.bypassRequest.create({
+      data: {
+        order_id: orderId,
+        station: station as any,
+        requested_by: employeeId,
+        expected_items: expectedItems,
+        actual_items: actualItems,
+        discrepancy_description: discrepancyDescription,
+        photo_evidence: photoUrls,
+      },
+    });
+
+    emitToRoom(`outlet:${employee.outlet_id}`, "bypass:created", {
+      bypassId: bypass.id,
+      orderId,
+      station,
+      workerId: employeeId,
+    });
+    emitToUser(employeeId, "bypass:created", { bypassId: bypass.id, status: "pending" });
+
+    return bypass;
+  },
+
   async getOrderItemsForStation(orderId: string) {
     const items = await prisma.orderItem.findMany({
       where: { order_id: orderId },
