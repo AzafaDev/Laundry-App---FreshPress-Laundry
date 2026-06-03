@@ -7,12 +7,14 @@ import { useAttendance } from "@/hooks/useAttendance";
 import { WorkerSidebar } from "@/components/dashboard/WorkerSidebar";
 import { WorkerTopBar } from "@/components/dashboard/WorkerTopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { Loader2, Package, Shirt, Blend, CheckCircle, Clock, AlertCircle, Wifi, WifiOff } from "lucide-react";
+import { Loader2, Package, Shirt, Blend, CheckCircle, Clock, AlertCircle, Wifi, WifiOff, Clock3 } from "lucide-react";
 import { StationModal } from "@/components/worker/StationModal";
+import { WorkerBypassModal } from "@/components/worker/WorkerBypassModal";
 import { useSocket } from "@/hooks/useSocket";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import type { StationOrder } from "@/services/workerStation.service";
+import type { StationOrder, Discrepancy } from "@/services/workerStation.service";
+import { workerStationService } from "@/services/workerStation.service";
 
 const stationConfig = {
   washing: {
@@ -48,6 +50,9 @@ const statusLabel: Record<string, string> = {
   ready_for_washing: "Antri cuci",
   ready_for_ironing: "Antri setrika",
   ready_for_packing: "Antri packing",
+  washing: "Antri cuci",
+  ironing: "Antri setrika",
+  packing: "Antri packing",
 };
 
 function computeWaiting(createdAt: string): { label: string; urgent: boolean } {
@@ -58,14 +63,31 @@ function computeWaiting(createdAt: string): { label: string; urgent: boolean } {
   return { label: `${hours} jam lalu`, urgent: true };
 }
 
+interface BypassState {
+  discrepancies: Discrepancy[];
+  actualItems: Array<{ laundry_item_id: string; actual_quantity: number }>;
+  submitted: boolean;
+}
+
+function PendingBypassBanner() {
+  return (
+    <div className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 mt-3">
+      <Clock3 className="w-4 h-4 text-amber-600 shrink-0" />
+      <p className="text-sm text-amber-700 font-medium">Menunggu persetujuan admin</p>
+    </div>
+  );
+}
+
 function OrderCard({
   order,
   onProcess,
   isProcessing,
+  bypassState,
 }: {
   order: StationOrder;
   onProcess: (id: string) => void;
   isProcessing: boolean;
+  bypassState?: BypassState;
 }) {
   const [waiting, setWaiting] = useState<{ label: string; urgent: boolean }>({ label: "", urgent: false });
   useEffect(() => {
@@ -75,6 +97,7 @@ function OrderCard({
   }, [order.created_at]);
 
   const rawStatus = statusLabel[order.status] ?? order.status;
+  const isPendingBypass = bypassState?.submitted || order.hasPendingBypass;
 
   return (
     <div
@@ -127,18 +150,22 @@ function OrderCard({
         )}
       </div>
 
-      <button
-        onClick={() => onProcess(order.id)}
-        disabled={isProcessing}
-        className="w-full py-2.5 bg-primary text-on-primary rounded-lg font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-      >
-        {isProcessing ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <CheckCircle className="w-4 h-4" />
-        )}
-        {isProcessing ? "Memproses..." : "Tandai Selesai"}
-      </button>
+      {isPendingBypass ? (
+        <PendingBypassBanner />
+      ) : (
+        <button
+          onClick={() => onProcess(order.id)}
+          disabled={isProcessing}
+          className="w-full py-2.5 bg-primary text-on-primary rounded-lg font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+        >
+          {isProcessing ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <CheckCircle className="w-4 h-4" />
+          )}
+          {isProcessing ? "Memproses..." : "Verifikasi Items"}
+        </button>
+      )}
     </div>
   );
 }
@@ -149,6 +176,8 @@ export default function WorkerStationPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(true);
+  const [bypassState, setBypassState] = useState<Record<string, BypassState>>({});
+  const [bypassModalOpen, setBypassModalOpen] = useState<string | null>(null);
 
   let station: "washing" | "ironing" | "packing" | null = null;
   if (user?.role === "washing_worker") station = "washing";
@@ -156,22 +185,48 @@ export default function WorkerStationPage() {
   else if (user?.role === "packing_worker") station = "packing";
 
   const { checkedIn } = useAttendance();
-  const { stationOrders, isLoading, completeStation, isCompleting, refetch } = useWorkerStation();
+  const { stationOrders, isLoading } = useWorkerStation();
   const { on } = useSocket();
   const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!station) return;
+
     const unsubNewOrder = on("station:new-order", (data: { station: string }) => {
       if (data.station === station) {
         toast.success(`Order baru masuk ke ${stationConfig[station].title}`);
         queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
       }
     });
+
+    const unsubApproved = on("bypass:approved", (data: { orderId: string }) => {
+      toast.success("Bypass disetujui! Order akan dilanjutkan.");
+      setBypassState((prev) => {
+        const next = { ...prev };
+        delete next[data.orderId];
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
+    });
+
+    const unsubRejected = on("bypass:rejected", (data: { orderId: string; admin_notes?: string }) => {
+      toast.error(`Bypass ditolak${data.admin_notes ? `: ${data.admin_notes}` : ""}`, { duration: 6000 });
+      setBypassState((prev) => {
+        if (!prev[data.orderId]) return prev;
+        return {
+          ...prev,
+          [data.orderId]: { ...prev[data.orderId], submitted: false },
+        };
+      });
+    });
+
     const unsubConnect = on("connect", () => setIsConnected(true));
     const unsubDisconnect = on("disconnect", () => setIsConnected(false));
+
     return () => {
       unsubNewOrder();
+      unsubApproved();
+      unsubRejected();
       unsubConnect();
       unsubDisconnect();
     };
@@ -192,7 +247,6 @@ export default function WorkerStationPage() {
         <WorkerTopBar />
         <main className="lg:pl-72 p-4 md:p-8">
           <div className="max-w-5xl mx-auto space-y-6 animate-pulse">
-            {/* Header skeleton */}
             <div className="flex items-center justify-between p-4 rounded-2xl border border-outline-variant bg-surface-container-low">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-xl bg-outline-variant" />
@@ -203,7 +257,6 @@ export default function WorkerStationPage() {
               </div>
               <div className="h-6 w-24 bg-outline-variant rounded-full" />
             </div>
-            {/* Card skeletons */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className="bg-surface border border-outline-variant rounded-xl p-4 space-y-3">
@@ -236,36 +289,66 @@ export default function WorkerStationPage() {
     setModalOpen(true);
   };
 
-  const handleComplete = async (orderId: string, receivedQuantities: Record<string, number>) => {
+  const handleVerify = async (orderId: string, receivedQuantities: Record<string, number>) => {
     const order = stationOrders.find((o) => o.id === orderId);
-    if (!order) return;
+    if (!order || !station) return;
 
-    let hasMismatch = false;
-    for (const item of order.order_items) {
-      const received = receivedQuantities[item.id] ?? item.quantity;
-      if (received !== item.quantity) { hasMismatch = true; break; }
-    }
-
-    if (hasMismatch) {
-      const confirm = window.confirm(
-        "Terjadi ketidaksesuaian jumlah item. Lanjutkan proses?"
-      );
-      if (!confirm) return;
-    }
+    const satuanItems = order.order_items.filter((i) => i.laundry_item.unit !== "kg");
+    const actual_items = satuanItems.map((item) => ({
+      laundry_item_id: item.laundry_item_id,
+      actual_quantity: receivedQuantities[item.id] ?? item.quantity,
+    }));
 
     setProcessingId(orderId);
     try {
-      await completeStation({ orderId, stationType: station! });
-      toast.success(`Order ${order.invoice_number} selesai diproses`);
+      const result = await workerStationService.submitItems(station, orderId, actual_items);
+
+      if ("requiresBypass" in result && result.requiresBypass) {
+        setBypassState((prev) => ({
+          ...prev,
+          [orderId]: { discrepancies: result.discrepancies, actualItems: actual_items, submitted: false },
+        }));
+        setModalOpen(false);
+        setBypassModalOpen(orderId);
+        return;
+      }
+
+      toast.success(`Order #${order.invoice_number} berhasil diverifikasi`);
       setModalOpen(false);
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
+      setBypassState((prev) => {
+        const next = { ...prev };
+        delete next[orderId];
+        return next;
+      });
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error?.response?.data?.message || "Gagal menyelesaikan station");
+      const error = err as { response?: { data?: { message?: string; requiresBypass?: boolean; discrepancies?: Discrepancy[] } } };
+      const resData = error?.response?.data;
+      if (resData?.requiresBypass && resData.discrepancies) {
+        setBypassState((prev) => ({
+          ...prev,
+          [orderId]: { discrepancies: resData.discrepancies!, actualItems: actual_items, submitted: false },
+        }));
+        setModalOpen(false);
+        setBypassModalOpen(orderId);
+      } else {
+        toast.error(resData?.message ?? "Gagal memverifikasi items");
+      }
     } finally {
       setProcessingId(null);
     }
   };
+
+  const handleBypassSuccess = (orderId: string) => {
+    setBypassState((prev) => ({
+      ...prev,
+      [orderId]: { ...prev[orderId], submitted: true },
+    }));
+    setBypassModalOpen(null);
+  };
+
+  const bypassOrder = bypassModalOpen ? stationOrders.find((o) => o.id === bypassModalOpen) : null;
+  const activeBypassState = bypassModalOpen ? bypassState[bypassModalOpen] : null;
 
   return (
     <div className="min-h-screen bg-background pb-24 lg:pb-0">
@@ -304,7 +387,6 @@ export default function WorkerStationPage() {
               <p className="text-sm text-amber-600">Lakukan check-in terlebih dahulu sebelum memproses order.</p>
             </div>
           ) : stationOrders.length === 0 ? (
-            /* Empty state */
             <div className="flex flex-col items-center justify-center py-16 text-center bg-surface-container-low rounded-2xl border border-dashed border-outline-variant">
               <div className={`p-4 rounded-2xl mb-4 ${cfg.iconClass}`}>
                 <Icon className="w-8 h-8" />
@@ -321,7 +403,8 @@ export default function WorkerStationPage() {
                   key={order.id}
                   order={order}
                   onProcess={handleProcessClick}
-                  isProcessing={processingId === order.id || isCompleting}
+                  isProcessing={processingId === order.id}
+                  bypassState={bypassState[order.id]}
                 />
               ))}
             </div>
@@ -335,8 +418,20 @@ export default function WorkerStationPage() {
           orderId={selectedOrderId}
           orders={stationOrders}
           onClose={() => setModalOpen(false)}
-          onConfirm={handleComplete}
-          isProcessing={isCompleting}
+          onConfirm={handleVerify}
+          isProcessing={processingId === selectedOrderId}
+        />
+      )}
+
+      {bypassModalOpen && bypassOrder && activeBypassState && (
+        <WorkerBypassModal
+          open={true}
+          orderId={bypassOrder.id}
+          invoiceNumber={bypassOrder.invoice_number}
+          discrepancies={activeBypassState.discrepancies}
+          actualItems={activeBypassState.actualItems}
+          onClose={() => setBypassModalOpen(null)}
+          onSuccess={() => handleBypassSuccess(bypassOrder.id)}
         />
       )}
     </div>
