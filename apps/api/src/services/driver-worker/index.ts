@@ -780,10 +780,18 @@ export const workerService = {
       include: {
         customer: true,
         order_items: { include: { laundry_item: true } },
+        bypass_requests: {
+          where: { station: stationType as any, status: "pending" },
+          select: { id: true },
+        },
       },
       orderBy: { created_at: "asc" },
     });
-    return orders;
+    return orders.map((o) => ({
+      ...o,
+      hasPendingBypass: o.bypass_requests.length > 0,
+      bypass_requests: undefined,
+    }));
   },
 
   async completeStation(
