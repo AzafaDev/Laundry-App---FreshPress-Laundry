@@ -2,16 +2,19 @@ import { Customer, Employee, Outlet, OrderStatus } from '../../generated/prisma/
 import { prisma } from '../../src/lib/prisma.js';
 import { seededCustomerEmails } from './customers.seed.js';
 
-// Seed orders untuk testing Sprint 2:
+// Seed orders untuk testing Sprint 2 & 3:
 // - 2 order status waiting_pickup_driver + DriverTask available  → driver claim test
-// - 1 order status washing                                        → washing worker test
-// - 1 order status ironing                                        → ironing worker test
-// - 1 order status packing                                        → packing worker test
+// - 2 order status washing   (WASHING-1: happy path, WASHING-2: bypass path)
+// - 2 order status ironing   (IRONING-1: happy path, IRONING-2: bypass path)
+// - 2 order status packing   (PACKING-1: happy path, PACKING-2: bypass path)
 // - 1 order status ready_for_delivery + DriverTask available      → driver delivery test
 
 export async function seedOrders(outlet: Outlet, employees: Employee[], customers: Customer[]) {
   const hasDriver = employees.some(e => e.email === 'driver.morning@freshpress.com');
   if (!hasDriver) throw new Error('Driver seed employee not found');
+
+  const outletAdmin = await prisma.employee.findFirst({ where: { email: 'outletadmin@freshpress.com' } });
+  if (!outletAdmin) throw new Error('Outlet admin seed employee not found');
 
   const customerEmails = customers.length > 0
     ? customers.map(customer => customer.email)
@@ -48,6 +51,16 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
 
     customerAddressMap.set(customer.id, address.id);
   }
+
+  // Buat clothing types jika belum ada
+  const clothingTypes = await Promise.all([
+    prisma.clothingType.upsert({ where: { name: 'Baju' }, update: {}, create: { name: 'Baju' } }),
+    prisma.clothingType.upsert({ where: { name: 'Celana' }, update: {}, create: { name: 'Celana' } }),
+    prisma.clothingType.upsert({ where: { name: 'Kaos' }, update: {}, create: { name: 'Kaos' } }),
+    prisma.clothingType.upsert({ where: { name: 'Jaket' }, update: {}, create: { name: 'Jaket' } }),
+    prisma.clothingType.upsert({ where: { name: 'Selimut' }, update: {}, create: { name: 'Selimut' } }),
+    prisma.clothingType.upsert({ where: { name: 'Seprei' }, update: {}, create: { name: 'Seprei' } }),
+  ]);
 
   // Buat laundry items dummy jika belum ada
   const laundryItems = await Promise.all([
@@ -154,18 +167,40 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
     return order;
   }
 
+  async function seedBreakdown(orderId: string) {
+    const existing = await prisma.orderItemBreakdown.findFirst({ where: { order_id: orderId } });
+    if (existing) return;
+
+    await prisma.orderItemBreakdown.createMany({
+      data: clothingTypes.map((ct, i) => ({
+        order_id: orderId,
+        clothing_type_id: ct.id,
+        quantity: (i % 3) + 2,
+        created_by: outletAdmin!.id,
+      })),
+    });
+  }
+
+  const stationStatuses = ['washing', 'ironing', 'packing'];
+
   const orderScenarios: Array<{ suffix: string; status: OrderStatus; pickup?: boolean; delivery?: boolean }> = [
     { suffix: 'PICKUP-1', status: 'waiting_pickup_driver', pickup: true },
     { suffix: 'PICKUP-2', status: 'waiting_pickup_driver', pickup: true },
-    { suffix: 'WASHING-1', status: 'washing' },
-    { suffix: 'IRONING-1', status: 'ironing' },
-    { suffix: 'PACKING-1', status: 'packing' },
+    { suffix: 'WASHING-1', status: 'washing' },   // happy path (submit sesuai)
+    { suffix: 'WASHING-2', status: 'washing' },   // bypass path (submit berbeda)
+    { suffix: 'IRONING-1', status: 'ironing' },   // happy path
+    { suffix: 'IRONING-2', status: 'ironing' },   // bypass path
+    { suffix: 'PACKING-1', status: 'packing' },   // happy path
+    { suffix: 'PACKING-2', status: 'packing' },   // bypass path
     { suffix: 'DELIVERY-1', status: 'ready_for_delivery', delivery: true },
   ];
 
   for (const [index, scenario] of orderScenarios.entries()) {
     const customer = existingCustomers[index % existingCustomers.length];
-    await createOrder(customer.id, scenario.suffix, scenario.status, scenario.pickup, scenario.delivery);
+    const order = await createOrder(customer.id, scenario.suffix, scenario.status, scenario.pickup, scenario.delivery);
+    if (stationStatuses.includes(scenario.status)) {
+      await seedBreakdown(order.id);
+    }
   }
 
   console.log('✅ Sprint 2 test orders seeded');

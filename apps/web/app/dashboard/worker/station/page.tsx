@@ -13,6 +13,7 @@ import { WorkerBypassModal } from "@/components/worker/WorkerBypassModal";
 import { useSocket } from "@/hooks/useSocket";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { socketToast } from "@/lib/socketToast";
 import type { StationOrder, Discrepancy } from "@/services/workerStation.service";
 import { workerStationService } from "@/services/workerStation.service";
 
@@ -65,7 +66,7 @@ function computeWaiting(createdAt: string): { label: string; urgent: boolean } {
 
 interface BypassState {
   discrepancies: Discrepancy[];
-  actualItems: Array<{ laundry_item_id: string; actual_quantity: number }>;
+  actualItems: Array<{ clothing_type_id: string; actual_quantity: number }>;
   submitted: boolean;
 }
 
@@ -129,23 +130,23 @@ function OrderCard({
       {/* Customer */}
       <h3 className="text-base font-bold text-on-surface">{order.customer.full_name}</h3>
       <p className="text-sm text-on-surface-variant mt-0.5 mb-4">
-        {order.order_items.length} jenis item
+        {order.order_item_breakdowns.length} jenis item
         {order.total_weight_kg ? ` • ${order.total_weight_kg} kg` : ""}
       </p>
 
       {/* Items preview */}
       <div className="flex flex-wrap gap-1.5 mb-4">
-        {order.order_items.slice(0, 3).map((item) => (
+        {order.order_item_breakdowns.slice(0, 3).map((item) => (
           <span
             key={item.id}
             className="text-xs bg-surface-container-low text-on-surface-variant px-2 py-0.5 rounded-md border border-outline-variant"
           >
-            {item.laundry_item.name} ×{item.quantity}
+            {item.clothing_type.name} ×{item.quantity}
           </span>
         ))}
-        {order.order_items.length > 3 && (
+        {order.order_item_breakdowns.length > 3 && (
           <span className="text-xs text-on-surface-variant px-1">
-            +{order.order_items.length - 3} lagi
+            +{order.order_item_breakdowns.length - 3} lagi
           </span>
         )}
       </div>
@@ -194,13 +195,17 @@ export default function WorkerStationPage() {
 
     const unsubNewOrder = on("station:new-order", (data: { station: string }) => {
       if (data.station === station) {
-        toast.success(`Order baru masuk ke ${stationConfig[station].title}`);
+        socketToast(`Order baru masuk ke ${stationConfig[station].title}`);
         queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
       }
     });
 
+    const unsubBypassCreated = on("bypass:created", () => {
+      queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
+    });
+
     const unsubApproved = on("bypass:approved", (data: { orderId: string }) => {
-      toast.success("Bypass disetujui! Order akan dilanjutkan.");
+      socketToast("Bypass disetujui! Order akan dilanjutkan.");
       setBypassState((prev) => {
         const next = { ...prev };
         delete next[data.orderId];
@@ -210,7 +215,7 @@ export default function WorkerStationPage() {
     });
 
     const unsubRejected = on("bypass:rejected", (data: { orderId: string; admin_notes?: string }) => {
-      toast.error(`Bypass ditolak${data.admin_notes ? `: ${data.admin_notes}` : ""}`, { duration: 6000 });
+      socketToast(`Bypass ditolak${data.admin_notes ? `: ${data.admin_notes}` : ""}`, "error");
       setBypassState((prev) => {
         if (!prev[data.orderId]) return prev;
         return {
@@ -225,6 +230,7 @@ export default function WorkerStationPage() {
 
     return () => {
       unsubNewOrder();
+      unsubBypassCreated();
       unsubApproved();
       unsubRejected();
       unsubConnect();
@@ -293,9 +299,8 @@ export default function WorkerStationPage() {
     const order = stationOrders.find((o) => o.id === orderId);
     if (!order || !station) return;
 
-    const satuanItems = order.order_items.filter((i) => i.laundry_item.unit !== "kg");
-    const actual_items = satuanItems.map((item) => ({
-      laundry_item_id: item.laundry_item_id,
+    const actual_items = order.order_item_breakdowns.map((item) => ({
+      clothing_type_id: item.clothing_type_id,
       actual_quantity: receivedQuantities[item.id] ?? item.quantity,
     }));
 

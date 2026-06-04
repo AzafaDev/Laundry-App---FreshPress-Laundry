@@ -4,14 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  ReceiptText,
-  Package,
-  Store,
   Clock,
   Shirt,
   ScrollText,
+  LogOut,
 } from "lucide-react";
-import { useAuthStore } from "@/stores/authStore";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { useEmployeeAuth } from "@/hooks/useEmployeeAuth";
 
 interface NavItem {
   href: string;
@@ -21,16 +20,14 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard/driver", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/dashboard/driver/orders", label: "Orders", icon: ReceiptText },
-  { href: "/dashboard/driver/inventory", label: "Inventory", icon: Package },
-  { href: "/dashboard/outlets", label: "Outlets", icon: Store },
   { href: "/dashboard/driver/attendance", label: "Attendance", icon: Clock },
   { href: "/dashboard/driver/history", label: "Riwayat", icon: ScrollText },
 ];
 
 export function DriverSidebar() {
   const pathname = usePathname();
-  const { user } = useAuthStore();
+  const { user } = useEmployeeAuthStore();
+  const { logout } = useEmployeeAuth();
 
   return (
     <aside className="hidden lg:flex flex-col h-screen fixed left-0 top-0 w-72 bg-surface-container-low border-r border-outline-variant shadow-sm z-40">
@@ -51,8 +48,8 @@ export function DriverSidebar() {
           <span className="text-sm font-semibold text-on-surface truncate">
             {user?.full_name ?? "Driver"}
           </span>
-          <span className="text-xs text-on-surface-variant truncate">
-            {user?.role?.replace("_", " ") ?? "driver"}
+          <span className="text-xs text-on-surface-variant truncate capitalize">
+            {user?.role?.replace(/_/g, " ") ?? "driver"}
           </span>
         </div>
       </div>
@@ -62,7 +59,9 @@ export function DriverSidebar() {
       {/* Navigation */}
       <nav className="flex-1 flex flex-col gap-0.5 px-3 overflow-y-auto">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname?.endsWith(`/${href}`);
+          const active =
+            pathname === href ||
+            (href !== "/dashboard/driver" && pathname?.startsWith(href));
 
           return (
             <Link
@@ -84,13 +83,12 @@ export function DriverSidebar() {
         })}
       </nav>
 
-      {/* Bottom actions (optional) */}
       <div className="p-3 mt-auto">
-        <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors">
-          Settings
-        </button>
-        <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-error hover:bg-error-container/30 rounded-lg transition-colors">
-          Sign Out
+        <button
+          onClick={logout}
+          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-error hover:bg-error-container/30 rounded-lg transition-colors"
+        >
+          <LogOut className="w-5 h-5" /> Sign Out
         </button>
       </div>
     </aside>

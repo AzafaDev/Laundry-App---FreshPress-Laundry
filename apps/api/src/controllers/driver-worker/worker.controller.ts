@@ -56,7 +56,7 @@ export const submitItems = async (req: Request, res: Response, next: NextFunctio
     assertStationAccess(req.user!.role, station);
 
     const { actual_items } = req.body as {
-      actual_items: { laundry_item_id: string; actual_quantity: number }[];
+      actual_items: { clothing_type_id: string; actual_quantity: number }[];
     };
     if (!Array.isArray(actual_items)) throw new AppError("actual_items harus berupa array", 400);
 
@@ -88,7 +88,7 @@ export const createBypassRequest = async (req: Request, res: Response, next: Nex
     if (!discrepancy_description) throw new AppError("discrepancy_description wajib diisi", 400);
     if (!actual_items) throw new AppError("actual_items wajib diisi", 400);
 
-    let parsedActualItems: { laundry_item_id: string; actual_quantity: number }[];
+    let parsedActualItems: { clothing_type_id: string; actual_quantity: number }[];
     try {
       parsedActualItems = JSON.parse(actual_items);
     } catch {

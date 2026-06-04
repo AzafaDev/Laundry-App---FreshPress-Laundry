@@ -780,6 +780,7 @@ export const workerService = {
       include: {
         customer: true,
         order_items: { include: { laundry_item: true } },
+        order_item_breakdowns: { include: { clothing_type: true } },
         bypass_requests: {
           where: { station: stationType as any, status: "pending" },
           select: { id: true },
@@ -798,7 +799,7 @@ export const workerService = {
     employeeId: string,
     station: "washing" | "ironing" | "packing",
     orderId: string,
-    actualItems?: { laundry_item_id: string; actual_quantity: number }[],
+    actualItems?: { clothing_type_id: string; actual_quantity: number }[],
   ) {
     const currentShift = await attendanceService.getCurrentShift(employeeId);
     if (!currentShift?.isActive) throw new AppError("Shift tidak aktif", 403);
@@ -889,6 +890,18 @@ export const workerService = {
         outletId: order.outlet_id,
         timestamp: new Date(),
       });
+
+      const nextStationMap: Record<string, string> = {
+        washing: "ironing",
+        ironing: "packing",
+      };
+      const nextStation = nextStationMap[station];
+      if (nextStation) {
+        emitToRoom(`outlet:${order.outlet_id}`, "station:new-order", {
+          station: nextStation,
+          orderId,
+        });
+      }
     }
     if (order.customer?.id) {
       emitToUser(order.customer.id, "order:status-updated", {
@@ -906,7 +919,7 @@ export const workerService = {
     station: "washing" | "ironing" | "packing",
     orderId: string,
     discrepancyDescription: string,
-    actualItemsRaw: { laundry_item_id: string; actual_quantity: number }[],
+    actualItemsRaw: { clothing_type_id: string; actual_quantity: number }[],
     photoUrls: string[],
   ) {
     const employee = await prisma.employee.findUnique({
@@ -923,7 +936,7 @@ export const workerService = {
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { order_items: { include: { laundry_item: true } } },
+      select: { outlet_id: true, status: true },
     });
     if (!order) throw new AppError("Order tidak ditemukan", 404);
     if (order.outlet_id !== employee.outlet_id) throw new AppError("Order bukan dari outlet Anda", 403);
@@ -936,21 +949,24 @@ export const workerService = {
     });
     if (existing) throw new AppError("Sudah ada bypass request pending untuk order ini, tunggu review admin", 409);
 
-    const expectedItems = order.order_items.map((item) => ({
-      laundry_item_id: item.laundry_item_id,
-      name: item.laundry_item.name,
-      quantity: Number(item.quantity),
-      unit: item.laundry_item.unit,
+    const breakdownItems = await prisma.orderItemBreakdown.findMany({
+      where: { order_id: orderId },
+      include: { clothing_type: true },
+    });
+
+    const expectedItems = breakdownItems.map((item) => ({
+      clothing_type_id: item.clothing_type_id,
+      name: item.clothing_type.name,
+      quantity: item.quantity,
     }));
 
-    const laundryItemMap = new Map(
-      order.order_items.map((i) => [i.laundry_item_id, i.laundry_item]),
+    const clothingTypeMap = new Map(
+      breakdownItems.map((i) => [i.clothing_type_id, i.clothing_type]),
     );
     const actualItems = actualItemsRaw.map((a) => ({
-      laundry_item_id: a.laundry_item_id,
-      name: laundryItemMap.get(a.laundry_item_id)?.name ?? "",
+      clothing_type_id: a.clothing_type_id,
+      name: clothingTypeMap.get(a.clothing_type_id)?.name ?? "",
       actual_quantity: a.actual_quantity,
-      unit: laundryItemMap.get(a.laundry_item_id)?.unit ?? "",
     }));
 
     const bypass = await prisma.bypassRequest.create({
@@ -977,38 +993,33 @@ export const workerService = {
   },
 
   async getOrderItemsForStation(orderId: string) {
-    const items = await prisma.orderItem.findMany({
+    return prisma.orderItemBreakdown.findMany({
       where: { order_id: orderId },
-      include: { laundry_item: true },
+      include: { clothing_type: true },
     });
-
-    const kiloan = items.filter((i) => i.laundry_item.unit === "kg");
-    const satuan = items.filter((i) => i.laundry_item.unit !== "kg");
-
-    return { kiloan, satuan };
   },
 
   async validateActualItems(
     orderId: string,
-    actualItems: { laundry_item_id: string; actual_quantity: number }[],
+    actualItems: { clothing_type_id: string; actual_quantity: number }[],
   ) {
-    const { satuan } = await this.getOrderItemsForStation(orderId);
+    const breakdown = await this.getOrderItemsForStation(orderId);
 
     const discrepancies: {
-      laundry_item_id: string;
+      clothing_type_id: string;
       name: string;
       expected: number;
       actual: number;
     }[] = [];
 
-    for (const item of satuan) {
-      const submitted = actualItems.find((a) => a.laundry_item_id === item.laundry_item_id);
+    for (const item of breakdown) {
+      const submitted = actualItems.find((a) => a.clothing_type_id === item.clothing_type_id);
       const actual = submitted?.actual_quantity ?? 0;
-      const expected = Number(item.quantity);
+      const expected = item.quantity;
       if (actual !== expected) {
         discrepancies.push({
-          laundry_item_id: item.laundry_item_id,
-          name: item.laundry_item.name,
+          clothing_type_id: item.clothing_type_id,
+          name: item.clothing_type.name,
           expected,
           actual,
         });
@@ -1022,7 +1033,7 @@ export const workerService = {
     employeeId: string,
     station: "washing" | "ironing" | "packing",
     orderId: string,
-    actualItems: { laundry_item_id: string; actual_quantity: number }[],
+    actualItems: { clothing_type_id: string; actual_quantity: number }[],
   ) {
     const currentShift = await attendanceService.getCurrentShift(employeeId);
     if (!currentShift?.isActive) throw new AppError("Shift tidak aktif", 403);

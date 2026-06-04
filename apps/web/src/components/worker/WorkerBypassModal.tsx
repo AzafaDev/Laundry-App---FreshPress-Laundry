@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X, Flag, Upload, Trash2, Loader2, AlertTriangle, ImagePlus, ArrowDown, ArrowUp } from "lucide-react";
-import { axiosInstance } from "@/lib/axios";
+import { workerStationService } from "@/services/workerStation.service";
 import toast from "react-hot-toast";
 import type { Discrepancy } from "@/services/workerStation.service";
 
@@ -11,7 +11,7 @@ interface WorkerBypassModalProps {
   orderId: string;
   invoiceNumber: string;
   discrepancies: Discrepancy[];
-  actualItems: Array<{ laundry_item_id: string; actual_quantity: number }>;
+  actualItems: Array<{ clothing_type_id: string; actual_quantity: number }>;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -105,7 +105,7 @@ export function WorkerBypassModal({
       formData.append("actual_items", JSON.stringify(actualItems));
       photos.forEach((p) => formData.append("photo_evidence", p.file));
 
-      await axiosInstance.post("/v1/worker/bypass", formData);
+      await workerStationService.createBypassRequest(formData);
       toast.success("Bypass request berhasil dikirim");
       onSuccess();
       onClose();
@@ -118,7 +118,7 @@ export function WorkerBypassModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className="fixed inset-0 bg-black/60 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-surface-container-lowest w-full sm:max-w-[38rem] rounded-t-2xl sm:rounded-2xl shadow-2xl border border-outline-variant flex flex-col max-h-[92dvh]">
 
         {/* Header */}
@@ -143,7 +143,7 @@ export function WorkerBypassModal({
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 px-5 py-5 space-y-5">
+        <div className="overflow-y-auto flex-1 px-5 py-5 space-y-5 will-change-scroll">
 
           {/* Diff Table */}
           <div>
@@ -165,7 +165,7 @@ export function WorkerBypassModal({
                     const diff = d.actual - d.expected;
                     const isShort = diff < 0;
                     return (
-                      <tr key={d.laundry_item_id} className="border-b border-outline-variant last:border-0 bg-amber-50/60">
+                      <tr key={d.clothing_type_id} className="border-b border-outline-variant last:border-0 bg-amber-50/60">
                         <td className="px-3 py-2.5 font-medium text-on-surface">{d.name}</td>
                         <td className="px-3 py-2.5 text-center text-on-surface-variant">{d.expected}</td>
                         <td className="px-3 py-2.5 text-center font-bold text-error">{d.actual}</td>
@@ -237,7 +237,7 @@ export function WorkerBypassModal({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               multiple
               className="hidden"
               onChange={handleFileChange}
@@ -259,6 +259,8 @@ export function WorkerBypassModal({
                       src={photo.url}
                       alt={`Bukti ${idx + 1}`}
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
                     />
                     <button
                       type="button"

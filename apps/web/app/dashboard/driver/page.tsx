@@ -25,7 +25,7 @@ import { useAttendance } from "@/hooks/useAttendance";
 import { useDriverTasks } from "@/hooks/useDriverTasks";
 import { useSocket } from "@/hooks/useSocket";
 import { useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import { socketToast } from "@/lib/socketToast";
 import type { DriverTask } from "@/services/driverTask.service";
 
 type TaskTab = "pickup" | "delivery";
@@ -283,7 +283,7 @@ export default function DriverDashboardPage() {
 
   useEffect(() => {
     const unsubClaimed = on("driver:task-claimed", () => {
-      toast("Ada task baru yang tersedia", { icon: "🔄" });
+      socketToast("Ada task baru yang tersedia");
       queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-pickups"] });
       queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-deliveries"] });
     });
@@ -296,7 +296,7 @@ export default function DriverDashboardPage() {
 
     const unsubOrderUpdate = on("order:status-updated", (data: { orderId: string; invoiceNumber?: string; status: string }) => {
       const label = data.invoiceNumber ? `#${data.invoiceNumber}` : "Order";
-      toast.success(`${label} status diperbarui: ${data.status}`);
+      socketToast(`${label} status diperbarui: ${data.status}`);
     });
 
     return () => {
