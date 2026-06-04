@@ -49,7 +49,16 @@ export function OutletMapPicker({
   onChange,
   fallbackCenter = [-6.2, 106.816666],
 }: OutletMapPickerProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const hasPin = latitude != null && longitude != null;
+
+  if (!mounted) {
+    return (
+      <div className="h-[320px] w-full rounded-2xl bg-surface-variant animate-pulse" />
+    );
+  }
   const center: [number, number] = hasPin
     ? [latitude!, longitude!]
     : fallbackCenter;

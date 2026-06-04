@@ -48,18 +48,25 @@ const DRIVER_TASK_DETAIL_SELECT = {
   },
 } satisfies Prisma.DriverTaskSelect;
 
+const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+function toWIB(date: Date): Date {
+  return new Date(date.getTime() + WIB_OFFSET_MS);
+}
+
 function formatLocalDate(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
 function formatLocalTime(date: Date | null): string | null {
   if (!date) return null;
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const seconds = String(date.getSeconds()).padStart(2, "0");
+  const wib = toWIB(date);
+  const hours = String(wib.getUTCHours()).padStart(2, "0");
+  const minutes = String(wib.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(wib.getUTCSeconds()).padStart(2, "0");
   return `${hours}:${minutes}:${seconds}`;
 }
 
@@ -184,6 +191,16 @@ const attendanceService = {
       throw new AppError("Anda sudah check-out hari ini", 403);
     }
 
+    const shift = await getEmployeeShiftForDate(employeeId, attendance.date);
+    if (!shift) {
+      throw new AppError("Data shift tidak ditemukan untuk absensi ini", 400);
+    }
+
+    const now = getNow();
+    if (!canCheckOut(now, shift.endTime)) {
+      throw new AppError("Check-out hanya dapat dilakukan setelah shift selesai", 403);
+    }
+
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
       select: { role: true, full_name: true, outlet_id: true },
@@ -194,8 +211,6 @@ const attendanceService = {
         throw new AppError("Selesaikan task aktif sebelum check-out", 403);
       }
     }
-
-    const now = getNow();
 
     const updated = await prisma.attendance.update({
       where: { id: attendanceId },
@@ -350,7 +365,13 @@ const attendanceService = {
   async getUpcomingOrActiveShift(employeeId: string) {
     const now = getNow();
     const today = getTodayLocalStart();
-    const shiftInfo = await getEmployeeShiftForDate(employeeId, today);
+    const [shiftInfo, todayAttendance] = await Promise.all([
+      getEmployeeShiftForDate(employeeId, today),
+      prisma.attendance.findUnique({
+        where: { employee_id_date: { employee_id: employeeId, date: today } },
+        select: { check_in_time: true, check_out_time: true },
+      }),
+    ]);
     if (!shiftInfo) return null;
 
     const { shiftName, startTime, endTime } = shiftInfo;
@@ -376,11 +397,15 @@ const attendanceService = {
       progressPercent = 100;
     }
 
-    const formatTime = (date: Date) =>
-      `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    const formatTime = (date: Date) => {
+      const w = toWIB(date);
+      return `${String(w.getUTCHours()).padStart(2, "0")}:${String(w.getUTCMinutes()).padStart(2, "0")}`;
+    };
 
-    const canCheckInNow = canCheckIn(now, startTime, endTime, 15);
-    const canCheckOutNow = canCheckOut(now, startTime, endTime);
+    const alreadyCheckedIn = !!todayAttendance?.check_in_time;
+    const alreadyCheckedOut = !!todayAttendance?.check_out_time;
+    const canCheckInNow = !alreadyCheckedIn && canCheckIn(now, startTime, endTime, 15);
+    const canCheckOutNow = alreadyCheckedIn && !alreadyCheckedOut && now > endTime;
 
     return {
       shiftName,
@@ -394,12 +419,20 @@ const attendanceService = {
       outletId: outlet,
       canCheckIn: canCheckInNow,
       canCheckOut: canCheckOutNow,
+      serverNow: now.toISOString(),
     };
   },
 
   async getCurrentShift(employeeId: string) {
     const now = getNow();
-    const shiftInfo = await getShiftForDateTime(employeeId, now);
+    const today = getTodayLocalStart();
+    const [shiftInfo, todayAttendance] = await Promise.all([
+      getShiftForDateTime(employeeId, now),
+      prisma.attendance.findUnique({
+        where: { employee_id_date: { employee_id: employeeId, date: today } },
+        select: { check_in_time: true, check_out_time: true },
+      }),
+    ]);
     if (!shiftInfo) return null;
 
     const { shiftName, startTime, endTime } = shiftInfo;
@@ -417,11 +450,15 @@ const attendanceService = {
       remainingSeconds = Math.max(0, (endTime.getTime() - now.getTime()) / 1000);
     }
 
-    const formatTime = (date: Date) =>
-      `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    const formatTime = (date: Date) => {
+      const w = toWIB(date);
+      return `${String(w.getUTCHours()).padStart(2, "0")}:${String(w.getUTCMinutes()).padStart(2, "0")}`;
+    };
 
-    const canCheckInNow = canCheckIn(now, startTime, endTime, 15);
-    const canCheckOutNow = canCheckOut(now, startTime, endTime);
+    const alreadyCheckedIn = !!todayAttendance?.check_in_time;
+    const alreadyCheckedOut = !!todayAttendance?.check_out_time;
+    const canCheckInNow = !alreadyCheckedIn && canCheckIn(now, startTime, endTime, 15);
+    const canCheckOutNow = alreadyCheckedIn && !alreadyCheckedOut && now > endTime;
 
     return {
       shiftName,
@@ -434,6 +471,7 @@ const attendanceService = {
       outletId: outlet,
       canCheckIn: canCheckInNow,
       canCheckOut: canCheckOutNow,
+      serverNow: now.toISOString(),
     };
   },
 };
@@ -646,9 +684,6 @@ const driverService = {
   },
 
   async completeTask(employeeId: string, taskId: string) {
-    const currentShift = await attendanceService.getCurrentShift(employeeId);
-    if (!currentShift?.isActive) throw new AppError("Shift tidak aktif", 403);
-
     const todayAttendance = await attendanceService.checkTodayAttendance(employeeId);
     if (!todayAttendance?.check_in_time) throw new AppError("Belum check-in", 403);
     if (todayAttendance.check_out_time) throw new AppError("Sudah check-out", 403);
@@ -745,16 +780,25 @@ export const workerService = {
       include: {
         customer: true,
         order_items: { include: { laundry_item: true } },
+        bypass_requests: {
+          where: { station: stationType as any, status: "pending" },
+          select: { id: true },
+        },
       },
       orderBy: { created_at: "asc" },
     });
-    return orders;
+    return orders.map((o) => ({
+      ...o,
+      hasPendingBypass: o.bypass_requests.length > 0,
+      bypass_requests: undefined,
+    }));
   },
 
   async completeStation(
     employeeId: string,
     station: "washing" | "ironing" | "packing",
     orderId: string,
+    actualItems?: { laundry_item_id: string; actual_quantity: number }[],
   ) {
     const currentShift = await attendanceService.getCurrentShift(employeeId);
     if (!currentShift?.isActive) throw new AppError("Shift tidak aktif", 403);
@@ -822,6 +866,16 @@ export const workerService = {
       },
     });
 
+    await prisma.processLog.create({
+      data: {
+        order_id: orderId,
+        station: station as any,
+        employee_id: employeeId,
+        input_items: actualItems ?? [],
+        completed_at: new Date(),
+      },
+    });
+
     if (shouldCreateDeliveryTask) {
       await driverService.createDeliveryTask(orderId);
     }
@@ -845,6 +899,154 @@ export const workerService = {
     }
 
     return updatedOrder;
+  },
+
+  async createBypassRequest(
+    employeeId: string,
+    station: "washing" | "ironing" | "packing",
+    orderId: string,
+    discrepancyDescription: string,
+    actualItemsRaw: { laundry_item_id: string; actual_quantity: number }[],
+    photoUrls: string[],
+  ) {
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { outlet_id: true },
+    });
+    if (!employee?.outlet_id) throw new AppError("Outlet tidak ditemukan", 400);
+
+    const statusForStation: Record<string, string> = {
+      washing: "washing",
+      ironing: "ironing",
+      packing: "packing",
+    };
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { order_items: { include: { laundry_item: true } } },
+    });
+    if (!order) throw new AppError("Order tidak ditemukan", 404);
+    if (order.outlet_id !== employee.outlet_id) throw new AppError("Order bukan dari outlet Anda", 403);
+    if (order.status !== statusForStation[station]) {
+      throw new AppError(`Order tidak sedang di station ${station}`, 400);
+    }
+
+    const existing = await prisma.bypassRequest.findFirst({
+      where: { order_id: orderId, station: station as any, status: "pending" },
+    });
+    if (existing) throw new AppError("Sudah ada bypass request pending untuk order ini, tunggu review admin", 409);
+
+    const expectedItems = order.order_items.map((item) => ({
+      laundry_item_id: item.laundry_item_id,
+      name: item.laundry_item.name,
+      quantity: Number(item.quantity),
+      unit: item.laundry_item.unit,
+    }));
+
+    const laundryItemMap = new Map(
+      order.order_items.map((i) => [i.laundry_item_id, i.laundry_item]),
+    );
+    const actualItems = actualItemsRaw.map((a) => ({
+      laundry_item_id: a.laundry_item_id,
+      name: laundryItemMap.get(a.laundry_item_id)?.name ?? "",
+      actual_quantity: a.actual_quantity,
+      unit: laundryItemMap.get(a.laundry_item_id)?.unit ?? "",
+    }));
+
+    const bypass = await prisma.bypassRequest.create({
+      data: {
+        order_id: orderId,
+        station: station as any,
+        requested_by: employeeId,
+        expected_items: expectedItems,
+        actual_items: actualItems,
+        discrepancy_description: discrepancyDescription,
+        photo_evidence: photoUrls,
+      },
+    });
+
+    emitToRoom(`outlet:${employee.outlet_id}`, "bypass:created", {
+      bypassId: bypass.id,
+      orderId,
+      station,
+      workerId: employeeId,
+    });
+    emitToUser(employeeId, "bypass:created", { bypassId: bypass.id, status: "pending" });
+
+    return bypass;
+  },
+
+  async getOrderItemsForStation(orderId: string) {
+    const items = await prisma.orderItem.findMany({
+      where: { order_id: orderId },
+      include: { laundry_item: true },
+    });
+
+    const kiloan = items.filter((i) => i.laundry_item.unit === "kg");
+    const satuan = items.filter((i) => i.laundry_item.unit !== "kg");
+
+    return { kiloan, satuan };
+  },
+
+  async validateActualItems(
+    orderId: string,
+    actualItems: { laundry_item_id: string; actual_quantity: number }[],
+  ) {
+    const { satuan } = await this.getOrderItemsForStation(orderId);
+
+    const discrepancies: {
+      laundry_item_id: string;
+      name: string;
+      expected: number;
+      actual: number;
+    }[] = [];
+
+    for (const item of satuan) {
+      const submitted = actualItems.find((a) => a.laundry_item_id === item.laundry_item_id);
+      const actual = submitted?.actual_quantity ?? 0;
+      const expected = Number(item.quantity);
+      if (actual !== expected) {
+        discrepancies.push({
+          laundry_item_id: item.laundry_item_id,
+          name: item.laundry_item.name,
+          expected,
+          actual,
+        });
+      }
+    }
+
+    return { isMatch: discrepancies.length === 0, discrepancies };
+  },
+
+  async submitItems(
+    employeeId: string,
+    station: "washing" | "ironing" | "packing",
+    orderId: string,
+    actualItems: { laundry_item_id: string; actual_quantity: number }[],
+  ) {
+    const currentShift = await attendanceService.getCurrentShift(employeeId);
+    if (!currentShift?.isActive) throw new AppError("Shift tidak aktif", 403);
+
+    const todayAttendance = await attendanceService.checkTodayAttendance(employeeId);
+    if (!todayAttendance?.check_in_time) throw new AppError("Belum check-in", 403);
+    if (todayAttendance.check_out_time) throw new AppError("Sudah check-out", 403);
+
+    const { isMatch, discrepancies } = await this.validateActualItems(orderId, actualItems);
+
+    if (!isMatch) {
+      return { success: false as const, requiresBypass: true, discrepancies };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      const pendingBypass = await tx.bypassRequest.findFirst({
+        where: { order_id: orderId, station: station as any, status: "pending" },
+      });
+      if (pendingBypass) {
+        throw new AppError("Terdapat BypassRequest pending untuk order ini, tunggu review admin", 409);
+      }
+    });
+
+    return await this.completeStation(employeeId, station, orderId, actualItems);
   },
 };
 

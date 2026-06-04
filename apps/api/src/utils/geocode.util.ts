@@ -8,7 +8,57 @@ export interface GeocodeResult {
   longitude: number;
   formatted: string;
   confidence?: number;
+  street?: string;
+  district?: string;
+  city?: string;
+  province?: string;
+  postal_code?: string;
 }
+
+type GeocodeComponents = Record<string, string | undefined>;
+
+const pickFirst = (
+  components: GeocodeComponents,
+  keys: string[],
+): string | undefined => {
+  for (const key of keys) {
+    const value = components[key];
+    if (value && value.trim()) return value.trim();
+  }
+  return undefined;
+};
+
+const mapComponents = (components?: GeocodeComponents) => {
+  if (!components) return {};
+
+  return {
+    street: pickFirst(components, [
+      "road",
+      "pedestrian",
+      "residential",
+      "footway",
+      "path",
+      "neighbourhood",
+    ]),
+    district: pickFirst(components, [
+      "suburb",
+      "city_district",
+      "state_district",
+      "district",
+      "village",
+      "hamlet",
+    ]),
+    city: pickFirst(components, [
+      "city",
+      "county",
+      "regency",
+      "municipality",
+      "town",
+    ]),
+    province: pickFirst(components, ["state", "province", "region"]),
+    postal_code: pickFirst(components, ["postcode"]),
+  };
+};
 
 /**
  * Forward-geocode an address using OpenCage.
@@ -37,6 +87,7 @@ export const geocodeAddress = async (address: string): Promise<GeocodeResult> =>
       longitude: first.geometry.lng,
       formatted: first.formatted,
       confidence: first.confidence,
+      ...mapComponents(first.components as GeocodeComponents | undefined),
     };
   } catch (err) {
     if (err instanceof AppError) throw err;
@@ -76,6 +127,7 @@ export const searchAddress = async (
       longitude: r.geometry.lng,
       formatted: r.formatted,
       confidence: r.confidence,
+      ...mapComponents((r as { components?: GeocodeComponents }).components),
     }));
   } catch (err) {
     if (err instanceof AppError) throw err;

@@ -401,3 +401,11 @@ function AddAddressPageInner() {
     </div>
   );
 }
+
+export default function AddAddressPage() {
+  return (
+    <Suspense>
+      <AddAddressPageInner />
+    </Suspense>
+  );
+}

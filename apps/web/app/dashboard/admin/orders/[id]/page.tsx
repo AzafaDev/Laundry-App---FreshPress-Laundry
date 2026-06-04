@@ -40,7 +40,7 @@ const STEP_ORDER = ORDER_STATUS_LIST.filter((s) => s !== "cancelled");
 
 // ── Status Stepper ─────────────────────────────────────────────────────────────
 function StatusStepper({ current }: { current: OrderStatus }) {
-  const currentIdx = STEP_ORDER.indexOf(current);
+  const currentIdx = STEP_ORDER.indexOf(current as (typeof STEP_ORDER)[number]);
 
   return (
     <div className="overflow-x-auto pb-2">

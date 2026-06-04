@@ -15,6 +15,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { addressService } from "@/services/address.service";
+import type { GeocodeResult } from "@/services/address.service";
 import { useAuthStore } from "@/stores/authStore";
 import type { MapPickerProps } from "@/components/address/MapPicker";
 
@@ -122,12 +123,17 @@ function AddAddressPageInner() {
     try {
       const result = await addressService.geocode(`${newLat},${newLng}`);
       if (result) {
-        setStreet(result.formatted);
-        const parts = result.formatted.split(",").map((s: string) => s.trim()).filter(Boolean);
-        const len = parts.length;
-        if (len >= 2) setProvince(parts[len - 2] ?? "");
-        if (len >= 3) setCity(parts[len - 3] ?? "");
-        if (len >= 4) setDistrict(parts[len - 4] ?? "");
+        // Avoid position-based parsing from formatted string because each location
+        // can have different token order and can mis-map city/district fields.
+        const applyStructuredAddress = (geo: GeocodeResult) => {
+          setStreet(geo.street?.trim() || geo.formatted);
+          if (geo.province?.trim()) setProvince(geo.province.trim());
+          if (geo.city?.trim()) setCity(geo.city.trim());
+          if (geo.district?.trim()) setDistrict(geo.district.trim());
+          if (geo.postal_code?.trim()) setPostalCode(geo.postal_code.trim());
+        };
+
+        applyStructuredAddress(result);
       }
     } catch {
       setGeocodeError("Tidak dapat membaca lokasi ini. Isi alamat secara manual.");

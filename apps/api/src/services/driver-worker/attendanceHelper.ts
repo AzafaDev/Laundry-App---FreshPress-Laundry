@@ -3,19 +3,37 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { getDistance } from "geolib";
 
-// Untuk testing: set MOCK_NOW di .env, contoh: MOCK_NOW=2026-05-29T07:45:00
+// Shift times are stored as UTC epoch dates where UTC HH = WIB wall-clock hour
+// (e.g. UTC 08:00 = "08:00 WIB"). All comparisons must use WIB (UTC+7).
+const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+// Returns a Date whose UTC fields represent the WIB date/time of the input.
+function toWIBView(date: Date): Date {
+  return new Date(date.getTime() + WIB_OFFSET_MS);
+}
+
+// Creates a real UTC timestamp for a given WIB wall-clock time on wibView's WIB date.
+// wibView must be the result of toWIBView().
+function wibTimeOnDate(wibView: Date, hour: number, minute: number, second: number): Date {
+  return new Date(
+    Date.UTC(wibView.getUTCFullYear(), wibView.getUTCMonth(), wibView.getUTCDate(), hour, minute, second) - WIB_OFFSET_MS
+  );
+}
+
+// Untuk testing: set MOCK_NOW di .env, contoh: MOCK_NOW=2026-05-29T07:45:00+07:00
 export function getNow(): Date {
   if (process.env.MOCK_NOW) return new Date(process.env.MOCK_NOW);
   return new Date();
 }
 
 export function getTodayLocalStart(): Date {
-  const now = getNow();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const wib = toWIBView(getNow());
+  return new Date(Date.UTC(wib.getUTCFullYear(), wib.getUTCMonth(), wib.getUTCDate()));
 }
 
 export function toLocalMidnight(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const wib = toWIBView(date);
+  return new Date(Date.UTC(wib.getUTCFullYear(), wib.getUTCMonth(), wib.getUTCDate()));
 }
 
 export async function getEmployeeOutlet(employeeId: string): Promise<string> {
@@ -36,7 +54,8 @@ export async function getEmployeeShiftForDate(
   employeeId: string,
   localDate: Date,
 ): Promise<{ shiftName: string; startTime: Date; endTime: Date } | null> {
-  const jsDay = localDate.getDay();
+  const wibDate = toWIBView(localDate);
+  const jsDay = wibDate.getUTCDay();
   const dbDay = jsDay === 0 ? 7 : jsDay;
 
   const employeeShift = await prisma.employeeShift.findFirst({
@@ -60,26 +79,11 @@ export async function getEmployeeShiftForDate(
   const endMinute = shift.end_time.getUTCMinutes();
   const endSecond = shift.end_time.getUTCSeconds();
 
-  const startTime = new Date(
-    localDate.getFullYear(),
-    localDate.getMonth(),
-    localDate.getDate(),
-    startHour,
-    startMinute,
-    startSecond,
-  );
-
-  let endTime = new Date(
-    localDate.getFullYear(),
-    localDate.getMonth(),
-    localDate.getDate(),
-    endHour,
-    endMinute,
-    endSecond,
-  );
+  const startTime = wibTimeOnDate(wibDate, startHour, startMinute, startSecond);
+  let endTime = wibTimeOnDate(wibDate, endHour, endMinute, endSecond);
 
   if (endTime <= startTime) {
-    endTime.setDate(endTime.getDate() + 1);
+    endTime = new Date(endTime.getTime() + 24 * 60 * 60 * 1000);
   }
 
   return { shiftName: shift.name, startTime, endTime };
@@ -97,8 +101,8 @@ export function canCheckIn(
   return now >= allowedStart && now <= shiftEnd;
 }
 
-export function canCheckOut(now: Date, shiftStart: Date, shiftEnd: Date): boolean {
-  return now >= shiftStart && now <= shiftEnd;
+export function canCheckOut(now: Date, shiftEnd: Date): boolean {
+  return now > shiftEnd;
 }
 
 export function isLate(
@@ -142,7 +146,8 @@ export async function getShiftForDateTime(
   employeeId: string,
   targetDate: Date,
 ): Promise<{ shiftName: string; startTime: Date; endTime: Date } | null> {
-  const jsDay = targetDate.getDay();
+  const wibTarget = toWIBView(targetDate);
+  const jsDay = wibTarget.getUTCDay();
   const dbDay = jsDay === 0 ? 7 : jsDay;
 
   const employeeShifts = await prisma.employeeShift.findMany({
@@ -156,8 +161,8 @@ export async function getShiftForDateTime(
 
   if (employeeShifts.length === 0) return null;
 
-  const targetHour = targetDate.getHours();
-  const targetMinute = targetDate.getMinutes();
+  const targetHour = wibTarget.getUTCHours();
+  const targetMinute = wibTarget.getUTCMinutes();
   const targetTimeInMinutes = targetHour * 60 + targetMinute;
 
   for (const es of employeeShifts) {
@@ -181,21 +186,20 @@ export async function getShiftForDateTime(
     }
 
     if (targetAdjusted >= startTotal && targetAdjusted <= endTotal) {
-      const startDate = new Date(targetDate);
-      startDate.setHours(startHour, startMinute, startSecond, 0);
-      if (isOvernight && targetAdjusted < startTotal) {
-        startDate.setDate(startDate.getDate() - 1);
-      }
+      const startDate = wibTimeOnDate(wibTarget, startHour, startMinute, startSecond);
+      const isAfterMidnight = isOvernight && targetTimeInMinutes < startTotal;
+      const adjustedStart = isAfterMidnight
+        ? new Date(startDate.getTime() - 24 * 60 * 60 * 1000)
+        : startDate;
 
-      let endDate = new Date(targetDate);
-      endDate.setHours(endHour, endMinute, endSecond, 0);
-      if (isOvernight && targetAdjusted >= startTotal) {
-        endDate.setDate(endDate.getDate() + 1);
+      let endDate = wibTimeOnDate(wibTarget, endHour, endMinute, endSecond);
+      if (isOvernight && !isAfterMidnight) {
+        endDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000);
       }
 
       return {
         shiftName: shift.name,
-        startTime: startDate,
+        startTime: adjustedStart,
         endTime: endDate,
       };
     }
@@ -208,7 +212,8 @@ export async function getUpcomingShiftForDateTime(
   targetDate: Date,
   preShiftMinutes = 15,
 ): Promise<{ shiftName: string; startTime: Date; endTime: Date } | null> {
-  const jsDay = targetDate.getDay();
+  const wibTarget = toWIBView(targetDate);
+  const jsDay = wibTarget.getUTCDay();
   const dbDay = jsDay === 0 ? 7 : jsDay;
 
   const employeeShifts = await prisma.employeeShift.findMany({
@@ -222,23 +227,21 @@ export async function getUpcomingShiftForDateTime(
 
   for (const es of employeeShifts) {
     const shift = es.shift;
-    const startDate = new Date(targetDate);
-    startDate.setHours(
+    const startDate = wibTimeOnDate(
+      wibTarget,
       shift.start_time.getUTCHours(),
       shift.start_time.getUTCMinutes(),
       shift.start_time.getUTCSeconds(),
-      0,
     );
 
-    let endDate = new Date(targetDate);
-    endDate.setHours(
+    let endDate = wibTimeOnDate(
+      wibTarget,
       shift.end_time.getUTCHours(),
       shift.end_time.getUTCMinutes(),
       shift.end_time.getUTCSeconds(),
-      0,
     );
 
-    if (endDate <= startDate) endDate.setDate(endDate.getDate() + 1);
+    if (endDate <= startDate) endDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000);
 
     const allowedStart = new Date(startDate.getTime() - preShiftMs);
     if (targetDate >= allowedStart && targetDate <= endDate) {

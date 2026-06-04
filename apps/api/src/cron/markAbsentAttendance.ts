@@ -1,13 +1,17 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma.js';
-import { subDays, startOfDay, endOfDay } from 'date-fns';
-import { getNow, getEmployeeShiftForDate } from '../services/driver-worker/attendanceHelper.js';
+import { subDays } from 'date-fns';
+import { getNow, getEmployeeShiftForDate, getTodayLocalStart } from '../services/driver-worker/attendanceHelper.js';
+
+const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
 
 async function processEndOfDay(targetDate: Date) {
-  const start = startOfDay(targetDate);
-  const end = endOfDay(targetDate);
+  // targetDate is a WIB midnight timestamp — use UTC fields for WIB date math
+  const wib = new Date(targetDate.getTime() + WIB_OFFSET_MS);
+  const start = targetDate; // WIB midnight = start of WIB day
+  const end = new Date(targetDate.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  const jsDay = targetDate.getDay();
+  const jsDay = wib.getUTCDay();
   const dbDay = jsDay === 0 ? 7 : jsDay;
 
   const employeesWithShift = await prisma.employeeShift.findMany({
@@ -65,8 +69,9 @@ async function processEndOfDay(targetDate: Date) {
   }
 }
 
-cron.schedule('55 23 * * *', async () => {
-  const yesterday = subDays(getNow(), 1);
+// 16:55 UTC = 23:55 WIB — process previous WIB day
+cron.schedule('55 16 * * *', async () => {
+  const yesterday = subDays(getTodayLocalStart(), 1);
   await processEndOfDay(yesterday);
   console.log(`[Cron] Processed end-of-day for ${yesterday.toISOString()}`);
 });

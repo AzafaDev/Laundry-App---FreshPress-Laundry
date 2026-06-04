@@ -138,6 +138,7 @@ axiosInstance.interceptors.response.use(
 
       processQueue(null, newAccessToken);
 
+      originalRequest._retry = true;
       return axiosInstance(originalRequest);
     } catch (refreshError) {
       processQueue(refreshError as Error, null);

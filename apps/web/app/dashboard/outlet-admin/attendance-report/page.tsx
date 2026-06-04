@@ -30,7 +30,7 @@ export default function OutletAdminAttendanceReportPage() {
   const [filters, setFilters] = useState({
     startDate: "",
     endDate: "",
-    status: "" as "" | "on_time" | "late",
+    status: "" as "" | "on_time" | "late" | "absent",
     page: 1,
     limit: 10,
   });
@@ -133,13 +133,14 @@ export default function OutletAdminAttendanceReportPage() {
           <select
             value={filters.status}
             onChange={(e) =>
-              setFilters((f) => ({ ...f, status: e.target.value as "" | "on_time" | "late", page: 1 }))
+              setFilters((f) => ({ ...f, status: e.target.value as "" | "on_time" | "late" | "absent", page: 1 }))
             }
             className="w-full pl-9 pr-4 py-2.5 border border-outline-variant rounded-lg bg-surface focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
           >
             <option value="">Semua Status</option>
             <option value="on_time">Tepat Waktu</option>
             <option value="late">Terlambat</option>
+            <option value="absent">Absen</option>
           </select>
         </div>
         <div className="flex gap-2">
@@ -199,9 +200,14 @@ export default function OutletAdminAttendanceReportPage() {
                   <td className="px-6 py-4 font-mono">{att.check_in_time ?? "-"}</td>
                   <td className="px-6 py-4 font-mono">{att.check_out_time ?? "-"}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${STATUS_COLOR[att.status] ?? "bg-surface-container-high text-on-surface-variant"}`}>
-                      {STATUS_LABEL[att.status] ?? att.status}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span className={`px-2 py-1 rounded-full text-xs font-bold w-fit ${STATUS_COLOR[att.status] ?? "bg-surface-container-high text-on-surface-variant"}`}>
+                        {STATUS_LABEL[att.status] ?? att.status}
+                      </span>
+                      {att.status === "absent" && att.notes?.includes("Auto") && (
+                        <span className="text-xs text-on-surface-variant">Auto</span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -166,6 +166,7 @@ export default function WorkerAttendancePage() {
             canCheckIn={att.currentShift?.canCheckIn ?? false}
             canCheckOut={att.checkedIn && !att.checkOutTime && (att.currentShift?.canCheckOut ?? false)}
             shiftEndTime={att.currentShift?.endTime}
+            shiftEnded={!att.checkedIn && att.currentShift?.phase === "ended"}
           />
 
           {/* Riwayat Absensi */}

@@ -24,14 +24,14 @@ export const getMyLogsQuerySchema = z.object({
     (val) =>
       val === "" || val === null || val === undefined
         ? undefined
-        : new Date(val as string),
+        : new Date(`${val as string}T00:00:00+07:00`),
     z.date().optional(),
   ),
   endDate: z.preprocess(
     (val) =>
       val === "" || val === null || val === undefined
         ? undefined
-        : new Date(val as string),
+        : new Date(`${val as string}T23:59:59+07:00`),
     z.date().optional(),
   ),
   page: z.coerce.number().int().positive().default(1),
@@ -56,14 +56,14 @@ export const attendanceReportQuerySchema = z.object({
     (val) =>
       val === "" || val === null || val === undefined
         ? undefined
-        : new Date(val as string),
+        : new Date(`${val as string}T00:00:00+07:00`),
     z.date().optional(),
   ),
   endDate: z.preprocess(
     (val) =>
       val === "" || val === null || val === undefined
         ? undefined
-        : new Date(val as string),
+        : new Date(`${val as string}T23:59:59+07:00`),
     z.date().optional(),
   ),
   page: z.coerce.number().int().positive().default(1),

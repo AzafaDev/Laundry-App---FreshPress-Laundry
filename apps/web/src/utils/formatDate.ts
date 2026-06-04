@@ -8,13 +8,19 @@ export interface AttendanceRecord {
   status: "on_time" | "late" | "absent";
 }
 
-export const formatTime = (timeStr: string | null): string => {
+export const formatTime = (timeStr: string | null | Date): string => {
   if (!timeStr) return "-";
-  const parts = timeStr.split(":");
+  if (timeStr instanceof Date || (typeof timeStr === "string" && timeStr.includes("T"))) {
+    const d = new Date(timeStr);
+    const hours = String((d.getUTCHours() + 7) % 24).padStart(2, "0");
+    const minutes = String(d.getUTCMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+  const parts = (timeStr as string).split(":");
   if (parts.length >= 2) {
     return `${parts[0]}:${parts[1]}`;
   }
-  return timeStr;
+  return timeStr as string;
 };
 
 export function toLogRecord(a: Attendance): AttendanceRecord {

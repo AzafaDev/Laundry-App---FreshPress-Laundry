@@ -89,7 +89,7 @@ export const changePasswordHandler = async (
 ): Promise<void> => {
   try {
     const { oldPassword, newPassword } = changePasswordSchema.parse(req.body);
-    const result = await changePassword(req.user!.userId, oldPassword, newPassword);
+    const result = await changePassword(req.user!.userId, oldPassword, newPassword, res);
     res.status(200).json({ success: true, data: result });
   } catch (error) {
     next(error);

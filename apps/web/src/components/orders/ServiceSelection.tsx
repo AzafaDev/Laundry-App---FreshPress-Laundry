@@ -1,4 +1,9 @@
 import { Settings, Shirt, TowelRack } from "lucide-react";
+import { formatRupiah } from "@/utils/formatPrice";
+import {
+  DRY_CLEANING_START_PRICE,
+  WASH_AND_FOLD_RATE_PER_KG,
+} from "@/utils/orderPricing";
 
 interface Props {
   selected: string;
@@ -44,7 +49,9 @@ export const ServiceSelection = ({ selected, onSelect, onNext }: Props) => (
           <span className="px-2 py-0.5 bg-primary-container text-on-primary-container rounded-full text-xs">
             Fresh
           </span>
-          <span className="text-sm font-bold">$2.50 / lb</span>
+          <span className="text-sm font-bold">
+            {formatRupiah(WASH_AND_FOLD_RATE_PER_KG)} / kg
+          </span>
         </div>
       </button>
 
@@ -75,7 +82,9 @@ export const ServiceSelection = ({ selected, onSelect, onNext }: Props) => (
         <p className="text-sm text-on-surface-variant">
           Delicate care for formal wear, suits, and specialty fabrics.
         </p>
-        <div className="mt-3 text-sm font-bold">From $8.00 / item</div>
+        <div className="mt-3 text-sm font-bold">
+          Mulai {formatRupiah(DRY_CLEANING_START_PRICE)} / item
+        </div>
       </button>
     </div>
     <button

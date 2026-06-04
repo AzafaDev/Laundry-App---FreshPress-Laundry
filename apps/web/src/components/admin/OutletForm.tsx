@@ -311,7 +311,7 @@ export function OutletForm({ outlet, onClose }: Props) {
             />
             <p className="text-xs text-on-surface-variant mt-1 ml-1">
               {form.latitude != null && form.longitude != null
-                ? `Pin: ${form.latitude.toFixed(5)}, ${form.longitude.toFixed(5)}`
+                ? `Pin: ${Number(form.latitude).toFixed(5)}, ${Number(form.longitude).toFixed(5)}`
                 : "Belum ada pin — pilih dari hasil pencarian atau klik di peta."}
             </p>
           </Field>
@@ -324,11 +324,13 @@ export function OutletForm({ outlet, onClose }: Props) {
               max="100"
               required
               value={form.service_radius_km}
-              onChange={(e) =>
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
                 setForm({
                   ...form,
-                  service_radius_km: parseFloat(e.target.value),
-                })
+                  service_radius_km: isNaN(val) ? form.service_radius_km : val,
+                });
+              }
               }
               className={inputClass}
             />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, X, Scale, Package } from "lucide-react";
 import {
   useLaundryItems,
   useCreateLaundryItem,
@@ -13,6 +13,14 @@ import type { LaundryItem, CreateLaundryItemPayload } from "@/types/laundryItem.
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmtPrice = (v: string | number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(v));
+
+// Units counted as weight-based (priced per kilo). Anything else is per-pcs.
+const KILO_UNITS = ["kg", "kilo", "kilos", "kilogram", "kilograms"];
+
+const isKiloUnit = (unit: string) => KILO_UNITS.includes(unit.trim().toLowerCase());
+
+type SortCol = "name" | "base_price";
+type SortDir = "asc" | "desc";
 
 // ── Form Modal ────────────────────────────────────────────────────────────────
 interface FormModalProps {
@@ -57,6 +65,7 @@ function LaundryItemFormModal({ initial, onClose }: FormModalProps) {
   };
 
   const busy = create.isPending || update.isPending;
+  const grouping = isKiloUnit(form.unit ?? "") ? "Per Kilo" : "Per Pcs";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -100,11 +109,20 @@ function LaundryItemFormModal({ initial, onClose }: FormModalProps) {
             <div>
               <label className="block text-sm font-medium mb-1">Satuan</label>
               <input
+                list="unit-options"
                 value={form.unit}
                 onChange={(e) => set("unit", e.target.value)}
                 className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface"
                 placeholder="pcs"
               />
+              <datalist id="unit-options">
+                <option value="kg" />
+                <option value="pcs" />
+              </datalist>
+              <p className="mt-1 text-xs text-on-surface-variant">
+                Masuk grup <span className="font-medium">{grouping}</span>. Gunakan{" "}
+                <span className="font-medium">kg</span> untuk item per kilo.
+              </p>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Harga Dasar (Rp) *</label>
@@ -152,101 +170,36 @@ function LaundryItemFormModal({ initial, onClose }: FormModalProps) {
   );
 }
 
-// ── Main Table ────────────────────────────────────────────────────────────────
-export function LaundryItemTable() {
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [isActiveFilter, setIsActiveFilter] = useState<"" | "true" | "false">("");
-  const [sortBy, setSortBy] = useState<"name" | "base_price">("name");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [modal, setModal] = useState<"create" | "edit" | null>(null);
-  const [editing, setEditing] = useState<LaundryItem | null>(null);
+// ── Items Section (one unit group) ────────────────────────────────────────────
+interface ItemsSectionProps {
+  title: string;
+  icon: React.ReactNode;
+  items: LaundryItem[];
+  isFetching: boolean;
+  sortBy: SortCol;
+  sortDir: SortDir;
+  onToggleSort: (col: SortCol) => void;
+  onEdit: (item: LaundryItem) => void;
+  onDelete: (item: LaundryItem) => void;
+}
 
-  const del = useDeleteLaundryItem();
-
-  const query = {
-    page,
-    limit: 10,
-    search: search.trim() || undefined,
-    is_active: isActiveFilter === "" ? undefined : isActiveFilter === "true",
-    sort_by: sortBy,
-    sort_dir: sortDir,
-  };
-
-  const { data, isFetching, isError } = useLaundryItems(query);
-
-  const items = data?.data ?? [];
-  const pagination = data?.pagination;
-
-  const toggleSort = (col: "name" | "base_price") => {
-    if (sortBy === col) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortBy(col);
-      setSortDir("asc");
-    }
-    setPage(1);
-  };
-
-  const handleDelete = (item: LaundryItem) => {
-    if (!confirm(`Hapus item "${item.name}"?`)) return;
-    del.mutate(item.id);
-  };
-
-  const openEdit = (item: LaundryItem) => {
-    setEditing(item);
-    setModal("edit");
-  };
-
-  const closeModal = () => {
-    setModal(null);
-    setEditing(null);
-  };
-
-  const SortIcon = ({ col }: { col: "name" | "base_price" }) =>
+function ItemsSection({
+  title, icon, items, isFetching, sortBy, sortDir, onToggleSort, onEdit, onDelete,
+}: ItemsSectionProps) {
+  const SortIcon = ({ col }: { col: SortCol }) =>
     sortBy === col ? (
       <span className="ml-1 text-primary">{sortDir === "asc" ? "↑" : "↓"}</span>
     ) : null;
 
   return (
-    <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex flex-col md:flex-row gap-3 justify-between">
-        <div className="flex flex-col sm:flex-row gap-3 flex-1">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-outline w-4 h-4" />
-            <input
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Cari nama item..."
-              className="w-full pl-9 pr-4 py-2.5 bg-surface border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <select
-            value={isActiveFilter}
-            onChange={(e) => { setIsActiveFilter(e.target.value as "" | "true" | "false"); setPage(1); }}
-            className="px-4 py-2.5 bg-surface border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="">Semua Status</option>
-            <option value="true">Aktif</option>
-            <option value="false">Nonaktif</option>
-          </select>
-        </div>
-        <button
-          onClick={() => setModal("create")}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-lg text-sm font-medium hover:opacity-90"
-        >
-          <Plus className="w-4 h-4" />
-          Tambah Item
-        </button>
+    <section className="space-y-3">
+      <div className="flex items-center gap-2">
+        {icon}
+        <h3 className="font-bold text-base">{title}</h3>
+        <span className="text-xs text-on-surface-variant">({items.length})</span>
       </div>
 
-      {/* Table */}
       <div className="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm">
-        {isError && (
-          <p className="p-4 text-sm text-error">Gagal memuat data. Coba lagi.</p>
-        )}
-
         {/* Desktop */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -254,7 +207,7 @@ export function LaundryItemTable() {
               <tr className="bg-surface-container-low border-b border-outline-variant">
                 <th
                   className="p-4 text-sm font-bold cursor-pointer select-none"
-                  onClick={() => toggleSort("name")}
+                  onClick={() => onToggleSort("name")}
                 >
                   Nama Item <SortIcon col="name" />
                 </th>
@@ -262,7 +215,7 @@ export function LaundryItemTable() {
                 <th className="p-4 text-sm font-bold">Satuan</th>
                 <th
                   className="p-4 text-sm font-bold cursor-pointer select-none"
-                  onClick={() => toggleSort("base_price")}
+                  onClick={() => onToggleSort("base_price")}
                 >
                   Harga Dasar <SortIcon col="base_price" />
                 </th>
@@ -274,7 +227,7 @@ export function LaundryItemTable() {
               {items.length === 0 && !isFetching ? (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-sm text-on-surface-variant">
-                    Belum ada laundry item.
+                    Belum ada item pada grup ini.
                   </td>
                 </tr>
               ) : (
@@ -300,14 +253,14 @@ export function LaundryItemTable() {
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
-                          onClick={() => openEdit(item)}
+                          onClick={() => onEdit(item)}
                           className="p-1.5 hover:bg-surface-container-high rounded-lg text-on-surface-variant"
                           title="Edit"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(item)}
+                          onClick={() => onDelete(item)}
                           className="p-1.5 hover:bg-error-container rounded-lg text-error"
                           title="Hapus"
                         >
@@ -343,13 +296,13 @@ export function LaundryItemTable() {
               </p>
               <div className="flex gap-2">
                 <button
-                  onClick={() => openEdit(item)}
+                  onClick={() => onEdit(item)}
                   className="flex items-center gap-1 px-3 py-1 border border-outline-variant rounded-lg text-xs hover:bg-surface-container-high"
                 >
                   <Pencil className="w-3 h-3" /> Edit
                 </button>
                 <button
-                  onClick={() => handleDelete(item)}
+                  onClick={() => onDelete(item)}
                   className="flex items-center gap-1 px-3 py-1 border border-error rounded-lg text-xs text-error hover:bg-error-container"
                 >
                   <Trash2 className="w-3 h-3" /> Hapus
@@ -358,52 +311,174 @@ export function LaundryItemTable() {
             </div>
           ))}
           {items.length === 0 && !isFetching && (
-            <p className="p-8 text-center text-sm text-on-surface-variant">Belum ada laundry item.</p>
+            <p className="p-8 text-center text-sm text-on-surface-variant">Belum ada item pada grup ini.</p>
           )}
         </div>
-
-        {/* Pagination */}
-        {pagination && (
-          <div className="bg-surface-container-low p-4 flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-outline-variant">
-            <p className="text-xs text-on-surface-variant">
-              Menampilkan {Math.min((page - 1) * 10 + 1, pagination.total)}–
-              {Math.min(page * 10, pagination.total)} dari {pagination.total} item
-            </p>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage((p) => p - 1)}
-                disabled={page <= 1}
-                className="p-1 bg-surface border border-outline-variant rounded-lg disabled:opacity-40"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
-                const p = i + 1;
-                return (
-                  <button
-                    key={p}
-                    onClick={() => setPage(p)}
-                    className={`w-8 h-8 rounded-lg text-xs font-medium ${
-                      page === p
-                        ? "bg-primary text-on-primary"
-                        : "bg-surface border border-outline-variant hover:bg-surface-container-high"
-                    }`}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= pagination.totalPages}
-                className="p-1 bg-surface border border-outline-variant rounded-lg disabled:opacity-40"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
+    </section>
+  );
+}
+
+// ── Main Table ────────────────────────────────────────────────────────────────
+export function LaundryItemTable() {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [isActiveFilter, setIsActiveFilter] = useState<"" | "true" | "false">("");
+  const [sortBy, setSortBy] = useState<SortCol>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [modal, setModal] = useState<"create" | "edit" | null>(null);
+  const [editing, setEditing] = useState<LaundryItem | null>(null);
+
+  const del = useDeleteLaundryItem();
+
+  const query = {
+    page,
+    limit: 10,
+    search: search.trim() || undefined,
+    is_active: isActiveFilter === "" ? undefined : isActiveFilter === "true",
+    sort_by: sortBy,
+    sort_dir: sortDir,
+  };
+
+  const { data, isFetching, isError } = useLaundryItems(query);
+
+  const items = data?.data ?? [];
+  const pagination = data?.pagination;
+
+  // Split the current page into the two unit groups.
+  const kiloItems = items.filter((it) => isKiloUnit(it.unit));
+  const pcsItems = items.filter((it) => !isKiloUnit(it.unit));
+
+  const toggleSort = (col: SortCol) => {
+    if (sortBy === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(col);
+      setSortDir("asc");
+    }
+    setPage(1);
+  };
+
+  const handleDelete = (item: LaundryItem) => {
+    if (!confirm(`Hapus item "${item.name}"?`)) return;
+    del.mutate(item.id);
+  };
+
+  const openEdit = (item: LaundryItem) => {
+    setEditing(item);
+    setModal("edit");
+  };
+
+  const closeModal = () => {
+    setModal(null);
+    setEditing(null);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Toolbar */}
+      <div className="flex flex-col md:flex-row gap-3 justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 flex-1">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-outline w-4 h-4" />
+            <input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              placeholder="Cari nama item..."
+              className="w-full pl-9 pr-4 py-2.5 bg-surface border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <select
+            value={isActiveFilter}
+            onChange={(e) => { setIsActiveFilter(e.target.value as "" | "true" | "false"); setPage(1); }}
+            className="px-4 py-2.5 bg-surface border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="">Semua Status</option>
+            <option value="true">Aktif</option>
+            <option value="false">Nonaktif</option>
+          </select>
+        </div>
+        <button
+          onClick={() => setModal("create")}
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-lg text-sm font-medium hover:opacity-90"
+        >
+          <Plus className="w-4 h-4" />
+          Tambah Item
+        </button>
+      </div>
+
+      {isError && (
+        <p className="p-4 text-sm text-error bg-surface border border-outline-variant rounded-xl">
+          Gagal memuat data. Coba lagi.
+        </p>
+      )}
+
+      {/* Two stacked sections: Per Kilo, then Per Pcs */}
+      <ItemsSection
+        title="Per Kilo (kg)"
+        icon={<Scale className="w-5 h-5 text-primary" />}
+        items={kiloItems}
+        isFetching={isFetching}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        onToggleSort={toggleSort}
+        onEdit={openEdit}
+        onDelete={handleDelete}
+      />
+
+      <ItemsSection
+        title="Per Pcs (satuan)"
+        icon={<Package className="w-5 h-5 text-primary" />}
+        items={pcsItems}
+        isFetching={isFetching}
+        sortBy={sortBy}
+        sortDir={sortDir}
+        onToggleSort={toggleSort}
+        onEdit={openEdit}
+        onDelete={handleDelete}
+      />
+
+      {/* Pagination (applies to the combined list) */}
+      {pagination && pagination.total > 0 && (
+        <div className="bg-surface-container-low p-4 flex flex-col sm:flex-row items-center justify-between gap-2 border border-outline-variant rounded-xl">
+          <p className="text-xs text-on-surface-variant">
+            Menampilkan {Math.min((page - 1) * 10 + 1, pagination.total)}–
+            {Math.min(page * 10, pagination.total)} dari {pagination.total} item
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage((p) => p - 1)}
+              disabled={page <= 1}
+              className="p-1 bg-surface border border-outline-variant rounded-lg disabled:opacity-40"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
+              const p = i + 1;
+              return (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`w-8 h-8 rounded-lg text-xs font-medium ${
+                    page === p
+                      ? "bg-primary text-on-primary"
+                      : "bg-surface border border-outline-variant hover:bg-surface-container-high"
+                  }`}
+                >
+                  {p}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page >= pagination.totalPages}
+              className="p-1 bg-surface border border-outline-variant rounded-lg disabled:opacity-40"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {(modal === "create" || modal === "edit") && (

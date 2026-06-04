@@ -119,8 +119,16 @@ export function useAttendance() {
       attendanceService.checkOut(attendanceId),
     onMutate: () => toast.loading("Merekam check-out...", { id: "attendance" }),
     onSuccess: (data) => {
+      let durationStr = "-";
+      if (data.check_in_time && data.check_out_time) {
+        const diffMs = new Date(data.check_out_time).getTime() - new Date(data.check_in_time).getTime();
+        const totalMins = Math.round(diffMs / 60000);
+        const h = Math.floor(totalMins / 60);
+        const m = totalMins % 60;
+        durationStr = h > 0 ? `${h} jam ${m} menit` : `${m} menit`;
+      }
       toast.success(
-        `Check-out berhasil. Total jam: ${data.total_hours || "-"} jam`,
+        `Check-out berhasil. Total: ${durationStr}`,
         { id: "attendance" },
       );
       queryClient.invalidateQueries({ queryKey: ["attendance", "today", employeeId] });
@@ -135,6 +143,11 @@ export function useAttendance() {
   });
 
   const today = todayQuery.data;
+
+  useEffect(() => {
+    if (today?.check_out_time != null) setOptimisticCheckedIn(false);
+  }, [today?.check_out_time]);
+
   const checkedIn =
     optimisticCheckedIn || (today?.check_in_time != null && today.check_out_time == null);
 

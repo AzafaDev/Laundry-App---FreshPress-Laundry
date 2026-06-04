@@ -12,6 +12,7 @@ export interface StationOrder {
   total_price: number | null;
   notes: string | null;
   created_at: string;
+  hasPendingBypass: boolean;
   customer: {
     id: string;
     full_name: string;
@@ -29,12 +30,35 @@ export interface StationOrder {
   }>;
 }
 
+export interface Discrepancy {
+  laundry_item_id: string;
+  name: string;
+  expected: number;
+  actual: number;
+}
+
 export const workerStationService = {
   getStationOrders: async (station: StationType): Promise<StationOrder[]> => {
     const { data } = await axiosInstance.get<{ success: true; data: StationOrder[] }>(
       `/v1/worker/station/${station}`
     );
     return data.data;
+  },
+
+  submitItems: async (
+    station: StationType,
+    orderId: string,
+    actual_items: { laundry_item_id: string; actual_quantity: number }[]
+  ): Promise<{ success: true; data: StationOrder } | { success: false; requiresBypass: true; discrepancies: Discrepancy[] }> => {
+    const { data } = await axiosInstance.post(
+      `/v1/worker/station/${station}/${orderId}/submit-items`,
+      { actual_items }
+    );
+    return data;
+  },
+
+  createBypassRequest: async (formData: FormData): Promise<void> => {
+    await axiosInstance.post(`/v1/worker/bypass`, formData);
   },
 
   completeStation: async (station: StationType, orderId: string): Promise<{ order: StationOrder; createdDeliveryTask: boolean }> => {

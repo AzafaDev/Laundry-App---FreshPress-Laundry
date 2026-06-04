@@ -59,8 +59,8 @@ export const employeeAuthService = {
     return data.data;
   },
 
-  changePassword: async (oldPassword: string, newPassword: string): Promise<{ message: string }> => {
-    const { data } = await axiosInstance.post<{ success: true; data: { message: string } }>(
+  changePassword: async (oldPassword: string, newPassword: string): Promise<{ message: string; accessToken?: string }> => {
+    const { data } = await axiosInstance.post<{ success: true; data: { message: string; accessToken?: string } }>(
       "/v1/employee/auth/change-password",
       { oldPassword, newPassword },
       { withCredentials: true },

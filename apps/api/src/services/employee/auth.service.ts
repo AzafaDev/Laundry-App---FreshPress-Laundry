@@ -37,8 +37,8 @@ export const loginEmployee = async (
   password: string,
   res: Response,
 ) => {
-  const employee = await prisma.employee.findUnique({
-    where: { email },
+  const employee = await prisma.employee.findFirst({
+    where: { email, deleted_at: null },
   });
 
   if (!employee) {
@@ -48,6 +48,10 @@ export const loginEmployee = async (
   const isValid = await bcrypt.compare(password, employee.password_hash);
   if (!isValid) {
     throw new AppError("Email atau password salah.", 401);
+  }
+
+  if (!employee.is_active) {
+    throw new AppError("Akun Anda tidak aktif.", 403);
   }
 
   const accessToken = signAccessToken({
@@ -242,6 +246,7 @@ export const changePassword = async (
   employeeId: string,
   oldPassword: string,
   newPassword: string,
+  res: Response,
 ) => {
   const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
   if (!employee) throw new AppError("Akun tidak ditemukan.", 404);
@@ -250,12 +255,48 @@ export const changePassword = async (
   if (!isValid) throw new AppError("Password lama tidak sesuai.", 400);
 
   const password_hash = await bcrypt.hash(newPassword, 10);
-  await prisma.employee.update({
+  const updated = await prisma.employee.update({
     where: { id: employeeId },
     data: { password_hash, token_version: { increment: 1 } },
+    select: { id: true, role: true, email: true, outlet_id: true, token_version: true },
   });
 
-  return { message: "Password berhasil diubah." };
+  const accessToken = signAccessToken({
+    userId: updated.id,
+    role: updated.role,
+    email: updated.email,
+    outletId: updated.outlet_id,
+    tokenVersion: updated.token_version,
+  });
+
+  const newRefreshToken = signRefreshToken({
+    userId: updated.id,
+    role: updated.role,
+    email: updated.email,
+    outletId: updated.outlet_id,
+    tokenVersion: updated.token_version,
+  });
+
+  const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
+  const expiresMs = parseDuration(expiresIn);
+
+  await prisma.refreshToken.create({
+    data: {
+      token: newRefreshToken,
+      user_id: updated.id,
+      user_type: "employee",
+      expires_at: new Date(Date.now() + expiresMs),
+    },
+  });
+
+  res.cookie("refreshToken", newRefreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: expiresMs,
+  });
+
+  return { message: "Password berhasil diubah.", accessToken };
 };
 
 function parseDuration(duration: string): number {

@@ -389,7 +389,11 @@ export default function DriverDashboardPage() {
                     : "bg-on-primary/20 text-on-primary hover:bg-on-primary/30"
                 }`}
               >
-                {checkedIn ? `✓ ${checkInTime}` : "Belum Check In"}
+                {checkedIn
+                  ? `✓ ${checkInTime}`
+                  : currentShift?.phase === "ended"
+                  ? "Shift Berakhir"
+                  : "Belum Check In"}
               </Link>
             </div>
           </div>
@@ -407,7 +411,7 @@ export default function DriverDashboardPage() {
         </motion.div>
 
         {/* Check-in prompt */}
-        {!checkedIn && (
+        {!checkedIn && currentShift?.phase !== "ended" && (
           <CheckInPrompt href="/dashboard/driver/attendance" />
         )}
 
