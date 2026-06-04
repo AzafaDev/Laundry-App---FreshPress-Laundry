@@ -8,12 +8,11 @@ import {
   Package,
   Clock,
   BarChart3,
-  Settings,
   LogOut,
   Shirt,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
-import { useAuth } from "@/hooks/useAuth";
+import { useEmployeeAuth } from "@/hooks/useEmployeeAuth";
 
 interface NavItem {
   href: string;
@@ -31,7 +30,7 @@ const NAV_ITEMS: NavItem[] = [
 export function WorkerSidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const { user } = useAuthStore();
-  const { logout } = useAuth();
+  const { logout } = useEmployeeAuth();
 
   const handleLogout = () => {
     logout();
@@ -85,9 +84,6 @@ export function WorkerSidebar({ onClose }: { onClose?: () => void }) {
 
       {/* Bottom Actions */}
       <div className="p-3 mt-auto">
-        <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors">
-          <Settings className="w-5 h-5" /> Settings
-        </button>
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-error hover:bg-error-container/30 rounded-lg transition-colors"

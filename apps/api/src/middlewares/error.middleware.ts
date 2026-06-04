@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import multer from "multer";
 
 export class AppError extends Error {
   constructor(
@@ -18,6 +19,14 @@ export const errorHandler = (
 ): void => {
   if (err instanceof AppError) {
     res.status(err.statusCode).json({ message: err.message });
+    return;
+  }
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      res.status(422).json({ message: "Ukuran foto melebihi batas maksimum 5 MB." });
+      return;
+    }
+    res.status(422).json({ message: `Upload gagal: ${err.message}` });
     return;
   }
   console.error(err);

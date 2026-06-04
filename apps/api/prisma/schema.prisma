@@ -188,6 +188,7 @@ model Employee {
   process_logs             ProcessLog[]
   bypass_requests_made     BypassRequest[]       @relation("BypassRequestedBy")
   bypass_requests_reviewed BypassRequest[]       @relation("BypassReviewedBy")
+  order_item_breakdowns    OrderItemBreakdown[]
   driver_tasks             DriverTask[]
   complaints               Complaint[]
   attendances              Attendance[]
@@ -323,6 +324,26 @@ model CustomerAddress {
 }
 
 // ─────────────────────────────────────────
+// CLOTHING TYPES (master data, managed by super admin)
+// ─────────────────────────────────────────
+
+model ClothingType {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String    @unique @db.VarChar(100)
+  is_active  Boolean   @default(true)
+  deleted_at DateTime? @db.Timestamptz
+  created_at DateTime  @default(now()) @db.Timestamptz
+  updated_at DateTime  @default(now()) @updatedAt @db.Timestamptz
+
+  // Relations
+  order_item_breakdowns OrderItemBreakdown[]
+
+  @@index([is_active])
+  @@index([deleted_at])
+  @@map("clothing_types")
+}
+
+// ─────────────────────────────────────────
 // LAUNDRY ITEMS
 // ─────────────────────────────────────────
 
@@ -358,6 +379,7 @@ model Order {
   status                     OrderStatus @default(waiting_pickup_driver)
   pickup_schedule            DateTime    @db.Timestamptz
   total_weight_kg            Decimal?    @db.Decimal(6, 2)
+  delivery_fee               Decimal     @default(0) @db.Decimal(10, 2)
   total_price                Decimal?    @db.Decimal(12, 2)
   notes                      String?
   payment_deadline           DateTime?   @db.Timestamptz
@@ -372,8 +394,9 @@ model Order {
   outlet           Outlet               @relation(fields: [outlet_id], references: [id])
   pickup_address   CustomerAddress      @relation(fields: [pickup_address_id], references: [id])
   created_by_admin Employee?            @relation(fields: [created_by_outlet_admin_id], references: [id])
-  order_items      OrderItem[]
-  status_histories OrderStatusHistory[]
+  order_items           OrderItem[]
+  order_item_breakdowns OrderItemBreakdown[]
+  status_histories      OrderStatusHistory[]
   process_logs     ProcessLog[]
   bypass_requests  BypassRequest[]
   driver_tasks     DriverTask[]
@@ -405,6 +428,29 @@ model OrderItem {
   @@index([order_id])
   @@index([laundry_item_id])
   @@map("order_items")
+}
+
+// ─────────────────────────────────────────
+// ORDER ITEM BREAKDOWN (outlet admin input)
+// ─────────────────────────────────────────
+
+model OrderItemBreakdown {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id        String   @db.Uuid
+  clothing_type_id String  @db.Uuid
+  quantity        Int
+  created_by      String   @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  // Relations
+  order        Order        @relation(fields: [order_id], references: [id])
+  clothing_type ClothingType @relation(fields: [clothing_type_id], references: [id])
+  admin        Employee     @relation(fields: [created_by], references: [id])
+
+  @@unique([order_id, clothing_type_id])
+  @@index([order_id])
+  @@map("order_item_breakdowns")
 }
 
 // ─────────────────────────────────────────
@@ -472,6 +518,7 @@ model BypassRequest {
   actual_items            Json
   discrepancy_description String
   photo_evidence          String[]
+  attempt_number          Int          @default(1)
   status                  BypassStatus @default(pending)
   reviewed_by             String?      @db.Uuid
   admin_notes             String?

@@ -9,7 +9,6 @@ import {
   Receipt,
   BarChart3,
   Clock,
-  Settings,
   LogOut,
   Shirt,
   type LucideIcon,
@@ -140,10 +139,6 @@ export function AdminSidebar() {
 
       {/* Bottom actions */}
       <div className="p-3 mt-auto">
-        <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-on-surface-variant hover:bg-surface-container-high rounded-lg transition-colors">
-          <Settings className="w-5 h-5" />
-          Settings
-        </button>
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-error hover:bg-error-container/30 rounded-lg transition-colors"

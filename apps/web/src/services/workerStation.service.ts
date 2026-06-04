@@ -18,20 +18,18 @@ export interface StationOrder {
     full_name: string;
     phone: string;
   };
-  order_items: Array<{
+  order_item_breakdowns: Array<{
     id: string;
-    laundry_item_id: string;
+    clothing_type_id: string;
     quantity: number;
-    price_at_order: number;
-    laundry_item: {
+    clothing_type: {
       name: string;
-      unit: string;
     };
   }>;
 }
 
 export interface Discrepancy {
-  laundry_item_id: string;
+  clothing_type_id: string;
   name: string;
   expected: number;
   actual: number;
@@ -48,10 +46,10 @@ export const workerStationService = {
   submitItems: async (
     station: StationType,
     orderId: string,
-    actual_items: { laundry_item_id: string; actual_quantity: number }[]
+    actual_items: { clothing_type_id: string; actual_quantity: number }[]
   ): Promise<{ success: true; data: StationOrder } | { success: false; requiresBypass: true; discrepancies: Discrepancy[] }> => {
     const { data } = await axiosInstance.post(
-      `/v1/worker/station/${station}/${orderId}/submit-items`,
+      `/v1/worker/station/${station}/orders/${orderId}/submit-items`,
       { actual_items }
     );
     return data;
