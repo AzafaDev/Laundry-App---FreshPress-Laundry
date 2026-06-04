@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
 import { workerService } from "../../services/driver-worker/index.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import {
@@ -7,6 +8,13 @@ import {
   MAX_BYPASS_PHOTO_COUNT,
   ALLOWED_BYPASS_PHOTO_MIME_TYPES,
 } from "../../config/constants.js";
+import { env } from "../../config/env.js";
+
+cloudinary.config({
+  cloud_name: env.CLOUDINARY_CLOUD_NAME,
+  api_key: env.CLOUDINARY_API_KEY,
+  api_secret: env.CLOUDINARY_API_SECRET,
+});
 
 const bypassPhotoUpload = multer({
   storage: multer.memoryStorage(),
@@ -99,15 +107,7 @@ export const createBypassRequest = async (req: Request, res: Response, next: Nex
     const files = (req.files as Express.Multer.File[]) ?? [];
     if (files.length === 0) throw new AppError("Minimal 1 foto bukti wajib dilampirkan", 400);
 
-    const { env } = await import("../../config/env.js");
     if (!env.CLOUDINARY_CLOUD_NAME) throw new AppError("Upload foto belum dikonfigurasi.", 501);
-
-    const { v2: cloudinary } = await import("cloudinary");
-    cloudinary.config({
-      cloud_name: env.CLOUDINARY_CLOUD_NAME,
-      api_key: env.CLOUDINARY_API_KEY,
-      api_secret: env.CLOUDINARY_API_SECRET,
-    });
 
     const photoUrls = await Promise.all(
       files.map(async (file) => {

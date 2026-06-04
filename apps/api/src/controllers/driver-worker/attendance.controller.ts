@@ -5,8 +5,6 @@ import {
   getMyLogsQuerySchema,
 } from "../../validations/attendance.validation.js";
 import { attendanceService } from "../../services/driver-worker/index.js";
-import { getEmployeeOutlet } from "../../services/driver-worker/attendanceHelper.js";
-import { isWithinRadius } from "../../services/driver-worker/attendanceHelper.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 
 export const checkIn = async (
@@ -23,11 +21,9 @@ export const checkIn = async (
       throw new AppError("Lokasi tidak tersedia. Aktifkan GPS untuk check-in.", 400);
     }
 
-    const outletId = await getEmployeeOutlet(employeeId);
+    // await getEmployeeOutlet(employeeId) — dipakai untuk radius check, uncomment saat production
     // const withinRadius = await isWithinRadius(outletId, lat, lng);
-    // if (!withinRadius) {
-    //   throw new AppError("Anda harus berada di sekitar outlet untuk check-in.", 403);
-    // }
+    // if (!withinRadius) throw new AppError("Anda harus berada di sekitar outlet untuk check-in.", 403);
 
     const attendance = await attendanceService.checkIn(employeeId, {
       lat,

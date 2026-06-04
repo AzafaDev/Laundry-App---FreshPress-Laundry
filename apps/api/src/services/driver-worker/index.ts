@@ -10,10 +10,12 @@ import {
   determineAttendanceStatus,
   isWithinRadius,
   getTodayLocalStart,
-
   getShiftForDateTime,
   hasActiveDriverTask,
   getNow,
+  formatLocalDate,
+  formatLocalTime,
+  formatShiftHHMM,
 } from "./attendanceHelper.js";
 import { Prisma, OrderStatus } from "../../../generated/prisma/client.js";
 
@@ -47,28 +49,6 @@ const DRIVER_TASK_DETAIL_SELECT = {
     },
   },
 } satisfies Prisma.DriverTaskSelect;
-
-const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
-
-function toWIB(date: Date): Date {
-  return new Date(date.getTime() + WIB_OFFSET_MS);
-}
-
-function formatLocalDate(date: Date): string {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function formatLocalTime(date: Date | null): string | null {
-  if (!date) return null;
-  const wib = toWIB(date);
-  const hours = String(wib.getUTCHours()).padStart(2, "0");
-  const minutes = String(wib.getUTCMinutes()).padStart(2, "0");
-  const seconds = String(wib.getUTCSeconds()).padStart(2, "0");
-  return `${hours}:${minutes}:${seconds}`;
-}
 
 interface CheckInBody {
   lat?: number;
@@ -397,11 +377,6 @@ const attendanceService = {
       progressPercent = 100;
     }
 
-    const formatTime = (date: Date) => {
-      const w = toWIB(date);
-      return `${String(w.getUTCHours()).padStart(2, "0")}:${String(w.getUTCMinutes()).padStart(2, "0")}`;
-    };
-
     const alreadyCheckedIn = !!todayAttendance?.check_in_time;
     const alreadyCheckedOut = !!todayAttendance?.check_out_time;
     const canCheckInNow = !alreadyCheckedIn && canCheckIn(now, startTime, endTime, 15);
@@ -409,8 +384,8 @@ const attendanceService = {
 
     return {
       shiftName,
-      startTime: formatTime(startTime),
-      endTime: formatTime(endTime),
+      startTime: formatShiftHHMM(startTime),
+      endTime: formatShiftHHMM(endTime),
       isActive,
       phase,
       progressPercent: Math.round(progressPercent),
@@ -450,11 +425,6 @@ const attendanceService = {
       remainingSeconds = Math.max(0, (endTime.getTime() - now.getTime()) / 1000);
     }
 
-    const formatTime = (date: Date) => {
-      const w = toWIB(date);
-      return `${String(w.getUTCHours()).padStart(2, "0")}:${String(w.getUTCMinutes()).padStart(2, "0")}`;
-    };
-
     const alreadyCheckedIn = !!todayAttendance?.check_in_time;
     const alreadyCheckedOut = !!todayAttendance?.check_out_time;
     const canCheckInNow = !alreadyCheckedIn && canCheckIn(now, startTime, endTime, 15);
@@ -462,8 +432,8 @@ const attendanceService = {
 
     return {
       shiftName,
-      startTime: formatTime(startTime),
-      endTime: formatTime(endTime),
+      startTime: formatShiftHHMM(startTime),
+      endTime: formatShiftHHMM(endTime),
       isActive,
       progressPercent: Math.round(progressPercent),
       remainingSeconds,
@@ -800,6 +770,7 @@ export const workerService = {
     station: "washing" | "ironing" | "packing",
     orderId: string,
     actualItems?: { clothing_type_id: string; actual_quantity: number }[],
+    checkPendingBypass = false,
   ) {
     const currentShift = await attendanceService.getCurrentShift(employeeId);
     if (!currentShift?.isActive) throw new AppError("Shift tidak aktif", 403);
@@ -851,10 +822,21 @@ export const workerService = {
       finalStatus = nextStatus[station];
     }
 
-    const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
-      data: { status: finalStatus },
+    await prisma.$transaction(async (tx) => {
+      if (checkPendingBypass) {
+        const pendingBypass = await tx.bypassRequest.findFirst({
+          where: { order_id: orderId, station: station as any, status: "pending" },
+        });
+        if (pendingBypass) throw new AppError("Terdapat BypassRequest pending untuk order ini, tunggu review admin", 409);
+      }
+      const updateResult = await tx.order.updateMany({
+        where: { id: orderId, status: order.status },
+        data: { status: finalStatus },
+      });
+      if (updateResult.count === 0) throw new AppError(`Station ${station} sudah diproses`, 409);
     });
+
+    const updatedOrder = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
 
     await prisma.orderStatusHistory.create({
       data: {
@@ -949,6 +931,12 @@ export const workerService = {
     });
     if (existing) throw new AppError("Sudah ada bypass request pending untuk order ini, tunggu review admin", 409);
 
+    const previousCount = await prisma.bypassRequest.count({
+      where: { order_id: orderId, station: station as any, status: { not: "pending" } },
+    });
+    if (previousCount >= 2) throw new AppError("Bypass request sudah mencapai batas maksimal (2x) untuk station ini", 400);
+    const attemptNumber = previousCount + 1;
+
     const breakdownItems = await prisma.orderItemBreakdown.findMany({
       where: { order_id: orderId },
       include: { clothing_type: true },
@@ -978,6 +966,7 @@ export const workerService = {
         actual_items: actualItems,
         discrepancy_description: discrepancyDescription,
         photo_evidence: photoUrls,
+        attempt_number: attemptNumber,
       },
     });
 
@@ -1048,16 +1037,7 @@ export const workerService = {
       return { success: false as const, requiresBypass: true, discrepancies };
     }
 
-    await prisma.$transaction(async (tx) => {
-      const pendingBypass = await tx.bypassRequest.findFirst({
-        where: { order_id: orderId, station: station as any, status: "pending" },
-      });
-      if (pendingBypass) {
-        throw new AppError("Terdapat BypassRequest pending untuk order ini, tunggu review admin", 409);
-      }
-    });
-
-    return await this.completeStation(employeeId, station, orderId, actualItems);
+    return await this.completeStation(employeeId, station, orderId, actualItems, true);
   },
 };
 
