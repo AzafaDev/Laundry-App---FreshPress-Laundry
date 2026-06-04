@@ -88,6 +88,7 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
     status: OrderStatus,
     withPickupTask = false,
     withDeliveryTask = false,
+    withPickupPending = false,
   ) {
     const invoiceNumber = `INV-SEED-${suffix}`;
     const pickupAddressId = customerAddressMap.get(customerId);
@@ -123,7 +124,9 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
         outlet_id: outlet.id,
         pickup_address_id: pickupAddressId,
         status,
-        pickup_schedule: new Date(),
+        pickup_schedule: withPickupPending
+          ? new Date(Date.now() + 3 * 60 * 60 * 1000) // 3 jam ke depan — di luar window H-1 jam (DRV-02)
+          : new Date(Date.now() - 30 * 60 * 1000),    // 30 menit lalu — dalam window H-1 jam
         total_weight_kg: 3.5,
         total_price: 35000,
         notes: `Seed order untuk testing ${status}`,
@@ -147,6 +150,18 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
           order_id: order.id,
           task_type: 'pickup',
           status: 'available',
+        },
+      });
+    }
+
+    if (withPickupPending) {
+      await prisma.driverTask.upsert({
+        where: { order_id_task_type: { order_id: order.id, task_type: 'pickup' } },
+        update: {},
+        create: {
+          order_id: order.id,
+          task_type: 'pickup',
+          status: 'pending',
         },
       });
     }
@@ -183,9 +198,10 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
 
   const stationStatuses = ['washing', 'ironing', 'packing'];
 
-  const orderScenarios: Array<{ suffix: string; status: OrderStatus; pickup?: boolean; delivery?: boolean }> = [
+  const orderScenarios: Array<{ suffix: string; status: OrderStatus; pickup?: boolean; delivery?: boolean; pickupPending?: boolean }> = [
     { suffix: 'PICKUP-1', status: 'waiting_pickup_driver', pickup: true },
     { suffix: 'PICKUP-2', status: 'waiting_pickup_driver', pickup: true },
+    { suffix: 'PICKUP-3', status: 'waiting_pickup_driver', pickupPending: true }, // DRV-02: task pending, belum visible di dashboard
     { suffix: 'WASHING-1', status: 'washing' },   // happy path (submit sesuai)
     { suffix: 'WASHING-2', status: 'washing' },   // bypass path (submit berbeda)
     { suffix: 'IRONING-1', status: 'ironing' },   // happy path
@@ -197,7 +213,7 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
 
   for (const [index, scenario] of orderScenarios.entries()) {
     const customer = existingCustomers[index % existingCustomers.length];
-    const order = await createOrder(customer.id, scenario.suffix, scenario.status, scenario.pickup, scenario.delivery);
+    const order = await createOrder(customer.id, scenario.suffix, scenario.status, scenario.pickup, scenario.delivery, scenario.pickupPending);
     if (stationStatuses.includes(scenario.status)) {
       await seedBreakdown(order.id);
     }

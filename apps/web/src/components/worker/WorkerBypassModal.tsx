@@ -34,7 +34,6 @@ export function WorkerBypassModal({
   const [photos, setPhotos] = useState<PhotoPreview[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [descError, setDescError] = useState("");
-  const [photoError, setPhotoError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const revokeAll = useCallback((list: PhotoPreview[]) => {
@@ -45,7 +44,6 @@ export function WorkerBypassModal({
     if (!open) {
       setDescription("");
       setDescError("");
-      setPhotoError("");
       setIsSubmitting(false);
       setPhotos((prev) => { revokeAll(prev); return []; });
     }
@@ -67,7 +65,6 @@ export function WorkerBypassModal({
       url: URL.createObjectURL(file),
     }));
     setPhotos((prev) => [...prev, ...newPreviews]);
-    setPhotoError("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -88,12 +85,6 @@ export function WorkerBypassModal({
       setDescError("");
     }
 
-    if (photos.length === 0) {
-      setPhotoError("Minimal 1 foto bukti wajib dilampirkan.");
-      valid = false;
-    } else {
-      setPhotoError("");
-    }
 
     if (!valid) return;
 
@@ -212,21 +203,17 @@ export function WorkerBypassModal({
           <div>
             <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2 block">
               Foto Bukti <span className="text-error">*</span>
-              <span className="normal-case font-normal ml-1 text-on-surface-variant">(min. 1 foto)</span>
+              <span className="normal-case font-normal ml-1 text-on-surface-variant">(opsional)</span>
             </label>
 
             {/* Drop zone / trigger */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className={`w-full flex flex-col items-center justify-center gap-2 py-5 rounded-xl border-2 border-dashed transition-colors ${
-                photoError
-                  ? "border-error/40 bg-error/5"
-                  : "border-outline-variant bg-surface-container-low hover:bg-surface-container hover:border-primary/40"
-              }`}
+              className="w-full flex flex-col items-center justify-center gap-2 py-5 rounded-xl border-2 border-dashed transition-colors border-outline-variant bg-surface-container-low hover:bg-surface-container hover:border-primary/40"
             >
               <div className="p-2 rounded-lg bg-surface-container">
-                <ImagePlus className={`w-5 h-5 ${photoError ? "text-error" : "text-on-surface-variant"}`} />
+                <ImagePlus className="w-5 h-5 text-on-surface-variant" />
               </div>
               <p className="text-sm text-on-surface-variant">
                 <span className="font-semibold text-primary">Pilih foto</span> atau tap di sini
@@ -243,11 +230,6 @@ export function WorkerBypassModal({
               onChange={handleFileChange}
             />
 
-            {photoError && (
-              <p className="text-xs text-error mt-1.5 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> {photoError}
-              </p>
-            )}
 
             {/* Preview grid */}
             {photos.length > 0 && (

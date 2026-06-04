@@ -57,6 +57,7 @@ enum DriverTaskType {
 }
 
 enum DriverTaskStatus {
+  pending
   available
   in_progress
   completed

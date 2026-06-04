@@ -14,7 +14,7 @@ import type { AttendanceReportParams } from "@/types/attendance.type";
 export function useAttendance() {
   const [optimisticCheckedIn, setOptimisticCheckedIn] = useState(false);
   const queryClient = useQueryClient();
-  const { on, emit } = useSocket();
+  const { on } = useSocket();
   const { latitude, longitude, permissionDenied } = useGeolocation();
 
   const { accessToken, user } = useEmployeeAuthStore();
@@ -104,7 +104,6 @@ export function useAttendance() {
       });
       queryClient.invalidateQueries({ queryKey: ["attendance", "today", employeeId] });
       queryClient.invalidateQueries({ queryKey: ["attendance", "logs", employeeId] });
-      emit("attendance:checked-in", { userId: data.user_id });
     },
     onError: (error: any) => {
       setOptimisticCheckedIn(false);
@@ -133,7 +132,6 @@ export function useAttendance() {
       );
       queryClient.invalidateQueries({ queryKey: ["attendance", "today", employeeId] });
       queryClient.invalidateQueries({ queryKey: ["attendance", "logs", employeeId] });
-      emit("attendance:checked-out", { attendanceId: data.id });
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Gagal check-out", {
@@ -176,19 +174,7 @@ export function useAttendance() {
       queryClient.invalidateQueries({ queryKey: ["attendance", "logs", employeeId] });
       queryClient.invalidateQueries({ queryKey: ["attendance", "currentShift", employeeId] });
     },
-    fetchNextLogs: (page: number) =>
-      attendanceService.getMyLogs({ page, limit: 20 }),
-    fetchLogs: async (params: {
-      page?: number;
-      limit?: number;
-      startDate?: string;
-      endDate?: string;
-    }) => {
-      return attendanceService.getMyLogs(params);
-    },
-    getRecentLogs: async (limit = 5) => {
-      return attendanceService.getMyLogs({ page: 1, limit });
-    },
+    fetchLogs: attendanceService.getMyLogs,
   };
 }
 

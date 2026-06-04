@@ -13,31 +13,34 @@ import { getStationOrders, completeStation, submitItems, createBypassRequest, up
 
 const router = Router();
 
+const EMPLOYEE_ROLES = ["driver", "washing_worker", "ironing_worker", "packing_worker"] as const;
+const WORKER_ROLES = ["washing_worker", "ironing_worker", "packing_worker"] as const;
+
 router.use(authenticate);
 
 router.post(
   "/attendance/check-in",
-  requireRole("driver", "washing_worker", "ironing_worker", "packing_worker"),
+  requireRole(...EMPLOYEE_ROLES),
   checkIn,
 );
 router.post(
   "/attendance/check-out",
-  requireRole("driver", "washing_worker", "ironing_worker", "packing_worker"),
+  requireRole(...EMPLOYEE_ROLES),
   checkOut,
 );
 router.get(
   "/attendance/my-logs",
-  requireRole("driver", "washing_worker", "ironing_worker", "packing_worker"),
+  requireRole(...EMPLOYEE_ROLES),
   getMyLogs,
 );
 router.get(
   "/attendance/today",
-  requireRole("driver", "washing_worker", "ironing_worker", "packing_worker"),
+  requireRole(...EMPLOYEE_ROLES),
   checkTodayAttendance,
 );
 router.get(
   "/attendance/current-shift",
-  requireRole("driver", "washing_worker", "ironing_worker", "packing_worker"),
+  requireRole(...EMPLOYEE_ROLES),
   getCurrentShift,
 );
 
@@ -69,22 +72,22 @@ router.patch(
 
 router.get(
   "/worker/station/:station",
-  requireRole("washing_worker", "ironing_worker", "packing_worker"),
+  requireRole(...WORKER_ROLES),
   getStationOrders,
 );
 router.post(
   "/worker/station/:station/orders/:orderId/submit-items",
-  requireRole("washing_worker", "ironing_worker", "packing_worker"),
+  requireRole(...WORKER_ROLES),
   submitItems,
 );
 router.patch(
   "/worker/station/:station/orders/:orderId/complete",
-  requireRole("washing_worker", "ironing_worker", "packing_worker"),
+  requireRole(...WORKER_ROLES),
   completeStation,
 );
 router.post(
   "/worker/bypass",
-  requireRole("washing_worker", "ironing_worker", "packing_worker"),
+  requireRole(...WORKER_ROLES),
   uploadBypassPhotosMiddleware,
   createBypassRequest,
 );
