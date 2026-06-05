@@ -2,85 +2,21 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import {
-  Shirt,
   Package,
-  Sparkles,
-  Zap,
+  Shirt,
   Plus,
   Minus,
   Calculator,
   Truck,
   ChevronRight,
   RotateCcw,
+  Loader2,
+  ChevronDown,
+  Trash2,
 } from "lucide-react";
-
-type ServiceId = "wash_fold" | "wash_setrika" | "dry_cleaning" | "express";
-type Unit = "kg" | "pcs";
-
-interface Service {
-  id: ServiceId;
-  label: string;
-  desc: string;
-  pricePerUnit: number;
-  unit: Unit;
-  icon: React.ElementType;
-  tag: string;
-  tagColor: string;
-  max: number;
-  step: number;
-}
-
-const SERVICES: Service[] = [
-  {
-    id: "wash_fold",
-    label: "Wash & Fold",
-    desc: "Cuci bersih dan lipat rapi.",
-    pricePerUnit: 7_000,
-    unit: "kg",
-    icon: Shirt,
-    tag: "Terpopuler",
-    tagColor: "bg-primary text-white",
-    max: 50,
-    step: 0.5,
-  },
-  {
-    id: "wash_setrika",
-    label: "Wash & Setrika",
-    desc: "Cuci plus penyetrikaan uap profesional.",
-    pricePerUnit: 15_000,
-    unit: "kg",
-    icon: Package,
-    tag: "Esensial",
-    tagColor: "bg-surface-container-high text-on-surface-variant",
-    max: 50,
-    step: 0.5,
-  },
-  {
-    id: "dry_cleaning",
-    label: "Dry Cleaning",
-    desc: "Perawatan khusus untuk kain halus.",
-    pricePerUnit: 25_000,
-    unit: "pcs",
-    icon: Sparkles,
-    tag: "Premium",
-    tagColor: "bg-tertiary-container text-on-tertiary-container",
-    max: 30,
-    step: 1,
-  },
-  {
-    id: "express",
-    label: "Express 6 Jam",
-    desc: "Selesai dalam 6 jam untuk kebutuhan mendesak.",
-    pricePerUnit: 20_000,
-    unit: "kg",
-    icon: Zap,
-    tag: "Kilat",
-    tagColor: "bg-secondary/10 text-secondary",
-    max: 50,
-    step: 0.5,
-  },
-];
+import { laundryItemService, type LaundryItem } from "@/services/laundryItem.service";
 
 function formatRp(amount: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -90,34 +26,180 @@ function formatRp(amount: number) {
   }).format(amount);
 }
 
-export const PriceCalculator = ({ id }: { id?: string }) => {
-  const [qtys, setQtys] = useState<Record<ServiceId, number>>({
-    wash_fold: 0,
-    wash_setrika: 0,
-    dry_cleaning: 0,
-    express: 0,
-  });
+function toNumber(value: string | number): number {
+  return typeof value === "string" ? parseFloat(value) : value;
+}
 
-  function setQty(id: ServiceId, value: number) {
-    const svc = SERVICES.find((s) => s.id === id)!;
-    setQtys((prev) => ({ ...prev, [id]: Math.max(0, Math.min(value, svc.max)) }));
+// ── Sub-component: one unit-group card ──────────────────────────────────────
+
+interface UnitCardProps {
+  title: string;
+  subtitle: string;
+  unit: string;
+  icon: React.ElementType;
+  items: LaundryItem[];
+  qtys: Record<string, number>;
+  onSetQty: (id: string, value: number) => void;
+}
+
+function UnitCard({ title, subtitle, unit, icon: Icon, items, qtys, onSetQty }: UnitCardProps) {
+  const step = unit === "kg" ? 0.5 : 1;
+  const max = unit === "kg" ? 50 : 30;
+
+  const [selectedId, setSelectedId] = useState<string>(items[0]?.id ?? "");
+  const [inputQty, setInputQty] = useState<number>(step);
+
+  const selectedItem = items.find((i) => i.id === selectedId) ?? items[0];
+
+  if (!selectedItem) return null;
+
+  // Items that have been added (qty > 0)
+  const addedItems = items.filter((i) => (qtys[i.id] ?? 0) > 0);
+
+  function handleAdd() {
+    if (inputQty <= 0) return;
+    const current = qtys[selectedItem.id] ?? 0;
+    onSetQty(selectedItem.id, Math.min(current + inputQty, max));
+    setInputQty(step);
   }
 
-  function step(id: ServiceId, dir: 1 | -1) {
-    const svc = SERVICES.find((s) => s.id === id)!;
-    setQty(id, qtys[id] + dir * svc.step);
+  return (
+    <div className="rounded-2xl border-2 border-gray-200 bg-white p-5 flex flex-col gap-4 transition-all hover:border-primary/30 hover:shadow-sm">
+      {/* Card header */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-surface-container text-primary flex items-center justify-center shrink-0">
+          <Icon className="w-5 h-5" />
+        </div>
+        <div>
+          <h3 className="font-bold text-gray-900 text-sm leading-tight">{title}</h3>
+          <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
+        </div>
+        <span className="ml-auto shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold bg-surface-container-high text-on-surface-variant">
+          per {unit}
+        </span>
+      </div>
+
+      {/* Dropdown + qty + add button */}
+      <div className="flex flex-col gap-2">
+        {/* Dropdown */}
+        <div className="relative">
+          <select
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="w-full appearance-none rounded-xl border border-gray-200 bg-surface-container-low px-4 py-2.5 pr-9 text-sm font-medium text-gray-900 focus:outline-none focus:border-primary transition-colors cursor-pointer"
+          >
+            {items.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name} — {formatRp(toNumber(item.base_price))}/{unit}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        </div>
+
+        {/* Qty row + add button */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setInputQty((v) => Math.max(step, +(v - step).toFixed(2)))}
+              disabled={inputQty <= step}
+              className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
+            >
+              <Minus className="w-3.5 h-3.5 text-gray-700" />
+            </button>
+
+            <input
+              type="number"
+              value={inputQty}
+              min={step}
+              max={max}
+              step={step}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setInputQty(isNaN(v) || v < step ? step : Math.min(v, max));
+              }}
+              className="w-16 text-center border border-gray-300 rounded-lg py-1.5 text-sm font-medium focus:outline-none focus:border-primary transition-colors"
+            />
+
+            <button
+              onClick={() => setInputQty((v) => Math.min(+(v + step).toFixed(2), max))}
+              disabled={inputQty >= max}
+              className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5 text-gray-700" />
+            </button>
+
+            <span className="text-xs text-gray-400">{unit}</span>
+          </div>
+
+          <button
+            onClick={handleAdd}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Tambah
+          </button>
+        </div>
+      </div>
+
+      {/* Added items list */}
+      {addedItems.length > 0 && (
+        <div className="rounded-xl border border-primary/20 bg-primary/5 divide-y divide-primary/10">
+          {addedItems.map((item) => {
+            const qty = qtys[item.id] ?? 0;
+            const price = toNumber(item.base_price);
+            return (
+              <div key={item.id} className="flex items-center justify-between gap-3 px-3 py-2.5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{item.name}</p>
+                  <p className="text-xs text-gray-500">
+                    {qty} {unit} × {formatRp(price)}
+                  </p>
+                </div>
+                <span className="text-sm font-bold text-primary shrink-0">{formatRp(qty * price)}</span>
+                <button
+                  onClick={() => onSetQty(item.id, 0)}
+                  className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
+
+export const PriceCalculator = ({ id }: { id?: string }) => {
+  const [qtys, setQtys] = useState<Record<string, number>>({});
+
+  const { data: items = [], isLoading, isError } = useQuery<LaundryItem[]>({
+    queryKey: ["laundry-items"],
+    queryFn: laundryItemService.list,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const kgItems = useMemo(() => items.filter((i) => i.unit === "kg"), [items]);
+  const pcsItems = useMemo(() => items.filter((i) => i.unit === "pcs"), [items]);
+
+  function setQty(itemId: string, value: number) {
+    setQtys((prev) => ({ ...prev, [itemId]: value }));
   }
 
   const { breakdown, total } = useMemo(() => {
-    const breakdown = SERVICES.filter((s) => qtys[s.id] > 0).map((s) => ({
-      label: s.label,
-      qty: qtys[s.id],
-      unit: s.unit,
-      pricePerUnit: s.pricePerUnit,
-      subtotal: qtys[s.id] * s.pricePerUnit,
-    }));
+    const breakdown = items
+      .filter((s) => (qtys[s.id] ?? 0) > 0)
+      .map((s) => {
+        const qty = qtys[s.id] ?? 0;
+        const pricePerUnit = toNumber(s.base_price);
+        return { label: s.name, qty, unit: s.unit, pricePerUnit, subtotal: qty * pricePerUnit };
+      });
     return { breakdown, total: breakdown.reduce((sum, b) => sum + b.subtotal, 0) };
-  }, [qtys]);
+  }, [qtys, items]);
 
   const hasItems = breakdown.length > 0;
 
@@ -133,123 +215,55 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
             Hitung estimasi biaya laundry kamu.
           </h2>
           <p className="text-gray-500 mt-3">
-            Pilih layanan dan masukkan jumlah pakaian — estimasi langsung tampil di sini.
+            Pilih layanan dan masukkan jumlah — estimasi langsung tampil di sini.
           </p>
         </div>
 
         <div className="grid lg:grid-cols-5 gap-8 items-start">
-          {/* ── Service Cards ── */}
-          <div className="lg:col-span-3 grid sm:grid-cols-2 gap-4">
-            {SERVICES.map((svc) => {
-              const qty = qtys[svc.id];
-              const selected = qty > 0;
-              const Icon = svc.icon;
+          {/* ── Left: 2 unit-group cards ── */}
+          <div className="lg:col-span-3 flex flex-col gap-5">
+            {isLoading && (
+              <div className="flex items-center gap-3 text-gray-500 py-12 justify-center">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                <span className="text-sm">Memuat daftar layanan...</span>
+              </div>
+            )}
 
-              return (
-                <div
-                  key={svc.id}
-                  className={`rounded-2xl border-2 p-5 flex flex-col gap-4 transition-all ${
-                    selected
-                      ? "border-primary bg-primary/5 shadow-md"
-                      : "border-gray-200 bg-white hover:border-primary/40 hover:shadow-sm"
-                  }`}
-                >
-                  {/* Card header */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                          selected
-                            ? "bg-primary text-white"
-                            : "bg-surface-container text-primary"
-                        }`}
-                      >
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-gray-900 text-sm leading-tight">
-                          {svc.label}
-                        </h3>
-                        <p className="text-xs text-gray-500 mt-0.5 leading-snug">
-                          {svc.desc}
-                        </p>
-                      </div>
-                    </div>
-                    <span
-                      className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${svc.tagColor}`}
-                    >
-                      {svc.tag}
-                    </span>
-                  </div>
+            {isError && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
+                Gagal memuat daftar layanan. Coba refresh halaman.
+              </div>
+            )}
 
-                  {/* Price */}
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-extrabold text-primary">
-                      {formatRp(svc.pricePerUnit)}
-                    </span>
-                    <span className="text-xs text-gray-400">/{svc.unit}</span>
-                  </div>
-
-                  {/* Qty controls */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => step(svc.id, -1)}
-                        disabled={qty <= 0}
-                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <Minus className="w-3.5 h-3.5 text-gray-700" />
-                      </button>
-
-                      <input
-                        type="number"
-                        value={qty === 0 ? "" : qty}
-                        min={0}
-                        max={svc.max}
-                        step={svc.step}
-                        placeholder="0"
-                        onChange={(e) => {
-                          const v = parseFloat(e.target.value);
-                          setQty(svc.id, isNaN(v) || v < 0 ? 0 : v);
-                        }}
-                        className="w-20 text-center border border-gray-300 rounded-lg py-1.5 text-sm font-medium focus:outline-none focus:border-primary transition-colors"
-                      />
-
-                      <button
-                        onClick={() => step(svc.id, 1)}
-                        disabled={qty >= svc.max}
-                        className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-gray-700" />
-                      </button>
-
-                      <span className="text-xs text-gray-400">{svc.unit}</span>
-                    </div>
-
-                    {selected && (
-                      <span className="text-sm font-bold text-primary">
-                        {formatRp(qty * svc.pricePerUnit)}
-                      </span>
-                    )}
-                  </div>
-
-                  {selected && (
-                    <input
-                      type="range"
-                      min={0}
-                      max={svc.max}
-                      step={svc.step}
-                      value={qty}
-                      onChange={(e) => setQty(svc.id, parseFloat(e.target.value))}
-                      className="w-full accent-primary h-1.5 rounded-full"
-                    />
-                  )}
-                </div>
-              );
-            })}
+            {!isLoading && !isError && (
+              <>
+                {kgItems.length > 0 && (
+                  <UnitCard
+                    title="Layanan Berbasis Berat"
+                    subtitle="Masukkan estimasi berat pakaian kering."
+                    unit="kg"
+                    icon={Shirt}
+                    items={kgItems}
+                    qtys={qtys}
+                    onSetQty={setQty}
+                  />
+                )}
+                {pcsItems.length > 0 && (
+                  <UnitCard
+                    title="Layanan Per Item"
+                    subtitle="Hitung jumlah item untuk perawatan khusus."
+                    unit="pcs"
+                    icon={Package}
+                    items={pcsItems}
+                    qtys={qtys}
+                    onSetQty={setQty}
+                  />
+                )}
+              </>
+            )}
           </div>
 
-          {/* ── Summary Panel ── */}
+          {/* ── Right: Summary Panel ── */}
           <div className="lg:col-span-2">
             <div className="sticky top-20 rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
               <div className="bg-primary px-5 py-4">
@@ -273,10 +287,7 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
                   <>
                     <ul className="space-y-3 mb-4">
                       {breakdown.map((b) => (
-                        <li
-                          key={b.label}
-                          className="flex justify-between items-start gap-2 text-sm"
-                        >
+                        <li key={b.label} className="flex justify-between items-start gap-2 text-sm">
                           <div>
                             <span className="font-medium text-gray-900">{b.label}</span>
                             <span className="block text-xs text-gray-500">
@@ -318,9 +329,7 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
                   </Link>
                   {hasItems && (
                     <button
-                      onClick={() =>
-                        setQtys({ wash_fold: 0, wash_setrika: 0, dry_cleaning: 0, express: 0 })
-                      }
+                      onClick={() => setQtys({})}
                       className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
@@ -334,7 +343,7 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
             <div className="mt-4 rounded-xl bg-surface-container-low border border-surface-container-high px-4 py-4 text-xs text-gray-500 space-y-1.5">
               <p className="font-semibold text-gray-700 text-sm mb-2">Cara menghitung</p>
               <p>• <span className="font-medium">Kg-based</span> — timbang pakaian kering sebelum dicuci.</p>
-              <p>• <span className="font-medium">Per pcs</span> — hitung item untuk Dry Cleaning.</p>
+              <p>• <span className="font-medium">Per pcs</span> — hitung item individual.</p>
               <p>• Minimal order <span className="font-medium">1 kg</span> per layanan berbasis berat.</p>
             </div>
           </div>

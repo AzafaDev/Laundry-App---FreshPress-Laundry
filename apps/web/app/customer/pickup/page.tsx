@@ -7,7 +7,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   ArrowLeft,
+  CalendarClock,
   CheckCircle2,
+  Clock,
   Loader2,
   MapPin,
   Truck,
@@ -22,12 +24,36 @@ const getTodayDateKey = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 };
 
+const TIME_SLOTS = [
+  "08:00 AM - 10:00 AM",
+  "10:00 AM - 12:00 PM",
+  "01:00 PM - 03:00 PM",
+  "05:00 PM - 07:00 PM",
+];
+
+const PICKUP_DATES = Array.from({ length: 4 }, (_, offset) => {
+  const date = new Date();
+  date.setDate(date.getDate() + offset);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const key = `${year}-${month}-${day}`;
+  const label = offset === 0
+    ? "Hari ini"
+    : date.toLocaleDateString("id-ID", { weekday: "short" });
+  const dayNum = date.toLocaleDateString("id-ID", { day: "2-digit" });
+  const monthStr = date.toLocaleDateString("id-ID", { month: "short" });
+  return { key, label, day: dayNum, month: monthStr };
+});
+
 export default function CustomerOrderPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { accessToken, user, _hasHydrated } = useAuthStore();
 
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayDateKey());
+  const [selectedTime, setSelectedTime] = useState<string>(TIME_SLOTS[1]);
   const [createOrderError, setCreateOrderError] = useState<string | null>(null);
   const [createOrderSuccess, setCreateOrderSuccess] = useState<string | null>(null);
 
@@ -92,8 +118,8 @@ export default function CustomerOrderPage() {
 
     await createOrderMutation.mutateAsync({
       pickup_address_id: selectedAddress.id,
-      pickup_date: getTodayDateKey(),
-      pickup_time_slot: "10:00 AM - 12:00 PM",
+      pickup_date: selectedDate,
+      pickup_time_slot: selectedTime,
       service_type: "wash-and-fold",
       notes: "Order pickup dibuat dari halaman customer.",
     });
@@ -234,6 +260,64 @@ export default function CustomerOrderPage() {
           )}
         </section>
 
+        {/* Schedule picker */}
+        <section className="rounded-3xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+              <CalendarClock className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-on-surface">Jadwal Pickup</h2>
+              <p className="text-sm text-on-surface-variant">Pilih tanggal dan jam penjemputan.</p>
+            </div>
+          </div>
+
+          {/* Date selection */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-2">Tanggal</p>
+            <div className="grid grid-cols-4 gap-2">
+              {PICKUP_DATES.map((d) => (
+                <button
+                  key={d.key}
+                  type="button"
+                  onClick={() => setSelectedDate(d.key)}
+                  className={`py-3 px-2 rounded-2xl border-2 text-center transition-all ${
+                    selectedDate === d.key
+                      ? "border-primary bg-primary/5"
+                      : "border-outline-variant bg-surface hover:border-primary/40"
+                  }`}
+                >
+                  <span className="block text-xs font-bold uppercase text-on-surface-variant">{d.label}</span>
+                  <span className="block text-xl font-bold text-on-surface">{d.day}</span>
+                  <span className="block text-xs text-on-surface-variant">{d.month}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Time slot selection */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-2">Jam Pickup</p>
+            <div className="flex flex-wrap gap-2">
+              {TIME_SLOTS.map((slot) => (
+                <button
+                  key={slot}
+                  type="button"
+                  onClick={() => setSelectedTime(slot)}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
+                    selectedTime === slot
+                      ? "border-primary bg-primary text-on-primary shadow-sm"
+                      : "border-outline-variant bg-surface text-on-surface hover:border-primary/50"
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  {slot}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Feedback */}
         {createOrderError && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700 flex items-start gap-2">
@@ -248,7 +332,7 @@ export default function CustomerOrderPage() {
             <div className="space-y-3">
               <p>{createOrderSuccess}</p>
               <Link
-                href="/customer/progress"
+                href="/customer/orders"
                 className="inline-flex items-center rounded-xl bg-green-600 px-4 py-2 text-xs font-semibold text-white hover:bg-green-700 transition-colors"
               >
                 Lihat progress pesanan
@@ -286,7 +370,7 @@ export default function CustomerOrderPage() {
             </p>
           </div>
           <Link
-            href="/customer/progress"
+            href="/customer/orders"
             className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-primary-container transition-colors shadow-sm"
           >
             Lihat Progress Pesanan
