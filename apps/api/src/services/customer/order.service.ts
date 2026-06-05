@@ -133,7 +133,10 @@ export const createCustomerOrder = async (
     input.pickup_time_slot,
   );
 
-  if (pickupSchedule.getTime() < Date.now()) {
+  // Allow pickup on today — only reject if the pickup date itself is strictly in the past (yesterday or earlier)
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  if (pickupSchedule < todayStart) {
     throw new AppError("Jadwal pickup tidak boleh di masa lalu.", 400);
   }
 
