@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/home/Hero";
 import { ServiceList } from "@/components/home/ServiceList";
+import { PriceCalculator } from "@/components/home/PriceCalculator";
 import { ProcessSection } from "@/components/home/ProcessSection";
 import { BenefitsSection } from "@/components/home/BenefitsSection";
 import { TestimonialsSection } from "@/components/home/TestimonialsSection";
@@ -18,6 +19,7 @@ export default function Home() {
       <main className="pb-20 lg:pb-0">
         <Hero />
         <ServiceList id="services" />
+        <PriceCalculator id="calculator" />
         <ProcessSection />
         <BenefitsSection />
         <TestimonialsSection id="testimonials" />
