@@ -13,7 +13,7 @@ const usps = [
 
 export const Hero = () => {
   const user = useAuthStore((s) => s.user);
-  const ctaHref = user ? "/dashboard" : "/register";
+  const ctaHref = user ? "/customer/pickup" : "/register";
 
   return (
     <section className="bg-white overflow-hidden">
