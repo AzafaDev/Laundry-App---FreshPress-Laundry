@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { laundryItemService, type LaundryItem } from "@/services/laundryItem.service";
+import { useAuthStore } from "@/stores/authStore";
 
 function formatRp(amount: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -202,6 +203,9 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
   }, [qtys, items]);
 
   const hasItems = breakdown.length > 0;
+  
+  const user = useAuthStore((s) => s.user);
+  const ctaHref = user ? "/customer/pickup" : "/register";
 
   return (
     <section id={id} className="bg-white py-20 px-4 md:px-8">
@@ -321,7 +325,7 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
 
                 <div className="space-y-2">
                   <Link
-                    href="/customer/register"
+                    href={ctaHref}
                     className="flex items-center justify-center gap-2 w-full bg-primary text-white py-3 rounded-xl font-bold text-sm hover:bg-primary-container transition-colors shadow-sm"
                   >
                     Pesan Sekarang
