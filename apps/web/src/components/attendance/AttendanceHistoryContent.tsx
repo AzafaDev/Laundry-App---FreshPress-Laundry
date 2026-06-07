@@ -78,7 +78,7 @@ export function AttendanceHistoryContent({ role, dashboardHref, pageTitle }: Pro
         startDate: presetStart || undefined,
         endDate: presetEnd || undefined,
       }),
-    enabled: !!presetStart,
+    enabled: true,
   });
 
   const allRecords = useMemo(() => (statsData?.data ?? []).map(toLogRecord), [statsData]);

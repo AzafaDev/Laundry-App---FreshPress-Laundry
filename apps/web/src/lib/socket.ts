@@ -35,7 +35,7 @@ export function getSocket(): Socket {
     console.log("[socket] disconnected:", reason);
   });
 
-  socket.on("connection_error", (err) => {
+  socket.on("connect_error", (err) => {
     console.error("[socket] connection error:", err.message);
   });
 

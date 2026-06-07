@@ -132,7 +132,7 @@ function CustomerLoginContent() {
 
       setAuth(data.user, data.accessToken);
 
-      const redirectTo = searchParams.get("redirect") ?? "/dashboard";
+      const redirectTo = searchParams.get("redirect") ?? "/";
       router.push(redirectTo);
     } catch (err: unknown) {
       const msg =

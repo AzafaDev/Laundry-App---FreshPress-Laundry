@@ -38,6 +38,7 @@ export async function runAllSeeds() {
     await tx.processLog.deleteMany({});
     await tx.bypassRequest.deleteMany({});
     await tx.orderStatusHistory.deleteMany({});
+    await tx.orderItemBreakdown.deleteMany({});
     await tx.orderItem.deleteMany({});
     await tx.order.deleteMany({});
 
@@ -94,7 +95,7 @@ export async function runModuleSeed(moduleName: string) {
       await seedCustomers();
       break;
     case 'orders': {
-      const outletList = await prisma.outlet.findMany({ take: 1 });
+      const outletList = await prisma.outlet.findMany({ take: 1, orderBy: { created_at: 'asc' } });
       const empList = await prisma.employee.findMany();
       let customerList = await prisma.customer.findMany({
         where: { email: { in: [...seededCustomerEmails] } },
@@ -105,6 +106,19 @@ export async function runModuleSeed(moduleName: string) {
       }
 
       if (!outletList[0]) { console.log('Run full seed first'); break; }
+
+      await prisma.$transaction(async (tx) => {
+        console.log('🗑️ Cleaning up existing order & bypass data...');
+        await tx.bypassRequest.deleteMany({});
+        await tx.driverTask.deleteMany({});
+        await tx.processLog.deleteMany({});
+        await tx.orderStatusHistory.deleteMany({});
+        await tx.orderItemBreakdown.deleteMany({});
+        await tx.orderItem.deleteMany({});
+        await tx.order.deleteMany({});
+        console.log('✅ Order & bypass data cleaned.\n');
+      });
+
       await seedOrders(outletList[0], empList, customerList);
       break;
     }

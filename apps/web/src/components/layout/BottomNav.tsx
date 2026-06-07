@@ -22,7 +22,7 @@ const NavItem = ({
   <Link
     href={href}
     className={`flex flex-col items-center justify-center ${
-      active ? "text-primary font-bold scale-95" : "text-on-surface-variant"
+      active ? "text-primary font-bold" : "text-on-surface-variant"
     }`}
     aria-label={label}
   >

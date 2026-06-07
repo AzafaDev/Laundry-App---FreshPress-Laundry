@@ -5,7 +5,7 @@ import { getDistance } from "geolib";
 
 // Shift times are stored as UTC epoch dates where UTC HH = WIB wall-clock hour
 // (e.g. UTC 08:00 = "08:00 WIB"). All comparisons must use WIB (UTC+7).
-const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+export const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
 
 // Returns a Date whose UTC fields represent the WIB date/time of the input.
 function toWIBView(date: Date): Date {
@@ -250,6 +250,28 @@ export async function getUpcomingShiftForDateTime(
   }
 
   return null;
+}
+
+export function formatLocalDate(date: Date): string {
+  const wib = toWIBView(date);
+  const year = wib.getUTCFullYear();
+  const month = String(wib.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(wib.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function formatLocalTime(date: Date | null): string | null {
+  if (!date) return null;
+  const wib = toWIBView(date);
+  const h = String(wib.getUTCHours()).padStart(2, "0");
+  const m = String(wib.getUTCMinutes()).padStart(2, "0");
+  const s = String(wib.getUTCSeconds()).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
+export function formatShiftHHMM(date: Date): string {
+  const wib = toWIBView(date);
+  return `${String(wib.getUTCHours()).padStart(2, "0")}:${String(wib.getUTCMinutes()).padStart(2, "0")}`;
 }
 
 export async function hasActiveDriverTask(employeeId: string): Promise<boolean> {

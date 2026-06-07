@@ -25,7 +25,6 @@ export default function TaskDetailPage() {
   useEffect(() => {
     if (!_hasHydrated) return;
     if (!isLoadingActive && !activeTask) {
-      toast.error("Tidak ada task aktif. Silakan ambil task terlebih dahulu.");
       router.replace("/dashboard/driver");
     }
   }, [activeTask, isLoadingActive, router, _hasHydrated]);
