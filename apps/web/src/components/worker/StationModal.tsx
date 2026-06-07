@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, AlertTriangle, Package, CheckCircle2, Loader2, Scale, Shirt } from "lucide-react";
+import { X, AlertTriangle, Package, CheckCircle2, Loader2, Shirt } from "lucide-react";
 import type { StationOrder } from "@/services/workerStation.service";
 
 interface StationModalProps {
@@ -15,12 +15,11 @@ interface StationModalProps {
 export function StationModal({ orderId, orders, onClose, onConfirm, isProcessing }: StationModalProps) {
   const order = orders.find((o) => o.id === orderId);
 
-  const kiloanItems = order?.order_items.filter((i) => i.laundry_item.unit === "kg") ?? [];
-  const satuanItems = order?.order_items.filter((i) => i.laundry_item.unit !== "kg") ?? [];
+  const breakdownItems = order?.order_item_breakdowns ?? [];
 
   const [received, setReceived] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
-    for (const item of satuanItems) {
+    for (const item of breakdownItems) {
       initial[item.id] = item.quantity;
     }
     return initial;
@@ -28,7 +27,7 @@ export function StationModal({ orderId, orders, onClose, onConfirm, isProcessing
 
   if (!order) return null;
 
-  const mismatchIds = satuanItems
+  const mismatchIds = breakdownItems
     .filter((item) => (received[item.id] ?? item.quantity) !== item.quantity)
     .map((item) => item.id);
 
@@ -62,54 +61,23 @@ export function StationModal({ orderId, orders, onClose, onConfirm, isProcessing
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
 
-          {/* Kiloan Section */}
-          {kiloanItems.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-2.5">
-                <Scale className="w-3.5 h-3.5 text-on-surface-variant" />
-                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
-                  Kiloan (read-only)
-                </p>
-              </div>
-              <div className="space-y-2">
-                {kiloanItems.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-outline-variant bg-surface-container-low opacity-60"
-                  >
-                    <div className="p-1.5 rounded-lg bg-surface-container">
-                      <Scale className="w-4 h-4 text-on-surface-variant" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-on-surface truncate">{item.laundry_item.name}</p>
-                      <p className="text-xs text-on-surface-variant">Berat pesanan</p>
-                    </div>
-                    <span className="text-sm font-bold text-on-surface-variant shrink-0">
-                      {item.quantity} kg
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Satuan Section */}
+          {/* Breakdown Section */}
           <div>
             <div className="flex items-center gap-2 mb-2.5">
               <Shirt className="w-3.5 h-3.5 text-on-surface-variant" />
               <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
-                Satuan (masukkan jumlah aktual)
+                Item (masukkan jumlah aktual)
               </p>
             </div>
 
-            {satuanItems.length === 0 ? (
+            {breakdownItems.length === 0 ? (
               <div className="flex items-center gap-2 p-3 rounded-xl bg-surface-container-low border border-outline-variant text-sm text-on-surface-variant">
                 <Package className="w-4 h-4 shrink-0" />
-                Semua item kiloan, tidak ada verifikasi satuan.
+                Belum ada breakdown item dari outlet admin.
               </div>
             ) : (
               <div className="space-y-2">
-                {satuanItems.map((item) => {
+                {breakdownItems.map((item) => {
                   const expected = item.quantity;
                   const receivedValue = received[item.id] ?? expected;
                   const isMismatch = receivedValue !== expected;
@@ -127,10 +95,10 @@ export function StationModal({ orderId, orders, onClose, onConfirm, isProcessing
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-on-surface truncate">
-                          {item.laundry_item.name}
+                          {item.clothing_type.name}
                         </p>
                         <p className="text-xs text-on-surface-variant">
-                          Ekspektasi: <span className="font-medium">{expected} {item.laundry_item.unit}</span>
+                          Ekspektasi: <span className="font-medium">{expected} pcs</span>
                         </p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">

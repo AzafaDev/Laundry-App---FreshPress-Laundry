@@ -1,5 +1,8 @@
 // apps/web/src/components/home/ServiceList.tsx
+"use client";
+
 import Link from "next/link";
+import { useAuthStore } from "@/stores/authStore";
 
 const services = [
   {
@@ -40,7 +43,11 @@ const services = [
   },
 ];
 
-export const ServiceList = ({ id }: { id?: string }) => (
+export const ServiceList = ({ id }: { id?: string }) => {
+  const user = useAuthStore((s) => s.user);
+  const ctaHref = user ? "/customer/pickup" : "/register";
+
+  return (
   <section id={id} className="bg-surface-container-low py-20 px-4 md:px-8">
     <div className="max-w-7xl mx-auto">
       {/* Header */}
@@ -82,7 +89,7 @@ export const ServiceList = ({ id }: { id?: string }) => (
 
       <div className="text-center mt-10">
         <Link
-          href="/register"
+          href={ctaHref}
           className="inline-block bg-primary text-white px-8 py-4 rounded-xl font-bold text-sm hover:bg-primary-container hover:text-on-primary-container transition-all shadow-md"
         >
           Pesan Sekarang
@@ -90,4 +97,5 @@ export const ServiceList = ({ id }: { id?: string }) => (
       </div>
     </div>
   </section>
-);
+  );
+};

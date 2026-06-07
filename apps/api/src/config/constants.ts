@@ -17,4 +17,4 @@ export const CHECKIN_RADIUS_METERS =
 
 export const MAX_BYPASS_PHOTO_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
 export const MAX_BYPASS_PHOTO_COUNT = 5;
-export const ALLOWED_BYPASS_PHOTO_MIME_TYPES = ["image/jpeg", "image/png"];
+export const ALLOWED_BYPASS_PHOTO_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];

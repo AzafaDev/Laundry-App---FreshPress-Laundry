@@ -35,6 +35,8 @@ export function useDriverTasks() {
     mutationFn: (taskId: string) => driverTaskService.claimTask(taskId),
     onSuccess: (data) => {
       queryClient.setQueryData(["driver", "tasks", "active"], data);
+      const label = data.task?.task_type === "delivery" ? "delivery" : "pickup";
+      toast.success(`Task ${label} berhasil diambil!`);
     },
     onError: (error: any) => {
       const message = error?.response?.data?.message || "Gagal mengambil task. Coba lagi.";

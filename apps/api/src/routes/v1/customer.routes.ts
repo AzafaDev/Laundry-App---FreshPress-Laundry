@@ -3,6 +3,7 @@ import * as AuthCtrl from "../../controllers/customer/auth.controller.js";
 import * as ProfileCtrl from "../../controllers/customer/profile.controller.js";
 import * as AddressCtrl from "../../controllers/customer/address.controller.js";
 import * as OrderCtrl from "../../controllers/customer/order.controller.js";
+import * as LaundryItemCtrl from "../../controllers/customer/laundryItem.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import {
@@ -52,6 +53,9 @@ router.get("/addresses/:id/delivery-estimate", authenticate, AddressCtrl.estimat
 
 // Geocode proxy (protected — keeps OPENCAGE_API_KEY server-side)
 router.get("/geocode", authenticate, AddressCtrl.geocodeSearch);
+
+// Laundry Items (public)
+router.get("/laundry-items", LaundryItemCtrl.listLaundryItems);
 
 // Order Routes (protected)
 router.post("/orders", authenticate, validate(createOrderSchema), OrderCtrl.createOrder);

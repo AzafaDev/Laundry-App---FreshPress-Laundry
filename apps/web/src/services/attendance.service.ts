@@ -1,7 +1,6 @@
 // apps/web/src/services/attendance.service.ts
 
 import { axiosInstance } from "@/lib/axios";
-import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import {
   Attendance,
   AttendanceLogsResponse,
@@ -24,12 +23,6 @@ export interface CurrentShift {
   canCheckOut: boolean;
   serverNow?: string;
 }
-
-// Helper untuk mendapatkan token employee (walaupun interceptor sudah handle)
-const getEmployeeToken = () => {
-  const { accessToken } = useEmployeeAuthStore.getState();
-  return accessToken;
-};
 
 export const attendanceService = {
   checkIn: async (coordinates?: { lat: number; lng: number }): Promise<Attendance> => {
@@ -76,17 +69,10 @@ export const attendanceService = {
   },
 
   // Perubahan utama: status filter & employeeId
-  getReport: async (
-    params: AttendanceReportParams,
-  ): Promise<AttendanceLogsResponse> => {
-    const cleanParams: Record<string, any> = {};
-    if (params.outletId) cleanParams.outletId = params.outletId;
-    if (params.employeeId) cleanParams.employeeId = params.employeeId;
-    if (params.status) cleanParams.status = params.status;
-    if (params.startDate) cleanParams.startDate = params.startDate;
-    if (params.endDate) cleanParams.endDate = params.endDate;
-    if (params.page) cleanParams.page = params.page;
-    if (params.limit) cleanParams.limit = params.limit;
+  getReport: async (params: AttendanceReportParams): Promise<AttendanceLogsResponse> => {
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== "" && v !== null),
+    );
 
     const { data } = await axiosInstance.get<{
       success: true;

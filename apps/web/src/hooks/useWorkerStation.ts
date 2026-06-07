@@ -2,17 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { workerStationService, type StationType, type StationOrder } from "@/services/workerStation.service";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
+const ROLE_TO_STATION: Record<string, StationType> = {
+  washing_worker: "washing",
+  ironing_worker: "ironing",
+  packing_worker: "packing",
+};
+
 function mapRoleToStation(role: string | undefined): StationType | null {
-  switch (role) {
-    case "washing_worker":
-      return "washing";
-    case "ironing_worker":
-      return "ironing";
-    case "packing_worker":
-      return "packing";
-    default:
-      return null;
-  }
+  return ROLE_TO_STATION[role ?? ""] ?? null;
 }
 
 export function useWorkerStation() {
@@ -47,6 +44,6 @@ export function useWorkerStation() {
     isCompleted: !!stationOrdersQuery.data,
     completeStation: completeStationMutation.mutateAsync,
     isCompleting: completeStationMutation.isPending,
-    refetch: () => stationOrdersQuery.refetch(),
+    refetch: stationOrdersQuery.refetch,
   };
 }

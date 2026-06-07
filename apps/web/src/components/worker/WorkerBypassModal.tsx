@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X, Flag, Upload, Trash2, Loader2, AlertTriangle, ImagePlus, ArrowDown, ArrowUp } from "lucide-react";
-import { axiosInstance } from "@/lib/axios";
+import { workerStationService } from "@/services/workerStation.service";
 import toast from "react-hot-toast";
 import type { Discrepancy } from "@/services/workerStation.service";
 
@@ -11,7 +11,7 @@ interface WorkerBypassModalProps {
   orderId: string;
   invoiceNumber: string;
   discrepancies: Discrepancy[];
-  actualItems: Array<{ laundry_item_id: string; actual_quantity: number }>;
+  actualItems: Array<{ clothing_type_id: string; actual_quantity: number }>;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -34,7 +34,6 @@ export function WorkerBypassModal({
   const [photos, setPhotos] = useState<PhotoPreview[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [descError, setDescError] = useState("");
-  const [photoError, setPhotoError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const revokeAll = useCallback((list: PhotoPreview[]) => {
@@ -45,7 +44,6 @@ export function WorkerBypassModal({
     if (!open) {
       setDescription("");
       setDescError("");
-      setPhotoError("");
       setIsSubmitting(false);
       setPhotos((prev) => { revokeAll(prev); return []; });
     }
@@ -67,7 +65,6 @@ export function WorkerBypassModal({
       url: URL.createObjectURL(file),
     }));
     setPhotos((prev) => [...prev, ...newPreviews]);
-    setPhotoError("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -88,12 +85,6 @@ export function WorkerBypassModal({
       setDescError("");
     }
 
-    if (photos.length === 0) {
-      setPhotoError("Minimal 1 foto bukti wajib dilampirkan.");
-      valid = false;
-    } else {
-      setPhotoError("");
-    }
 
     if (!valid) return;
 
@@ -105,7 +96,7 @@ export function WorkerBypassModal({
       formData.append("actual_items", JSON.stringify(actualItems));
       photos.forEach((p) => formData.append("photo_evidence", p.file));
 
-      await axiosInstance.post("/v1/worker/bypass", formData);
+      await workerStationService.createBypassRequest(formData);
       toast.success("Bypass request berhasil dikirim");
       onSuccess();
       onClose();
@@ -118,7 +109,7 @@ export function WorkerBypassModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className="fixed inset-0 bg-black/60 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-surface-container-lowest w-full sm:max-w-[38rem] rounded-t-2xl sm:rounded-2xl shadow-2xl border border-outline-variant flex flex-col max-h-[92dvh]">
 
         {/* Header */}
@@ -143,7 +134,7 @@ export function WorkerBypassModal({
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 px-5 py-5 space-y-5">
+        <div className="overflow-y-auto flex-1 px-5 py-5 space-y-5 will-change-scroll">
 
           {/* Diff Table */}
           <div>
@@ -165,7 +156,7 @@ export function WorkerBypassModal({
                     const diff = d.actual - d.expected;
                     const isShort = diff < 0;
                     return (
-                      <tr key={d.laundry_item_id} className="border-b border-outline-variant last:border-0 bg-amber-50/60">
+                      <tr key={d.clothing_type_id} className="border-b border-outline-variant last:border-0 bg-amber-50/60">
                         <td className="px-3 py-2.5 font-medium text-on-surface">{d.name}</td>
                         <td className="px-3 py-2.5 text-center text-on-surface-variant">{d.expected}</td>
                         <td className="px-3 py-2.5 text-center font-bold text-error">{d.actual}</td>
@@ -212,21 +203,17 @@ export function WorkerBypassModal({
           <div>
             <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2 block">
               Foto Bukti <span className="text-error">*</span>
-              <span className="normal-case font-normal ml-1 text-on-surface-variant">(min. 1 foto)</span>
+              <span className="normal-case font-normal ml-1 text-on-surface-variant">(opsional)</span>
             </label>
 
             {/* Drop zone / trigger */}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className={`w-full flex flex-col items-center justify-center gap-2 py-5 rounded-xl border-2 border-dashed transition-colors ${
-                photoError
-                  ? "border-error/40 bg-error/5"
-                  : "border-outline-variant bg-surface-container-low hover:bg-surface-container hover:border-primary/40"
-              }`}
+              className="w-full flex flex-col items-center justify-center gap-2 py-5 rounded-xl border-2 border-dashed transition-colors border-outline-variant bg-surface-container-low hover:bg-surface-container hover:border-primary/40"
             >
               <div className="p-2 rounded-lg bg-surface-container">
-                <ImagePlus className={`w-5 h-5 ${photoError ? "text-error" : "text-on-surface-variant"}`} />
+                <ImagePlus className="w-5 h-5 text-on-surface-variant" />
               </div>
               <p className="text-sm text-on-surface-variant">
                 <span className="font-semibold text-primary">Pilih foto</span> atau tap di sini
@@ -237,17 +224,12 @@ export function WorkerBypassModal({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp"
               multiple
               className="hidden"
               onChange={handleFileChange}
             />
 
-            {photoError && (
-              <p className="text-xs text-error mt-1.5 flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3" /> {photoError}
-              </p>
-            )}
 
             {/* Preview grid */}
             {photos.length > 0 && (
@@ -259,6 +241,8 @@ export function WorkerBypassModal({
                       src={photo.url}
                       alt={`Bukti ${idx + 1}`}
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
                     />
                     <button
                       type="button"

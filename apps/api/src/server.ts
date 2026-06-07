@@ -11,6 +11,7 @@ import { errorHandler } from "./middlewares/error.middleware.js";
 import { env } from "./config/env.js";
 import { initSocketServer } from "./lib/socket.js";
 import "./cron/markAbsentAttendance.js";
+import "./cron/releaseDriverTasks.js";
 
 const app: Application = express();
 

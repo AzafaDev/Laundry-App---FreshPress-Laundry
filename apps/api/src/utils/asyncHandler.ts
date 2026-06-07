@@ -1,6 +1,5 @@
-// apps/api/src/utils/asyncHandler.ts
-// Wraps async route handlers so thrown errors propagate to the error middleware.
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
+import { AppError } from '../middlewares/error.middleware.js';
 
 type AsyncRequestHandler = (
   req: Request,
@@ -13,3 +12,9 @@ export const asyncHandler =
   (req, res, next) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
+
+export function requireUserId(req: Request): string {
+  const userId = req.user?.userId;
+  if (!userId) throw new AppError("Unauthorized", 401);
+  return userId;
+}

@@ -22,7 +22,7 @@ const steps = [
 ];
 
 export const ProcessSection = () => (
-  <section id="how-it-works" className="bg-white py-20 px-4 md:px-8">
+  <section id="how-it-works" className="bg-surface-container-low py-20 px-4 md:px-8">
     <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-14">
