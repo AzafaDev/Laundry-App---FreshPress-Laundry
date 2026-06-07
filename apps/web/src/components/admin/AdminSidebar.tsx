@@ -14,6 +14,8 @@ import {
   Shirt,
   ShoppingBag,
   PlayCircle,
+  ShieldAlert,
+  CalendarCheck,
   type LucideIcon,
 } from "lucide-react";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
@@ -69,6 +71,12 @@ const NAV: NavItem[] = [
     roles: ["outlet_admin"],
   },
   {
+    href: "/dashboard/admin/bypass-requests",
+    label: "Bypass Requests",
+    icon: ShieldAlert,
+    roles: ["outlet_admin"],
+  },
+  {
     href: "/dashboard/admin/reports",
     label: "Reports",
     icon: BarChart3,
@@ -77,7 +85,7 @@ const NAV: NavItem[] = [
   {
     href: "/dashboard/outlet-admin/attendance-report",
     label: "Attendance Report",
-    icon: BarChart3,
+    icon: CalendarCheck,
     roles: ["outlet_admin"],
   },
 ];

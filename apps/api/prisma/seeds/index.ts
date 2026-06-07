@@ -6,6 +6,7 @@ import { seedCustomers, seededCustomerEmails } from './customers.seed.js';
 import { seedEmployeeShifts } from './employee-shifts.seed.js';
 import { seedAttendances } from './attendances.seed.js';
 import { seedOrders } from './orders.seed.js';
+import { seedLaundryItems } from './laundryItems.seed.js';
 
 export async function runAllSeeds() {
   console.log('🌱 Starting database seeding...\n');
@@ -70,6 +71,8 @@ export async function runAllSeeds() {
 
   await seedAttendances(employees, shifts);
 
+  await seedLaundryItems();
+
   await seedOrders(mainOutlet, employees, customers);
 
   console.log('\n✅ All seeds completed successfully');
@@ -118,6 +121,9 @@ export async function runModuleSeed(moduleName: string) {
       });
       break;
     }
+    case 'laundry-items':
+      await seedLaundryItems();
+      break;
     default:
       console.log(`Module ${moduleName} not recognized`);
   }

@@ -10,6 +10,8 @@ import * as OutletCtrl from "../../controllers/admin/outlet.controller.js";
 import * as ShiftCtrl from "../../controllers/admin/shift.controller.js";
 import * as LaundryItemCtrl from "../../controllers/admin/laundryItem.controller.js";
 import * as OrderCtrl from "../../controllers/admin/order.controller.js";
+import * as BypassCtrl from "../../controllers/admin/bypass.controller.js";
+import { getSalesReport, getEmployeePerformanceReport } from "../../controllers/admin/report.controller.js";
 import {
   createUserSchema,
   updateUserSchema,
@@ -210,6 +212,35 @@ router.post(
   "/admin/orders/:id/process",
   requireRole("outlet_admin"),
   OrderCtrl.processOrder,
+);
+
+// ── Bypass Requests ───────────────────────────────────────────────────────────
+router.get(
+  "/admin/bypass-requests",
+  requireRole("super_admin", "outlet_admin"),
+  BypassCtrl.listBypassRequests,
+);
+router.get(
+  "/admin/bypass-requests/:id",
+  requireRole("super_admin", "outlet_admin"),
+  BypassCtrl.getBypassRequest,
+);
+router.patch(
+  "/admin/bypass-requests/:id/review",
+  requireRole("outlet_admin"),
+  BypassCtrl.reviewBypassRequest,
+);
+
+// ── Sales & Employee Performance Reports ──────────────────────────────────────
+router.get(
+  "/reports/sales",
+  requireRole("super_admin", "outlet_admin"),
+  getSalesReport,
+);
+router.get(
+  "/reports/employees",
+  requireRole("super_admin", "outlet_admin"),
+  getEmployeePerformanceReport,
 );
 
 export default router;

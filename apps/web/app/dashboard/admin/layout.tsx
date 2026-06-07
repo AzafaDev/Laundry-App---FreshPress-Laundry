@@ -6,6 +6,8 @@ import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminTopBar } from "@/components/admin/AdminTopBar";
 
+const ALLOWED_ROLES = ["super_admin", "outlet_admin"] as const;
+
 export default function AdminDashboardLayout({
   children,
 }: {
@@ -20,8 +22,8 @@ export default function AdminDashboardLayout({
       router.replace("/employee/login");
       return;
     }
-    if (user.role !== "super_admin") {
-      router.replace("/employee/login");
+    if (!ALLOWED_ROLES.includes(user.role as (typeof ALLOWED_ROLES)[number])) {
+      router.replace("/access-denied");
     }
   }, [user, accessToken, _hasHydrated, router]);
 
