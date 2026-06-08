@@ -12,6 +12,7 @@ import { env } from "./config/env.js";
 import { initSocketServer } from "./lib/socket.js";
 import "./cron/markAbsentAttendance.js";
 import "./cron/releaseDriverTasks.js";
+import "./cron/cleanupExpiredTokens.js";
 
 const app: Application = express();
 

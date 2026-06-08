@@ -36,6 +36,7 @@ export default function DriverDashboardPage() {
     hasActiveTask,
     availablePickups,
     availableDeliveries,
+    nextPickupReleaseAt,
     isLoadingActive,
     isLoadingPickups,
     isLoadingDeliveries,
@@ -179,7 +180,7 @@ export default function DriverDashboardPage() {
                     <TaskSkeleton />
                   </div>
                 ) : currentTasks.length === 0 ? (
-                  <EmptyState type={activeTab} />
+                  <EmptyState type={activeTab} nextReleaseAt={activeTab === "pickup" ? nextPickupReleaseAt : null} />
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {currentTasks.map((task) => (

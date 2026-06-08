@@ -23,16 +23,16 @@ function getDashboardUrl(
 
 export default function AccessDeniedPage() {
   const { accessToken: customerToken } = useAuthStore();
-  const { accessToken: employeeToken, user: employeeUser } = useEmployeeAuthStore();
+  const { user: employeeUser } = useEmployeeAuthStore();
 
   const { url: dashboardUrl, isEmployee } = getDashboardUrl(
     employeeUser?.role,
-    !!employeeToken,
+    !!employeeUser,
     !!customerToken,
   );
 
   const loginUrl = isEmployee ? "/employee/login" : "/login";
-  const isAuthenticated = !!employeeToken || !!customerToken;
+  const isAuthenticated = !!employeeUser || !!customerToken;
 
   return (
     <div className="min-h-screen bg-background text-on-surface antialiased flex flex-col">

@@ -47,7 +47,7 @@ function FeedbackMsg({ msg }: { msg: { type: "success" | "error"; text: string }
 }
 
 export default function EmployeeProfilePage() {
-  const { user, updateUser, setAuth, _hasHydrated } = useEmployeeAuthStore();
+  const { user, updateUser, _hasHydrated } = useEmployeeAuthStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [fullName, setFullName] = useState("");
@@ -117,9 +117,6 @@ export default function EmployeeProfilePage() {
     setPasswordMsg(null);
     try {
       const result = await employeeAuthService.changePassword(oldPassword, newPassword);
-      if (result.accessToken && user) {
-        setAuth(user, result.accessToken);
-      }
       setPasswordMsg({ type: "success", text: result.message });
       setOldPassword(""); setNewPassword(""); setConfirmPassword("");
     } catch (err: any) {

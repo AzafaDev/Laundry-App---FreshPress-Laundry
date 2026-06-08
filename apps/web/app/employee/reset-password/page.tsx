@@ -15,7 +15,6 @@ function ResetPasswordForm() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [throttled, setThrottled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tokenInvalid, setTokenInvalid] = useState(false);
 
@@ -29,9 +28,7 @@ function ResetPasswordForm() {
       setError("Konfirmasi password tidak cocok.");
       return;
     }
-    if (isLoading || throttled) return;
-    setThrottled(true);
-    setTimeout(() => setThrottled(false), 1000);
+    if (isLoading) return;
     setIsLoading(true);
     setError(null);
     try {
@@ -168,7 +165,7 @@ function ResetPasswordForm() {
 
             <button
               type="submit"
-              disabled={isLoading || throttled}
+              disabled={isLoading}
               className="w-full bg-primary text-white font-bold py-3 rounded-xl hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-sm"
             >
               {isLoading ? (
