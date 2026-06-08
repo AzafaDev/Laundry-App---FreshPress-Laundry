@@ -17,8 +17,8 @@ export function useAttendance() {
   const { on } = useSocket();
   const { latitude, longitude, permissionDenied } = useGeolocation();
 
-  const { accessToken, user } = useEmployeeAuthStore();
-  const isEmployee = !!accessToken && !!user;
+  const { user } = useEmployeeAuthStore();
+  const isEmployee = !!user;
   const employeeId = user?.id;
 
   useEffect(() => {
@@ -180,8 +180,8 @@ export function useAttendance() {
 
 // --- Hook untuk admin report (status filter, employeeId, outletId) ---
 export function useAttendanceReport(params: AttendanceReportParams) {
-  const { accessToken } = useEmployeeAuthStore();
-  const isAdmin = !!accessToken; // super_admin atau outlet_admin
+  const { user: adminUser } = useEmployeeAuthStore();
+  const isAdmin = !!adminUser;
 
   return useQuery({
     queryKey: ["attendance", "report", params],

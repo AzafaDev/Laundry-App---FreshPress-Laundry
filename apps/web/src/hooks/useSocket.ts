@@ -7,17 +7,16 @@ type EventHandler = (...args: any[]) => void;
 
 export function useSocket() {
   const customerToken = useAuthStore((s) => s.accessToken);
-  const employeeToken = useEmployeeAuthStore((s) => s.accessToken);
-  // Pilih token prioritas: employee dulu, baru customer
-  const token = employeeToken ?? customerToken;
+  const employeeUser = useEmployeeAuthStore((s) => s.user);
+  const isLoggedIn = !!employeeUser || !!customerToken;
 
   useEffect(() => {
-    if (!token) {
+    if (!isLoggedIn) {
       disconnectSocket();
       return;
     }
     reconnectSocket();
-  }, [token]);
+  }, [isLoggedIn]);
 
   const on = useCallback((event: string, handler: EventHandler) => {
     const socket = getSocket();

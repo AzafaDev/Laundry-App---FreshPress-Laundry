@@ -5,6 +5,10 @@ const WASH_AND_FOLD_RATE_PER_KG = 7_000;
 const DRY_CLEANING_START_PRICE = 25_000;
 const SERVICE_FEE = 2_000;
 
+const FREE_RADIUS_KM = Number(process.env.FREE_RADIUS_KM ?? 5);
+const SERVICE_RADIUS_KM = Number(process.env.SERVICE_RADIUS_KM ?? 10);
+const FLAT_RATE_ONGKIR = Number(process.env.FLAT_RATE_ONGKIR ?? 10_000);
+
 function haversineKm(
   lat1: number,
   lon1: number,
@@ -59,6 +63,11 @@ function parsePickupSchedule(pickupDate: string, pickupTimeSlot: string): Date {
   return schedule;
 }
 
+function calculateDeliveryFee(distanceKm: number): number {
+  if (distanceKm <= FREE_RADIUS_KM) return 0;
+  return FLAT_RATE_ONGKIR;
+}
+
 function estimateTotalPrice(serviceType: "wash-and-fold" | "dry-cleaning", estimatedWeightKg: number): number {
   if (serviceType === "dry-cleaning") {
     return DRY_CLEANING_START_PRICE + SERVICE_FEE;
@@ -79,6 +88,14 @@ export const createCustomerOrder = async (
   customerId: string,
   input: CreateCustomerOrderInput,
 ) => {
+  const customer = await prisma.customer.findUnique({
+    where: { id: customerId },
+    select: { is_verified: true },
+  });
+  if (!customer?.is_verified) {
+    throw new AppError("Akun belum terverifikasi. Silakan verifikasi email terlebih dahulu.", 403);
+  }
+
   const pickupAddress = await prisma.customerAddress.findFirst({
     where: { id: input.pickup_address_id, customer_id: customerId },
     select: {
@@ -94,12 +111,7 @@ export const createCustomerOrder = async (
 
   const outlets = await prisma.outlet.findMany({
     where: { is_active: true, deleted_at: null },
-    select: {
-      id: true,
-      latitude: true,
-      longitude: true,
-      service_radius_km: true,
-    },
+    select: { id: true, latitude: true, longitude: true, opening_time: true, closing_time: true },
   });
 
   if (outlets.length === 0) {
@@ -107,21 +119,18 @@ export const createCustomerOrder = async (
   }
 
   const nearestOutlet = outlets
-    .map((outlet) => {
-      const distance = haversineKm(
+    .map((outlet) => ({
+      id: outlet.id,
+      distance: haversineKm(
         Number(pickupAddress.latitude),
         Number(pickupAddress.longitude),
         Number(outlet.latitude),
         Number(outlet.longitude),
-      );
-
-      return {
-        id: outlet.id,
-        distance,
-        withinServiceArea: distance <= Number(outlet.service_radius_km),
-      };
-    })
-    .filter((outlet) => outlet.withinServiceArea)
+      ),
+      opening_time: outlet.opening_time,
+      closing_time: outlet.closing_time,
+    }))
+    .filter((outlet) => outlet.distance <= SERVICE_RADIUS_KM)
     .sort((a, b) => a.distance - b.distance)[0];
 
   if (!nearestOutlet) {
@@ -133,11 +142,25 @@ export const createCustomerOrder = async (
     input.pickup_time_slot,
   );
 
-  // Allow pickup on today — only reject if the pickup date itself is strictly in the past (yesterday or earlier)
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   if (pickupSchedule < todayStart) {
     throw new AppError("Jadwal pickup tidak boleh di masa lalu.", 400);
+  }
+
+  if (nearestOutlet.opening_time && nearestOutlet.closing_time) {
+    const pickupHour = pickupSchedule.getHours();
+    const pickupMinute = pickupSchedule.getMinutes();
+    const openHour = new Date(nearestOutlet.opening_time).getUTCHours();
+    const openMinute = new Date(nearestOutlet.opening_time).getUTCMinutes();
+    const closeHour = new Date(nearestOutlet.closing_time).getUTCHours();
+    const closeMinute = new Date(nearestOutlet.closing_time).getUTCMinutes();
+    const pickupMins = pickupHour * 60 + pickupMinute;
+    const openMins = openHour * 60 + openMinute;
+    const closeMins = closeHour * 60 + closeMinute;
+    if (pickupMins < openMins || pickupMins >= closeMins) {
+      throw new AppError("Jadwal pickup di luar jam operasional outlet.", 400);
+    }
   }
 
   const estimatedWeightKg =
@@ -159,6 +182,7 @@ export const createCustomerOrder = async (
         status: "waiting_pickup_driver",
         pickup_schedule: pickupSchedule,
         total_weight_kg: estimatedWeightKg,
+        delivery_fee: calculateDeliveryFee(nearestOutlet.distance),
         total_price: totalPrice,
         notes: input.notes
           ? `[service:${input.service_type}] ${input.notes}`

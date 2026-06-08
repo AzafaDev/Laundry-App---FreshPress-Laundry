@@ -13,9 +13,9 @@ function mapRoleToStation(role: string | undefined): StationType | null {
 }
 
 export function useWorkerStation() {
-  const { user, accessToken } = useEmployeeAuthStore();
+  const { user } = useEmployeeAuthStore();
   const queryClient = useQueryClient();
-  const isWorker = !!accessToken && user?.role?.endsWith("_worker") === true;
+  const isWorker = !!user && user.role?.endsWith("_worker") === true;
   const station = mapRoleToStation(user?.role);
 
   const stationOrdersQuery = useQuery<StationOrder[]>({

@@ -34,10 +34,10 @@ const NavItem = ({
 export const BottomNav = () => {
   const pathname = usePathname();
   const { accessToken: customerToken } = useAuthStore();
-  const { accessToken: employeeToken, user: employeeUser } = useEmployeeAuthStore();
+  const { user: employeeUser } = useEmployeeAuthStore();
 
   let activeRole: Role = null;
-  if (employeeToken && employeeUser) {
+  if (employeeUser) {
     if (employeeUser.role === "driver") activeRole = "driver";
     else if (
       ["washing_worker", "ironing_worker", "packing_worker"].includes(employeeUser.role)

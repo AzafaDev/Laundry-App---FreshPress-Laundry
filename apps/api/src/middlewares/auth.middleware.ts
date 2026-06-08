@@ -9,14 +9,23 @@ export const authenticate = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith("Bearer ")) {
+    const userType = req.headers["x-user-type"] as string | undefined;
+    let token: string | undefined;
+
+    if (userType === "employee") {
+      token = req.cookies?.accessToken;
+    } else {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith("Bearer ")) {
+        token = authHeader.slice(7);
+      }
+    }
+
+    if (!token) {
       throw new AppError("Autentikasi diperlukan.", 401);
     }
-    const token = authHeader.slice(7);
     const payload = verifyAccessToken(token);
 
-    const userType = req.headers["x-user-type"] as string | undefined;
     let userExists = false;
 
     if (userType === "employee" || payload.role !== "customer") {

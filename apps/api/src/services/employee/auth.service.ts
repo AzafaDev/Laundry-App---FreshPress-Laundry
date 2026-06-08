@@ -76,6 +76,15 @@ export const loginEmployee = async (
 
   await storeRefreshToken(employee.id, refreshToken, expiresAt);
 
+  const accessExpiresMs = parseDuration(process.env.JWT_EXPIRES_IN || "15m");
+
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: accessExpiresMs,
+  });
+
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -85,7 +94,7 @@ export const loginEmployee = async (
 
   const { password_hash: _, ...employeeWithoutPassword } = employee;
 
-  return { accessToken, employee: employeeWithoutPassword };
+  return { employee: employeeWithoutPassword };
 };
 
 export const refreshEmployeeToken = async (req: any, res: Response) => {
@@ -139,6 +148,15 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
 
   await storeRefreshToken(payload.userId, newRefreshToken, expiresAt);
 
+  const accessExpiresMs = parseDuration(process.env.JWT_EXPIRES_IN || "15m");
+
+  res.cookie("accessToken", newAccessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: accessExpiresMs,
+  });
+
   res.cookie("refreshToken", newRefreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -146,7 +164,7 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
     maxAge: expiresMs,
   });
 
-  return { accessToken: newAccessToken };
+  return {};
 };
 
 export const logoutEmployee = async (req: any, res: Response) => {
@@ -154,6 +172,12 @@ export const logoutEmployee = async (req: any, res: Response) => {
   if (refreshToken) {
     await revokeRefreshToken(refreshToken);
   }
+
+  res.clearCookie("accessToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+  });
 
   res.clearCookie("refreshToken", {
     httpOnly: true,
@@ -246,6 +270,11 @@ export const changePassword = async (
   const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
   const expiresMs = parseDuration(expiresIn);
 
+  await prisma.refreshToken.updateMany({
+    where: { user_id: employeeId, user_type: "employee", revoked_at: null },
+    data: { revoked_at: new Date() },
+  });
+
   await prisma.refreshToken.create({
     data: {
       token: newRefreshToken,
@@ -255,6 +284,15 @@ export const changePassword = async (
     },
   });
 
+  const accessExpiresMs = parseDuration(process.env.JWT_EXPIRES_IN || "15m");
+
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: accessExpiresMs,
+  });
+
   res.cookie("refreshToken", newRefreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -262,7 +300,7 @@ export const changePassword = async (
     maxAge: expiresMs,
   });
 
-  return { message: "Password berhasil diubah.", accessToken };
+  return { message: "Password berhasil diubah." };
 };
 
 function parseDuration(duration: string): number {
