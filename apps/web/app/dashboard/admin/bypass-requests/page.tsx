@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Eye,
@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   RefreshCw,
+  Bell,
 } from "lucide-react";
 import {
   useQuery,
@@ -20,6 +21,7 @@ import {
 import { axiosInstance } from "@/lib/axios";
 import toast from "react-hot-toast";
 import { BypassReviewModal } from "@/components/admin/BypassReviewModal";
+import { useSocket } from "@/hooks/useSocket";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface BypassRequest {
@@ -101,10 +103,21 @@ const STATION_LABEL: Record<string, string> = {
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function BypassRequestsPage() {
   const qc = useQueryClient();
+  const { on } = useSocket();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<BypassRequest | null>(null);
+  const [newBadge, setNewBadge] = useState(0);
+
+  // Real-time: listen for new bypass requests via socket
+  useEffect(() => {
+    const unsub = on("bypass:new", () => {
+      setNewBadge((n) => n + 1);
+      toast("Ada bypass request baru!", { icon: "🔔" });
+    });
+    return unsub;
+  }, [on]);
 
   const { data, isFetching, isError } = useQuery({
     queryKey: ["admin", "bypass-requests", page, statusFilter],
@@ -200,14 +213,26 @@ export default function BypassRequestsPage() {
           </p>
         </div>
         <button
-          onClick={() =>
-            qc.invalidateQueries({ queryKey: ["admin", "bypass-requests"] })
-          }
-          className="flex items-center gap-1 px-3 py-2 border border-outline-variant rounded-lg text-sm hover:bg-surface-container-high"
+          onClick={() => {
+            qc.invalidateQueries({ queryKey: ["admin", "bypass-requests"] });
+            setNewBadge(0);
+          }}
+          className="relative flex items-center gap-1 px-3 py-2 border border-outline-variant rounded-lg text-sm hover:bg-surface-container-high"
         >
           <RefreshCw className="w-4 h-4" />
           Refresh
+          {newBadge > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 rounded-full bg-error text-on-error text-[10px] font-bold">
+              {newBadge > 9 ? "9+" : newBadge}
+            </span>
+          )}
         </button>
+        {newBadge > 0 && (
+          <div className="flex items-center gap-1.5 px-3 py-2 bg-primary-container/20 text-primary rounded-lg text-sm animate-pulse">
+            <Bell className="w-4 h-4" />
+            {newBadge} request baru
+          </div>
+        )}
       </div>
 
       {/* Filters */}
