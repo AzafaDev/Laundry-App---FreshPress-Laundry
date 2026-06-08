@@ -49,8 +49,8 @@ export const useAdminAuth = () => {
       return data;
     },
     onSuccess: (data) => {
-      const { accessToken, employee } = data;
-      setAuth(employee, accessToken);
+      const { employee } = data;
+      setAuth(employee);
       router.push(getDashboardPath(employee.role as EmployeeRole));
     },
     onError: (error: any) => {

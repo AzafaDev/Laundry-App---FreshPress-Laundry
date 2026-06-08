@@ -7,13 +7,10 @@ export interface EmployeeLoginPayload {
 }
 
 export interface EmployeeLoginResponse {
-  accessToken: string;
   employee: Employee;
 }
 
-export interface EmployeeRefreshResponse {
-  accessToken: string;
-}
+export interface EmployeeRefreshResponse {}
 
 export const employeeAuthService = {
   login: async (
@@ -59,8 +56,8 @@ export const employeeAuthService = {
     return data.data;
   },
 
-  changePassword: async (oldPassword: string, newPassword: string): Promise<{ message: string; accessToken?: string }> => {
-    const { data } = await axiosInstance.post<{ success: true; data: { message: string; accessToken?: string } }>(
+  changePassword: async (oldPassword: string, newPassword: string): Promise<{ message: string }> => {
+    const { data } = await axiosInstance.post<{ success: true; data: { message: string } }>(
       "/v1/employee/auth/change-password",
       { oldPassword, newPassword },
       { withCredentials: true },

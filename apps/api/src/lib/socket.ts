@@ -4,6 +4,15 @@ import { env } from "../config/env.js";
 import { verifyAccessToken } from "../utils/jwt.util.js";
 import { prisma } from "./prisma.js";
 
+function parseCookieHeader(cookieHeader: string): Record<string, string> {
+  return Object.fromEntries(
+    cookieHeader.split(";").map((pair) => {
+      const [key, ...rest] = pair.trim().split("=");
+      return [key.trim(), decodeURIComponent(rest.join("="))];
+    }),
+  );
+}
+
 let io: IOServer | null = null;
 
 export function initSocketServer(httpServer: HttpServer): IOServer {
@@ -18,7 +27,8 @@ export function initSocketServer(httpServer: HttpServer): IOServer {
 
   io.use((socket, next) => {
     try {
-      const token = socket.handshake.auth?.token;
+      const rawCookie = socket.handshake.headers.cookie ?? "";
+      const token = parseCookieHeader(rawCookie)["accessToken"];
       if (!token) {
         return next(new Error("Unauthorized: no token"));
       }

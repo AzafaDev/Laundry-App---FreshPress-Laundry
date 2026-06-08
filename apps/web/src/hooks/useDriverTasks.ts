@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { driverTaskService, type DriverTask, type ActiveTaskResponse } from "@/services/driverTask.service";
+import { driverTaskService, type DriverTask, type ActiveTaskResponse, type AvailableTasksResponse } from "@/services/driverTask.service";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import toast from "react-hot-toast";
 
 export function useDriverTasks() {
-  const { user, accessToken } = useEmployeeAuthStore();
+  const { user } = useEmployeeAuthStore();
   const queryClient = useQueryClient();
-  const isDriver = !!accessToken && user?.role === "driver";
+  const isDriver = !!user && user.role === "driver";
 
   const activeTaskQuery = useQuery<ActiveTaskResponse>({
     queryKey: ["driver", "tasks", "active"],
@@ -17,14 +17,14 @@ export function useDriverTasks() {
 
   const hasActiveTask = activeTaskQuery.data?.hasActiveTask ?? false;
 
-  const availablePickupsQuery = useQuery<DriverTask[]>({
+  const availablePickupsQuery = useQuery<AvailableTasksResponse>({
     queryKey: ["driver", "tasks", "available-pickups"],
     queryFn: driverTaskService.getAvailablePickups,
     enabled: isDriver && !hasActiveTask,
     staleTime: 10000,
   });
 
-  const availableDeliveriesQuery = useQuery<DriverTask[]>({
+  const availableDeliveriesQuery = useQuery<AvailableTasksResponse>({
     queryKey: ["driver", "tasks", "available-deliveries"],
     queryFn: driverTaskService.getAvailableDeliveries,
     enabled: isDriver && !hasActiveTask,
@@ -57,14 +57,16 @@ export function useDriverTasks() {
     },
   });
 
-  const pickups = availablePickupsQuery.data ?? [];
-  const deliveries = availableDeliveriesQuery.data ?? [];
+  const pickups = availablePickupsQuery.data?.tasks ?? [];
+  const deliveries = availableDeliveriesQuery.data?.tasks ?? [];
+  const nextPickupReleaseAt = availablePickupsQuery.data?.next_release_at ?? null;
 
   return {
     activeTask: activeTaskQuery.data?.task ?? null,
     hasActiveTask,
     availablePickups: pickups,
     availableDeliveries: deliveries,
+    nextPickupReleaseAt,
     isLoadingActive: activeTaskQuery.isLoading,
     isLoadingPickups: availablePickupsQuery.isLoading,
     isLoadingDeliveries: availableDeliveriesQuery.isLoading,

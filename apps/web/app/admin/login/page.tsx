@@ -11,7 +11,7 @@ export default function AdminLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoggingIn, loginError } = useAdminAuth();
 
-  const { _hasHydrated, user, accessToken } = useEmployeeAuthStore();
+  const { _hasHydrated, user } = useEmployeeAuthStore();
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();

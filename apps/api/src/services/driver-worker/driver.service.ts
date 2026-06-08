@@ -49,16 +49,30 @@ export function mapDriverTaskToActivePayload(task: DriverTaskDetail | null) {
 export const driverService = {
   async getAvailablePickupOrders(employeeId: string) {
     const outletId = await assertShiftEligibility(employeeId);
-    return prisma.driverTask.findMany({
+    const tasks = await prisma.driverTask.findMany({
       where: { task_type: "pickup", status: "available", driver_id: null, order: { outlet_id: outletId } },
       include: { order: { include: { customer: true, pickup_address: true } } },
       orderBy: { created_at: "asc" },
     });
+
+    if (tasks.length > 0) return { tasks, next_release_at: null };
+
+    const nextPending = await prisma.driverTask.findFirst({
+      where: { task_type: "pickup", status: "pending", order: { outlet_id: outletId } },
+      orderBy: { order: { pickup_schedule: "asc" } },
+      select: { order: { select: { pickup_schedule: true } } },
+    });
+
+    const next_release_at = nextPending?.order?.pickup_schedule
+      ? new Date(nextPending.order.pickup_schedule.getTime() - 60 * 60 * 1000).toISOString()
+      : null;
+
+    return { tasks, next_release_at };
   },
 
   async getAvailableDeliveryOrders(employeeId: string) {
     const outletId = await assertShiftEligibility(employeeId);
-    return prisma.driverTask.findMany({
+    const tasks = await prisma.driverTask.findMany({
       where: {
         task_type: "delivery",
         status: "available",
@@ -67,6 +81,7 @@ export const driverService = {
       },
       include: { order: { include: { customer: true, pickup_address: true } } },
     });
+    return { tasks, next_release_at: null };
   },
 
   async getActiveTask(employeeId: string) {

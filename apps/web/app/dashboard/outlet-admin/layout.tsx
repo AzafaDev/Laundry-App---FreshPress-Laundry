@@ -15,20 +15,20 @@ export default function OutletAdminLayout({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const { user, accessToken, _hasHydrated } = useEmployeeAuthStore();
+  const { user, _hasHydrated } = useEmployeeAuthStore();
   const { on } = useSocket();
   const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!_hasHydrated) return;
-    if (!accessToken || !user) {
+    if (!user) {
       router.replace("/employee/login");
       return;
     }
     if (user.role !== "outlet_admin") {
       router.replace("/employee/login");
     }
-  }, [user, accessToken, _hasHydrated, router]);
+  }, [user, _hasHydrated, router]);
 
   useEffect(() => {
     if (!user || user.role !== "outlet_admin") return;

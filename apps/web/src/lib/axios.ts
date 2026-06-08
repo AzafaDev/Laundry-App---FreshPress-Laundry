@@ -24,13 +24,13 @@ const processQueue = (error: Error | null, token: string | null = null) => {
   failedQueue = [];
 };
 
-const getTokens = () => {
+const getAuthType = () => {
+  const { user: employeeUser } = useEmployeeAuthStore.getState();
   const { accessToken: customerToken } = useAuthStore.getState();
-  const { accessToken: employeeToken } = useEmployeeAuthStore.getState();
 
-  if (employeeToken) return { token: employeeToken, type: "employee" };
-  if (customerToken) return { token: customerToken, type: "customer" };
-  return { token: null, type: null };
+  if (employeeUser) return { type: "employee" as const, token: null };
+  if (customerToken) return { type: "customer" as const, token: customerToken };
+  return { type: null, token: null };
 };
 
 const clearAuthByType = (type: "employee" | "customer") => {
@@ -67,12 +67,11 @@ axiosInstance.interceptors.request.use(
       return config;
     }
 
-    const { token, type } = getTokens();
-    if (token && config.headers) {
+    const { token, type } = getAuthType();
+    if (type === "employee") {
+      if (config.headers) config.headers["X-User-Type"] = "employee";
+    } else if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
-      if (type === "employee") {
-        config.headers["X-User-Type"] = "employee";
-      }
     }
     return config;
   },
@@ -94,49 +93,33 @@ axiosInstance.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const { type } = getTokens();
+    const { type } = getAuthType();
 
     if (type !== "employee" || isPublic) {
       return Promise.reject(error);
     }
 
     if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      })
-        .then((token) => {
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-          }
-          return axiosInstance(originalRequest);
-        })
-        .catch((err) => Promise.reject(err));
+      try {
+        await new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        });
+        return axiosInstance(originalRequest);
+      } catch (err) {
+        return Promise.reject(err);
+      }
     }
 
     isRefreshing = true;
 
     try {
-      const { data } = await axios.post(
+      await axios.post(
         `${process.env.NEXT_PUBLIC_URL || "http://localhost:8080/api"}/v1/employee/auth/refresh`,
         {},
         { withCredentials: true },
       );
 
-      const newAccessToken = data.data?.accessToken;
-      if (!newAccessToken) throw new Error("No access token");
-
-      const currentEmployee = useEmployeeAuthStore.getState().user;
-      if (currentEmployee) {
-        useEmployeeAuthStore
-          .getState()
-          .setAuth(currentEmployee, newAccessToken);
-      }
-
-      if (originalRequest.headers) {
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-      }
-
-      processQueue(null, newAccessToken);
+      processQueue(null, null);
 
       originalRequest._retry = true;
       return axiosInstance(originalRequest);

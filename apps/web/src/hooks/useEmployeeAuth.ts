@@ -34,8 +34,8 @@ export const useEmployeeAuth = () => {
     mutationFn: (payload: EmployeeLoginPayload) =>
       employeeAuthService.login(payload),
     onSuccess: (data) => {
-      const { accessToken, employee } = data;
-      setAuth(employee, accessToken);
+      const { employee } = data;
+      setAuth(employee);
       const dashboardPath = getDashboardPath(employee.role);
       router.push(dashboardPath);
     },

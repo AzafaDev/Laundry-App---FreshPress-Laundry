@@ -14,18 +14,18 @@ export default function AdminDashboardLayout({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const { user, accessToken, _hasHydrated } = useEmployeeAuthStore();
+  const { user, _hasHydrated } = useEmployeeAuthStore();
 
   useEffect(() => {
     if (!_hasHydrated) return;
-    if (!accessToken || !user) {
+    if (!user) {
       router.replace("/employee/login");
       return;
     }
     if (!ALLOWED_ROLES.includes(user.role as (typeof ALLOWED_ROLES)[number])) {
       router.replace("/access-denied");
     }
-  }, [user, accessToken, _hasHydrated, router]);
+  }, [user, _hasHydrated, router]);
 
   return (
     <div className="min-h-screen bg-background text-on-surface">

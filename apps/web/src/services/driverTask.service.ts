@@ -39,16 +39,21 @@ export interface ActiveTaskResponse {
   task: DriverTask | null;
 }
 
+export interface AvailableTasksResponse {
+  tasks: DriverTask[];
+  next_release_at: string | null;
+}
+
 export const driverTaskService = {
-  getAvailablePickups: async (): Promise<DriverTask[]> => {
-    const { data } = await axiosInstance.get<{ success: true; data: DriverTask[] }>(
+  getAvailablePickups: async (): Promise<AvailableTasksResponse> => {
+    const { data } = await axiosInstance.get<{ success: true; data: AvailableTasksResponse }>(
       "/v1/driver/pickups/available"
     );
     return data.data;
   },
 
-  getAvailableDeliveries: async (): Promise<DriverTask[]> => {
-    const { data } = await axiosInstance.get<{ success: true; data: DriverTask[] }>(
+  getAvailableDeliveries: async (): Promise<AvailableTasksResponse> => {
+    const { data } = await axiosInstance.get<{ success: true; data: AvailableTasksResponse }>(
       "/v1/driver/deliveries/available"
     );
     return data.data;

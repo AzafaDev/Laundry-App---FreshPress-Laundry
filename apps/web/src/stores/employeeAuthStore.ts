@@ -4,9 +4,8 @@ import { persist } from "zustand/middleware";
 
 interface EmployeeAuthStore {
   user: Employee | null;
-  accessToken: string | null;
   _hasHydrated: boolean;
-  setAuth: (user: Employee, accessToken: string) => void;
+  setAuth: (user: Employee) => void;
   clearAuth: () => void;
   updateUser: (partial: Partial<Employee>) => void;
   setHasHydrated: (state: boolean) => void;
@@ -16,10 +15,9 @@ export const useEmployeeAuthStore = create<EmployeeAuthStore>()(
   persist(
     (set) => ({
       user: null,
-      accessToken: null,
       _hasHydrated: false,
-      setAuth: (user, accessToken) => set({ user, accessToken }),
-      clearAuth: () => set({ user: null, accessToken: null }),
+      setAuth: (user) => set({ user }),
+      clearAuth: () => set({ user: null }),
       updateUser: (partial) =>
         set((state) => ({
           user: state.user ? { ...state.user, ...partial } : null,

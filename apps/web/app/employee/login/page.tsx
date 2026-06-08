@@ -9,7 +9,6 @@ import { useRouter } from "next/navigation";
 
 const SAFE_LOGIN_ERRORS = new Set([
   "Email atau password salah.",
-  "Akun tidak ditemukan.",
   "Akun Anda tidak aktif.",
   "Terlalu banyak percobaan login. Coba lagi nanti.",
 ]);
@@ -24,13 +23,12 @@ export default function EmployeeLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [throttled, setThrottled] = useState(false);
   const { login, isLoggingIn, loginError } = useEmployeeAuth();
-  const { accessToken, user, _hasHydrated } = useEmployeeAuthStore();
+  const { user, _hasHydrated } = useEmployeeAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (!_hasHydrated || !accessToken || !user) return;
+    if (!_hasHydrated || !user) return;
     const paths: Record<string, string> = {
       super_admin: "/dashboard/admin",
       outlet_admin: "/dashboard/outlet-admin",
@@ -40,13 +38,11 @@ export default function EmployeeLoginPage() {
       packing_worker: "/dashboard/worker",
     };
     router.replace(paths[user.role] ?? "/dashboard/admin");
-  }, [_hasHydrated, accessToken, user, router]);
+  }, [_hasHydrated, user, router]);
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!email.trim() || !password || throttled || isLoggingIn) return;
-    setThrottled(true);
-    setTimeout(() => setThrottled(false), 1000);
+    if (!email.trim() || !password || isLoggingIn) return;
     login({ email, password });
   };
 
@@ -188,7 +184,7 @@ export default function EmployeeLoginPage() {
 
               <button
                 type="submit"
-                disabled={isLoggingIn || throttled}
+                disabled={isLoggingIn}
                 className="w-full bg-primary text-white font-bold py-3 rounded-xl hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-sm mt-2"
               >
                 {isLoggingIn ? (
