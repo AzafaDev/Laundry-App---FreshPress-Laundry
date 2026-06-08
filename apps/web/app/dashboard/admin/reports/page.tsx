@@ -267,7 +267,7 @@ export default function ReportsPage() {
                 stroke="var(--color-outline)"
               />
               <Tooltip
-                formatter={(v: number) => [fmtRupiahFull(v), "Pendapatan"]}
+                formatter={(v) => [fmtRupiahFull(Number(v ?? 0)), "Pendapatan"]}
                 contentStyle={{
                   fontSize: 12,
                   borderRadius: 8,
@@ -322,7 +322,7 @@ export default function ReportsPage() {
                   width={95}
                 />
                 <Tooltip
-                  formatter={(v: number) => [v, "Total Pekerjaan"]}
+                  formatter={(v) => [v ?? 0, "Total Pekerjaan"]}
                   contentStyle={{ fontSize: 12, borderRadius: 8 }}
                 />
                 <Bar

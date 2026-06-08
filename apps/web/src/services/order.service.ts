@@ -1,46 +1,79 @@
 import { axiosInstance } from "@/lib/axios";
-import type {
-  OrderListQuery,
-  OrderListResponse,
-  OrderDetail,
-} from "@/types/order.types";
+
+export type CustomerOrderStatus =
+  | "waiting_pickup_driver"
+  | "laundry_to_outlet"
+  | "laundry_arrived_outlet"
+  | "washing"
+  | "ironing"
+  | "packing"
+  | "waiting_payment"
+  | "ready_for_delivery"
+  | "delivery_to_customer"
+  | "received_by_customer"
+  | "completed"
+  | "cancelled";
+
+export interface CustomerOrderHistory {
+  id: string;
+  old_status: CustomerOrderStatus | null;
+  new_status: CustomerOrderStatus;
+  created_at: string;
+  note?: string | null;
+}
+
+export interface CustomerOrder {
+  id: string;
+  invoice_number: string;
+  status: CustomerOrderStatus;
+  pickup_schedule: string;
+  total_weight_kg: string | number | null;
+  total_price: string | number | null;
+  created_at: string;
+  updated_at: string;
+  outlet?: {
+    id: string;
+    name: string;
+    city?: string;
+  };
+  payment?: {
+    status: string;
+    amount?: string | number;
+    paid_at?: string;
+  } | null;
+  status_histories?: CustomerOrderHistory[];
+}
+
+export interface CreateCustomerOrderPayload {
+  pickup_address_id: string;
+  pickup_date: string;
+  pickup_time_slot: string;
+  service_type: "wash-and-fold" | "dry-cleaning";
+  estimated_weight_kg?: number;
+  notes?: string;
+}
+
+type Envelope<T> = { success: true; message: string; data: T };
 
 export const orderService = {
-  /** List orders with pagination + filters */
-  async list(query: OrderListQuery = {}): Promise<OrderListResponse> {
-    const params = new URLSearchParams();
-    if (query.page) params.set("page", String(query.page));
-    if (query.limit) params.set("limit", String(query.limit));
-    if (query.status) params.set("status", query.status);
-    if (query.outlet_id) params.set("outlet_id", query.outlet_id);
-    if (query.date_from) params.set("date_from", query.date_from);
-    if (query.date_to) params.set("date_to", query.date_to);
-    if (query.sort_by) params.set("sort_by", query.sort_by);
-    if (query.sort_dir) params.set("sort_dir", query.sort_dir);
-    const { data } = await axiosInstance.get(
-      `/v1/admin/orders?${params.toString()}`,
+  createOrder: async (payload: CreateCustomerOrderPayload): Promise<CustomerOrder> => {
+    const { data } = await axiosInstance.post<Envelope<CustomerOrder>>(
+      "/v1/customer/orders",
+      payload,
     );
-    return data;
-  },
-
-  /** Get single order detail */
-  async getById(id: string): Promise<OrderDetail> {
-    const { data } = await axiosInstance.get(`/v1/admin/orders/${id}`);
     return data.data;
   },
 
-  /** Process order (outlet admin: input weight + items) */
-  async processOrder(
-    id: string,
-    payload: {
-      total_weight_kg: number;
-      items: { laundry_item_id: string; quantity: number }[];
-      notes?: string;
-    },
-  ): Promise<OrderDetail> {
-    const { data } = await axiosInstance.post(
-      `/v1/admin/orders/${id}/process`,
-      payload,
+  listOrders: async (): Promise<CustomerOrder[]> => {
+    const { data } = await axiosInstance.get<Envelope<CustomerOrder[]>>(
+      "/v1/customer/orders",
+    );
+    return data.data;
+  },
+
+  getOrderById: async (orderId: string): Promise<CustomerOrder> => {
+    const { data } = await axiosInstance.get<Envelope<CustomerOrder>>(
+      `/v1/customer/orders/${orderId}`,
     );
     return data.data;
   },

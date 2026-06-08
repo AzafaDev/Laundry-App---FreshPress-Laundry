@@ -61,7 +61,7 @@ export default function PendingOrdersPage() {
                   </td>
                 </tr>
               ) : (
-                orders.map((order) => (
+                orders.map((order: OrderSummary) => (
                   <tr key={order.id} className="hover:bg-surface-container-lowest transition-colors">
                     <td className="p-4 font-bold text-primary text-sm">{order.invoice_number}</td>
                     <td className="p-4">
@@ -97,7 +97,7 @@ export default function PendingOrdersPage() {
 
         {/* Mobile cards */}
         <div className="md:hidden divide-y divide-outline-variant">
-          {orders.map((order) => (
+          {orders.map((order: OrderSummary) => (
             <div key={order.id} className="p-4 space-y-2">
               <div className="flex justify-between items-start">
                 <p className="font-bold text-primary text-sm">{order.invoice_number}</p>

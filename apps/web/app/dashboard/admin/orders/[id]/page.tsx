@@ -6,7 +6,7 @@ import { ChevronRight, ArrowLeft, Package, Truck, User, CreditCard, PlayCircle }
 import { useOrder } from "@/hooks/useOrders";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { ORDER_STATUS_LABELS, ORDER_STATUS_LIST, type OrderStatus } from "@/types/order.types";
-import type { ProcessLog } from "@/types/order.types";
+import type { ProcessLog, DriverTask, OrderItem, OrderStatusHistory } from "@/types/order.types";
 import { ProcessOrderModal } from "@/components/orders/ProcessOrderModal";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -245,7 +245,7 @@ export default function OrderDetailPage() {
           {order.driver_tasks.length === 0 ? (
             <p className="text-sm text-on-surface-variant">Belum ada driver task.</p>
           ) : (
-            order.driver_tasks.map((task) => (
+            order.driver_tasks.map((task: DriverTask) => (
               <div key={task.id} className="text-sm">
                 <span className="font-medium capitalize">
                   {task.task_type.replace(/_/g, " ")}
@@ -318,7 +318,7 @@ export default function OrderDetailPage() {
           </p>
         ) : (
           <div className="divide-y divide-outline-variant">
-            {order.order_items.map((item) => (
+            {order.order_items.map((item: OrderItem) => (
               <div key={item.id} className="py-2 flex justify-between items-center text-sm">
                 <div>
                   <span className="font-medium">{item.laundry_item.name}</span>
@@ -350,7 +350,7 @@ export default function OrderDetailPage() {
           <p className="text-sm text-on-surface-variant">Belum ada riwayat status.</p>
         ) : (
           <div className="space-y-2">
-            {[...order.status_histories].reverse().map((h) => (
+            {[...order.status_histories].reverse().map((h: OrderStatusHistory) => (
               <div key={h.id} className="flex justify-between items-start text-sm gap-2">
                 <div>
                   <span className="font-medium">
