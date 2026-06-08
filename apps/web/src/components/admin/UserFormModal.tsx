@@ -168,18 +168,6 @@ export function UserFormModal({ user, onClose }: Props) {
             </select>
           </Field>
 
-          {/* Password field only shown when editing */}
-          {isEdit && (
-            <Field label="Password Baru (opsional)">
-              <input
-                type="password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="Kosongkan jika tidak diubah"
-                className={inputClass}
-              />
-            </Field>
-          )}
 
           <label className="flex items-center gap-2 text-sm text-on-surface-variant">
             <input

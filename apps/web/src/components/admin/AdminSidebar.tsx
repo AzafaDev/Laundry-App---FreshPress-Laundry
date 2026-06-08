@@ -52,6 +52,12 @@ const NAV: NavItem[] = [
     roles: ["super_admin"],
   },
   {
+    href: "/dashboard/admin/clothing-types",
+    label: "Jenis Pakaian",
+    icon: Shirt,
+    roles: ["super_admin"],
+  },
+  {
     href: "/dashboard/admin/shifts",
     label: "Work Shifts",
     icon: Clock,

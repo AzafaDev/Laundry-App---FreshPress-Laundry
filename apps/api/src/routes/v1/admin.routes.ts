@@ -11,6 +11,7 @@ import * as ShiftCtrl from "../../controllers/admin/shift.controller.js";
 import * as LaundryItemCtrl from "../../controllers/admin/laundryItem.controller.js";
 import * as OrderCtrl from "../../controllers/admin/order.controller.js";
 import * as BypassCtrl from "../../controllers/admin/bypass.controller.js";
+import * as ClothingCtrl from "../../controllers/admin/clothingType.controller.js";
 import { getSalesReport, getEmployeePerformanceReport } from "../../controllers/admin/report.controller.js";
 import {
   createUserSchema,
@@ -229,6 +230,34 @@ router.patch(
   "/admin/bypass-requests/:id/review",
   requireRole("outlet_admin"),
   BypassCtrl.reviewBypassRequest,
+);
+
+// ── Clothing Types (master data) ──────────────────────────────────────────────
+// GET accessible by outlet_admin too (needed for processOrder breakdown)
+router.get(
+  "/admin/clothing-types",
+  requireRole("super_admin", "outlet_admin"),
+  ClothingCtrl.listClothingTypes,
+);
+router.get(
+  "/admin/clothing-types/:id",
+  requireRole("super_admin", "outlet_admin"),
+  ClothingCtrl.getClothingType,
+);
+router.post(
+  "/admin/clothing-types",
+  requireRole("super_admin"),
+  ClothingCtrl.createClothingType,
+);
+router.patch(
+  "/admin/clothing-types/:id",
+  requireRole("super_admin"),
+  ClothingCtrl.updateClothingType,
+);
+router.delete(
+  "/admin/clothing-types/:id",
+  requireRole("super_admin"),
+  ClothingCtrl.deleteClothingType,
 );
 
 // ── Sales & Employee Performance Reports ──────────────────────────────────────

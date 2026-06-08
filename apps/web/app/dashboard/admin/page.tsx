@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   CalendarCheck,
   PlayCircle,
+  Shirt,
 } from "lucide-react";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
@@ -54,6 +55,14 @@ export default function AdminDashboardPage() {
             icon={<ShoppingBag className="w-6 h-6 text-primary" />}
             title="Laundry Items"
             description="Master data item laundry: nama, satuan, dan harga dasar."
+          />
+        )}
+        {isSuper && (
+          <DashCard
+            href="/dashboard/admin/clothing-types"
+            icon={<Shirt className="w-6 h-6 text-primary" />}
+            title="Jenis Pakaian"
+            description="Master data jenis pakaian untuk rincian order kiloan."
           />
         )}
         {isSuper && (

@@ -32,6 +32,14 @@ const processOrderSchema = z.object({
       }),
     )
     .min(1, "Minimal satu item harus diisi."),
+  breakdown: z
+    .array(
+      z.object({
+        clothing_type_id: z.string().uuid("clothing_type_id harus UUID."),
+        quantity: z.coerce.number().int().positive("Quantity harus lebih dari 0."),
+      }),
+    )
+    .optional(),
   notes: z.string().optional(),
 });
 
@@ -209,9 +217,22 @@ export const processOrder = async (
       };
     });
 
-    // Transactionally: create items, update order, log status change
+    // Transactionally: create items, save breakdown, update order, log status change
     const updated = await prisma.$transaction(async (tx) => {
       await tx.orderItem.createMany({ data: orderItemsData });
+
+      // Save clothing-type breakdown if provided
+      if (body.breakdown && body.breakdown.length > 0) {
+        await tx.orderItemBreakdown.createMany({
+          data: body.breakdown.map((b) => ({
+            order_id: id,
+            clothing_type_id: b.clothing_type_id,
+            quantity: b.quantity,
+            created_by: adminId!,
+          })),
+          skipDuplicates: true,
+        });
+      }
 
       const updatedOrder = await tx.order.update({
         where: { id },

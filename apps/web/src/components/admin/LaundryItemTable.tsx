@@ -321,7 +321,7 @@ function ItemsSection({
 
 // ── Main Table ────────────────────────────────────────────────────────────────
 export function LaundryItemTable() {
-  const [page, setPage] = useState(1);
+  const [pcPage, setPcPage] = useState(1);
   const [search, setSearch] = useState("");
   const [isActiveFilter, setIsActiveFilter] = useState<"" | "true" | "false">("");
   const [sortBy, setSortBy] = useState<SortCol>("name");
@@ -331,23 +331,34 @@ export function LaundryItemTable() {
 
   const del = useDeleteLaundryItem();
 
-  const query = {
-    page,
-    limit: 10,
+  const commonFilters = {
     search: search.trim() || undefined,
     is_active: isActiveFilter === "" ? undefined : isActiveFilter === "true",
     sort_by: sortBy,
     sort_dir: sortDir,
   };
 
-  const { data, isFetching, isError } = useLaundryItems(query);
+  // Kg items — always fetched in full (there are very few kg items)
+  const { data: kgData, isFetching: kgFetching, isError: kgError } = useLaundryItems({
+    ...commonFilters,
+    page: 1,
+    limit: 50,
+  });
 
-  const items = data?.data ?? [];
-  const pagination = data?.pagination;
+  // Pcs items — paginated separately
+  const { data: pcsData, isFetching: pcsFetching, isError: pcsError } = useLaundryItems({
+    ...commonFilters,
+    page: pcPage,
+    limit: 10,
+  });
 
-  // Split the current page into the two unit groups.
-  const kiloItems = items.filter((it) => isKiloUnit(it.unit));
-  const pcsItems = items.filter((it) => !isKiloUnit(it.unit));
+  const isError = kgError || pcsError;
+  const isFetching = kgFetching || pcsFetching;
+
+  // Filter by unit after fetching
+  const kiloItems = (kgData?.data ?? []).filter((it) => isKiloUnit(it.unit));
+  const pcsItems  = (pcsData?.data ?? []).filter((it) => !isKiloUnit(it.unit));
+  const pcsPagination = pcsData?.pagination;
 
   const toggleSort = (col: SortCol) => {
     if (sortBy === col) {
@@ -356,7 +367,7 @@ export function LaundryItemTable() {
       setSortBy(col);
       setSortDir("asc");
     }
-    setPage(1);
+    setPcPage(1);
   };
 
   const handleDelete = (item: LaundryItem) => {
@@ -383,14 +394,14 @@ export function LaundryItemTable() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-outline w-4 h-4" />
             <input
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => { setSearch(e.target.value); setPcPage(1); }}
               placeholder="Cari nama item..."
               className="w-full pl-9 pr-4 py-2.5 bg-surface border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <select
             value={isActiveFilter}
-            onChange={(e) => { setIsActiveFilter(e.target.value as "" | "true" | "false"); setPage(1); }}
+            onChange={(e) => { setIsActiveFilter(e.target.value as "" | "true" | "false"); setPcPage(1); }}
             className="px-4 py-2.5 bg-surface border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">Semua Status</option>
@@ -438,29 +449,29 @@ export function LaundryItemTable() {
         onDelete={handleDelete}
       />
 
-      {/* Pagination (applies to the combined list) */}
-      {pagination && pagination.total > 0 && (
+      {/* Pagination — for pcs items only */}
+      {pcsPagination && pcsPagination.total > 0 && (
         <div className="bg-surface-container-low p-4 flex flex-col sm:flex-row items-center justify-between gap-2 border border-outline-variant rounded-xl">
           <p className="text-xs text-on-surface-variant">
-            Menampilkan {Math.min((page - 1) * 10 + 1, pagination.total)}–
-            {Math.min(page * 10, pagination.total)} dari {pagination.total} item
+            Menampilkan {Math.min((pcPage - 1) * 10 + 1, pcsPagination.total)}–
+            {Math.min(pcPage * 10, pcsPagination.total)} dari {pcsPagination.total} item (satuan)
           </p>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => setPage((p) => p - 1)}
-              disabled={page <= 1}
+              onClick={() => setPcPage((p) => p - 1)}
+              disabled={pcPage <= 1}
               className="p-1 bg-surface border border-outline-variant rounded-lg disabled:opacity-40"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
+            {Array.from({ length: Math.min(pcsPagination.totalPages, 5) }, (_, i) => {
               const p = i + 1;
               return (
                 <button
                   key={p}
-                  onClick={() => setPage(p)}
+                  onClick={() => setPcPage(p)}
                   className={`w-8 h-8 rounded-lg text-xs font-medium ${
-                    page === p
+                    pcPage === p
                       ? "bg-primary text-on-primary"
                       : "bg-surface border border-outline-variant hover:bg-surface-container-high"
                   }`}
@@ -470,8 +481,8 @@ export function LaundryItemTable() {
               );
             })}
             <button
-              onClick={() => setPage((p) => p + 1)}
-              disabled={page >= pagination.totalPages}
+              onClick={() => setPcPage((p) => p + 1)}
+              disabled={pcPage >= pcsPagination.totalPages}
               className="p-1 bg-surface border border-outline-variant rounded-lg disabled:opacity-40"
             >
               <ChevronRight className="w-5 h-5" />

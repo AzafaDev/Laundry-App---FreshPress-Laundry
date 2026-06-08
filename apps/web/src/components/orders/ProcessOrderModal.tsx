@@ -4,7 +4,22 @@ import { useState, useMemo } from "react";
 import { X, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useLaundryItems } from "@/hooks/useLaundryItems";
 import { useProcessOrder } from "@/hooks/useOrders";
+import { useQuery } from "@tanstack/react-query";
+import { axiosInstance } from "@/lib/axios";
 import type { LaundryItem } from "@/types/laundryItem.types";
+
+// ── ClothingType helper ───────────────────────────────────────────────────────
+interface ClothingType { id: string; name: string; is_active: boolean; }
+
+const useClothingTypes = () =>
+  useQuery<ClothingType[]>({
+    queryKey: ["admin", "clothing-types", "active"],
+    queryFn: async () => {
+      const { data } = await axiosInstance.get("/v1/admin/clothing-types?limit=200&is_active=true");
+      return data.data as ClothingType[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
 interface Props {
   orderId: string;
@@ -29,6 +44,8 @@ export function ProcessOrderModal({ orderId, invoiceNumber, onClose, onSuccess }
   const kgItems  = allItems.filter((i) => i.unit === "kg");
   const pcsItems = allItems.filter((i) => i.unit !== "kg");
 
+  const { data: clothingTypes = [] } = useClothingTypes();
+
   const processOrder = useProcessOrder(orderId);
 
   const [step, setStep] = useState<Step>("form");
@@ -44,8 +61,15 @@ export function ProcessOrderModal({ orderId, invoiceNumber, onClose, onSuccess }
     Object.fromEntries(pcsItems.map((i) => [i.id, 0])),
   );
 
-  // Manual "Total Item" (pcs) — NOT auto-calculated
-  const [totalItemPcs, setTotalItemPcs] = useState<string>("");
+  // Clothing-type breakdown: clothingTypeId → qty (for kiloan section)
+  const [breakdown, setBreakdown] = useState<Record<string, number>>({});
+
+  // Total Item auto-calculated from breakdown sum
+  const totalItemPcs = useMemo(
+    () => Object.values(breakdown).reduce((s, q) => s + q, 0),
+    [breakdown],
+  );
+
   // Optional description / notes
   const [deskripsi, setDeskripsi] = useState("");
 
@@ -80,10 +104,19 @@ export function ProcessOrderModal({ orderId, invoiceNumber, onClose, onSuccess }
     return [...kg, ...pcs];
   }, [kgItems, pcsItems, kgQtys, pcsQtys]);
 
+  // API breakdown array (only non-zero)
+  const apiBreakdown = useMemo(
+    () =>
+      Object.entries(breakdown)
+        .filter(([, q]) => q > 0)
+        .map(([clothing_type_id, quantity]) => ({ clothing_type_id, quantity })),
+    [breakdown],
+  );
+
   // Compose notes: include Total Item + deskripsi
   const composeNotes = () => {
     const parts: string[] = [];
-    if (totalItemPcs) parts.push(`Total Item: ${totalItemPcs} pcs`);
+    if (totalItemPcs > 0) parts.push(`Total Item: ${totalItemPcs} pcs`);
     if (deskripsi.trim()) parts.push(deskripsi.trim());
     return parts.join(" | ") || undefined;
   };
@@ -108,6 +141,7 @@ export function ProcessOrderModal({ orderId, invoiceNumber, onClose, onSuccess }
       await processOrder.mutateAsync({
         total_weight_kg: totalWeightKg > 0 ? totalWeightKg : 0.01,
         items: apiItems,
+        breakdown: apiBreakdown.length > 0 ? apiBreakdown : undefined,
         notes: composeNotes(),
       });
       onSuccess();
@@ -204,33 +238,64 @@ export function ProcessOrderModal({ orderId, invoiceNumber, onClose, onSuccess }
                     </table>
                   </div>
 
-                  {/* Total Item + Deskripsi — manual, not auto-calculated */}
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    <div>
-                      <label className="block text-xs font-medium text-on-surface-variant mb-1">
-                        Total Item
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        value={totalItemPcs}
-                        placeholder="cth. 5"
-                        onChange={(e) => setTotalItemPcs(e.target.value)}
-                        className="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface"
-                      />
+                  {/* Breakdown jenis pakaian — auto-calculates Total Item */}
+                  {clothingTypes.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+                          Rincian Jenis Pakaian
+                        </p>
+                        <span className="text-xs text-primary font-bold">
+                          Total: {totalItemPcs} pcs
+                        </span>
+                      </div>
+                      <div className="border border-outline-variant rounded-xl overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead className="bg-surface-container-low">
+                            <tr>
+                              <th className="text-left px-3 py-2 text-xs font-semibold text-on-surface-variant">Jenis Pakaian</th>
+                              <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant w-24">Jumlah (pcs)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-outline-variant">
+                            {clothingTypes.map((ct) => (
+                              <tr key={ct.id}>
+                                <td className="px-3 py-2 font-medium">{ct.name}</td>
+                                <td className="px-3 py-2 text-center">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={breakdown[ct.id] || ""}
+                                    placeholder="0"
+                                    onChange={(e) =>
+                                      setBreakdown((prev) => ({
+                                        ...prev,
+                                        [ct.id]: Math.max(0, parseInt(e.target.value) || 0),
+                                      }))
+                                    }
+                                    className="w-full text-center border border-outline-variant rounded-lg py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface"
+                                  />
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-on-surface-variant mb-1">
-                        Deskripsi
-                      </label>
-                      <input
-                        type="text"
-                        value={deskripsi}
-                        placeholder="cth. pakaian dewasa"
-                        onChange={(e) => setDeskripsi(e.target.value)}
-                        className="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface"
-                      />
-                    </div>
+                  )}
+
+                  {/* Deskripsi */}
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-on-surface-variant mb-1">
+                      Deskripsi (opsional)
+                    </label>
+                    <input
+                      type="text"
+                      value={deskripsi}
+                      placeholder="cth. pakaian dewasa"
+                      onChange={(e) => setDeskripsi(e.target.value)}
+                      className="w-full border border-outline-variant rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface"
+                    />
                   </div>
                 </div>
               )}
@@ -344,10 +409,24 @@ export function ProcessOrderModal({ orderId, invoiceNumber, onClose, onSuccess }
                     <span className="font-bold">{totalWeightKg} kg</span>
                   </div>
                 )}
-                {totalItemPcs && (
+                {totalItemPcs > 0 && (
                   <div className="px-4 py-3 flex justify-between text-sm">
                     <span className="text-on-surface-variant">Total Item</span>
                     <span className="font-bold">{totalItemPcs} pcs</span>
+                  </div>
+                )}
+                {apiBreakdown.length > 0 && (
+                  <div className="px-4 py-3">
+                    <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-1.5">Rincian Pakaian</p>
+                    {apiBreakdown.map((b) => {
+                      const ct = clothingTypes.find((c) => c.id === b.clothing_type_id);
+                      return (
+                        <div key={b.clothing_type_id} className="flex justify-between text-sm py-0.5">
+                          <span>{ct?.name ?? b.clothing_type_id}</span>
+                          <span className="font-medium">{b.quantity} pcs</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
