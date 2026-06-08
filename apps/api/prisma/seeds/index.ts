@@ -15,6 +15,7 @@ export async function runAllSeeds() {
   // Delete leaf-level records first (no outgoing FKs to core tables)
   await prisma.notification.deleteMany({});
   await prisma.driverTask.deleteMany({});
+  await prisma.orderItemBreakdown.deleteMany({});
   await prisma.orderItem.deleteMany({});
   await prisma.orderStatusHistory.deleteMany({});
   await prisma.processLog.deleteMany({});

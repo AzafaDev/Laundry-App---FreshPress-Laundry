@@ -193,7 +193,9 @@ export const processOrder = async (
 
     const itemMap = new Map(laundryItems.map((li) => [li.id, li]));
 
-    // Calculate total price
+    // Calculate total price:
+    // - kg items:  base_price × quantity  (quantity = weight in kg)
+    // - pcs items: base_price × quantity
     let totalPrice = 0;
     const orderItemsData = body.items.map((item) => {
       const li = itemMap.get(item.laundry_item_id)!;

@@ -24,6 +24,12 @@ export const laundryItemService = {
     return data;
   },
 
+  /** Customer-facing: flat list from public endpoint, no auth required */
+  listForCustomer: async (): Promise<LaundryItem[]> => {
+    const { data } = await axiosInstance.get("/v1/customer/laundry-items");
+    return data.data;
+  },
+
   create: async (payload: CreateLaundryItemPayload): Promise<LaundryItem> => {
     const { data } = await axiosInstance.post("/v1/admin/laundry-items", payload);
     return data.data;

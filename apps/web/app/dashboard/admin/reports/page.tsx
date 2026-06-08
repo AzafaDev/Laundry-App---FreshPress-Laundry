@@ -7,6 +7,7 @@ import {
   ShoppingBag,
   BarChart3,
   RefreshCw,
+  Store,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -22,6 +23,7 @@ import {
 } from "recharts";
 import { axiosInstance } from "@/lib/axios";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { useOutlets } from "@/hooks/useOutlets";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface SalesChartPoint {
@@ -67,18 +69,25 @@ const ROLE_LABEL: Record<string, string> = {
 // ── API fetchers ──────────────────────────────────────────────────────────────
 const fetchSalesReport = async (
   groupBy: GroupBy,
+  outletId?: string,
   dateFrom?: string,
   dateTo?: string,
 ) => {
   const params = new URLSearchParams({ group_by: groupBy });
+  if (outletId) params.set("outlet_id", outletId);
   if (dateFrom) params.set("date_from", dateFrom);
   if (dateTo) params.set("date_to", dateTo);
   const { data } = await axiosInstance.get(`/v1/reports/sales?${params}`);
   return data?.data as { summary: { total_income: number; total_orders: number }; chart: SalesChartPoint[] };
 };
 
-const fetchEmployeeReport = async (dateFrom?: string, dateTo?: string) => {
+const fetchEmployeeReport = async (
+  outletId?: string,
+  dateFrom?: string,
+  dateTo?: string,
+) => {
   const params = new URLSearchParams();
+  if (outletId) params.set("outlet_id", outletId);
   if (dateFrom) params.set("date_from", dateFrom);
   if (dateTo) params.set("date_to", dateTo);
   const { data } = await axiosInstance.get(`/v1/reports/employees?${params}`);
@@ -91,17 +100,35 @@ export default function ReportsPage() {
   const isSuper = user?.role === "super_admin";
 
   const [groupBy, setGroupBy] = useState<GroupBy>("month");
+  const [outletId, setOutletId] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
+  // Outlets dropdown (super_admin only)
+  const { data: outletsData } = useOutlets(
+    isSuper ? { limit: 100, is_active: true } : {},
+  );
+  const outlets = outletsData?.items ?? [];
+
   const salesQuery = useQuery({
-    queryKey: ["reports", "sales", groupBy, dateFrom, dateTo],
-    queryFn: () => fetchSalesReport(groupBy, dateFrom || undefined, dateTo || undefined),
+    queryKey: ["reports", "sales", groupBy, outletId, dateFrom, dateTo],
+    queryFn: () =>
+      fetchSalesReport(
+        groupBy,
+        outletId || undefined,
+        dateFrom || undefined,
+        dateTo || undefined,
+      ),
   });
 
   const empQuery = useQuery({
-    queryKey: ["reports", "employees", dateFrom, dateTo],
-    queryFn: () => fetchEmployeeReport(dateFrom || undefined, dateTo || undefined),
+    queryKey: ["reports", "employees", outletId, dateFrom, dateTo],
+    queryFn: () =>
+      fetchEmployeeReport(
+        outletId || undefined,
+        dateFrom || undefined,
+        dateTo || undefined,
+      ),
   });
 
   const salesData = salesQuery.data;
@@ -133,6 +160,30 @@ export default function ReportsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 p-4 bg-surface border border-outline-variant rounded-xl">
+        {/* Outlet filter — super_admin only */}
+        {isSuper && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-on-surface-variant">
+              Outlet
+            </label>
+            <div className="relative">
+              <Store className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant pointer-events-none" />
+              <select
+                value={outletId}
+                onChange={(e) => setOutletId(e.target.value)}
+                className="pl-9 pr-4 py-2 bg-surface border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Semua Outlet</option>
+                {outlets.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-on-surface-variant">
             Group By
@@ -169,10 +220,10 @@ export default function ReportsPage() {
             className="px-3 py-2 bg-surface border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
-        {(dateFrom || dateTo) && (
+        {(outletId || dateFrom || dateTo) && (
           <div className="flex flex-col gap-1 justify-end">
             <button
-              onClick={() => { setDateFrom(""); setDateTo(""); }}
+              onClick={() => { setOutletId(""); setDateFrom(""); setDateTo(""); }}
               className="px-3 py-2 border border-outline-variant rounded-lg text-sm hover:bg-surface-container-high"
             >
               Reset

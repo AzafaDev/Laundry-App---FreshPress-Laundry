@@ -4,8 +4,7 @@ import type { LaundryItem } from '../../generated/prisma/index.js';
 const LAUNDRY_ITEMS = [
   // ── Per kilogram ────────────────────────────────────────────────────────────
   { name: 'Laundry Kiloan', description: 'Cuci + setrika pakaian per kilogram', unit: 'kg', base_price: 7000 },
-  { name: 'Cuci Kering (Dry Clean)', description: 'Dry cleaning per kilogram', unit: 'kg', base_price: 20000 },
-
+ 
   // ── Per piece ───────────────────────────────────────────────────────────────
   { name: 'Kaos', description: 'Kaos / t-shirt', unit: 'pcs', base_price: 5000 },
   { name: 'Kemeja', description: 'Kemeja lengan pendek / panjang', unit: 'pcs', base_price: 7000 },
@@ -39,6 +38,13 @@ const LAUNDRY_ITEMS = [
 ];
 
 export async function seedLaundryItems(): Promise<LaundryItem[]> {
+  // Hard-remove items that are explicitly retired
+  const RETIRED_ITEMS = ['Cuci Kering (Dry Clean)'];
+  await prisma.laundryItem.updateMany({
+    where: { name: { in: RETIRED_ITEMS } },
+    data: { is_active: false },
+  });
+
   const items: LaundryItem[] = [];
 
   for (const item of LAUNDRY_ITEMS) {
