@@ -3,7 +3,7 @@ import { emitToRoom, emitToUser } from "../../lib/socket.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { OrderStatus, StationType } from "../../../generated/prisma/client.js";
 import { getEmployeeOutlet } from "./attendance.utils.db.js";
-import { assertShiftEligibility } from "./attendance.service.js";
+import { assertShiftEligibility } from "./shift.guard.js";
 import { driverService } from "./driver.service.js";
 
 export const workerService = {
