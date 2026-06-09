@@ -2,21 +2,23 @@ import { prisma } from "../../lib/prisma.js";
 import { emitToRoom, emitToUser, emitToRole } from "../../lib/socket.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import {
-  getEmployeeOutlet,
-  getEmployeeShiftForDate,
   canCheckIn,
   canCheckOut,
   isLate,
   calcLateMinutes,
   determineAttendanceStatus,
   getTodayLocalStart,
-  getShiftForDateTime,
-  hasActiveDriverTask,
   getNow,
   formatLocalDate,
   formatLocalTime,
   formatShiftHHMM,
 } from "./attendance.utils.js";
+import {
+  getEmployeeOutlet,
+  getEmployeeShiftForDate,
+  getShiftForDateTime,
+  hasActiveDriverTask,
+} from "./attendance.utils.db.js";
 
 interface CheckInBody {
   lat?: number;
