@@ -49,7 +49,7 @@ function ResetPasswordForm() {
     try {
       const result = await employeeAuthService.resetPassword(token!, newPassword);
       // Auto-login: save auth state then redirect to role dashboard
-      setAuth(result.employee as any, result.accessToken);
+      setAuth(result.employee as any);
       router.replace(getDashboardPath(result.employee.role as EmployeeRole));
     } catch (err: unknown) {
       const status = (err as any)?.response?.status;

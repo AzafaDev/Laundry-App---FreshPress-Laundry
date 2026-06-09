@@ -192,10 +192,10 @@ function ItemsSection({
     ) : null;
 
   return (
-    <section className="space-y-3">
+    <section className="space-y-2">
       <div className="flex items-center gap-2">
         {icon}
-        <h3 className="font-bold text-base">{title}</h3>
+        <h3 className="font-semibold text-sm">{title}</h3>
         <span className="text-xs text-on-surface-variant">({items.length})</span>
       </div>
 
@@ -206,21 +206,21 @@ function ItemsSection({
             <thead>
               <tr className="bg-surface-container-low border-b border-outline-variant">
                 <th
-                  className="p-4 text-sm font-bold cursor-pointer select-none"
+                  className="px-4 py-2.5 text-xs font-semibold cursor-pointer select-none"
                   onClick={() => onToggleSort("name")}
                 >
                   Nama Item <SortIcon col="name" />
                 </th>
-                <th className="p-4 text-sm font-bold">Deskripsi</th>
-                <th className="p-4 text-sm font-bold">Satuan</th>
+                <th className="px-4 py-2.5 text-xs font-semibold">Deskripsi</th>
+                <th className="px-4 py-2.5 text-xs font-semibold">Satuan</th>
                 <th
-                  className="p-4 text-sm font-bold cursor-pointer select-none"
+                  className="px-4 py-2.5 text-xs font-semibold cursor-pointer select-none"
                   onClick={() => onToggleSort("base_price")}
                 >
                   Harga Dasar <SortIcon col="base_price" />
                 </th>
-                <th className="p-4 text-sm font-bold">Status</th>
-                <th className="p-4 text-sm font-bold text-right">Aksi</th>
+                <th className="px-4 py-2.5 text-xs font-semibold">Status</th>
+                <th className="px-4 py-2.5 text-xs font-semibold text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className={`divide-y divide-outline-variant ${isFetching ? "opacity-60" : ""}`}>
@@ -233,15 +233,15 @@ function ItemsSection({
               ) : (
                 items.map((item) => (
                   <tr key={item.id} className="hover:bg-surface-container-lowest transition-colors">
-                    <td className="p-4 font-medium text-sm">{item.name}</td>
-                    <td className="p-4 text-sm text-on-surface-variant max-w-xs truncate">
+                    <td className="px-4 py-2.5 font-medium text-sm">{item.name}</td>
+                    <td className="px-4 py-2.5 text-sm text-on-surface-variant max-w-xs truncate">
                       {item.description ?? "—"}
                     </td>
-                    <td className="p-4 text-sm">{item.unit}</td>
-                    <td className="p-4 text-sm font-medium">{fmtPrice(item.base_price)}</td>
-                    <td className="p-4">
+                    <td className="px-4 py-2.5 text-sm">{item.unit}</td>
+                    <td className="px-4 py-2.5 text-sm font-medium">{fmtPrice(item.base_price)}</td>
+                    <td className="px-4 py-2.5">
                       <span
-                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                           item.is_active
                             ? "bg-secondary-container text-on-secondary-container"
                             : "bg-surface-container-highest text-on-surface-variant"
@@ -250,7 +250,7 @@ function ItemsSection({
                         {item.is_active ? "Aktif" : "Nonaktif"}
                       </span>
                     </td>
-                    <td className="p-4 text-right">
+                    <td className="px-4 py-2.5 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => onEdit(item)}
@@ -386,7 +386,7 @@ export function LaundryItemTable() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Toolbar */}
       <div className="flex flex-col md:flex-row gap-3 justify-between">
         <div className="flex flex-col sm:flex-row gap-3 flex-1">
@@ -424,22 +424,24 @@ export function LaundryItemTable() {
         </p>
       )}
 
-      {/* Two stacked sections: Per Kilo, then Per Pcs */}
-      <ItemsSection
-        title="Per Kilo (kg)"
-        icon={<Scale className="w-5 h-5 text-primary" />}
-        items={kiloItems}
-        isFetching={isFetching}
-        sortBy={sortBy}
-        sortDir={sortDir}
-        onToggleSort={toggleSort}
-        onEdit={openEdit}
-        onDelete={handleDelete}
-      />
+      {/* Kiloan section — only on first pcs page */}
+      {pcPage === 1 && (
+        <ItemsSection
+          title="Per Kilo (kg)"
+          icon={<Scale className="w-4 h-4 text-primary" />}
+          items={kiloItems}
+          isFetching={isFetching}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onToggleSort={toggleSort}
+          onEdit={openEdit}
+          onDelete={handleDelete}
+        />
+      )}
 
       <ItemsSection
         title="Per Pcs (satuan)"
-        icon={<Package className="w-5 h-5 text-primary" />}
+        icon={<Package className="w-4 h-4 text-primary" />}
         items={pcsItems}
         isFetching={isFetching}
         sortBy={sortBy}

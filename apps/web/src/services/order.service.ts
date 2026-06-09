@@ -86,6 +86,7 @@ export const orderService = {
     payload: {
       total_weight_kg: number;
       items: { laundry_item_id: string; quantity: number }[];
+      breakdown?: { clothing_type_id: string; quantity: number }[];
       notes?: string;
     },
   ): Promise<OrderDetail> => {

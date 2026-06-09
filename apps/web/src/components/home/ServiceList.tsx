@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/authStore";
-import { useLaundryItems } from "@/hooks/useLaundryItems";
+import { laundryItemService } from "@/services/laundryItem.service";
 
 const CARD_META = [
   { emoji: "🧺", tag: "Terpopuler", tagColor: "bg-primary text-white" },
@@ -20,7 +21,10 @@ const formatPrice = (price: string | number) =>
 export const ServiceList = ({ id }: { id?: string }) => {
   const user = useAuthStore((s) => s.user);
   const ctaHref = user ? "/customer/pickup" : "/register";
-  const { data: items = [], isLoading } = useLaundryItems();
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: ["laundry-items-public"],
+    queryFn: () => laundryItemService.listForCustomer(),
+  });
 
   return (
     <section id={id} className="bg-surface-container-low py-20 px-4 md:px-8">

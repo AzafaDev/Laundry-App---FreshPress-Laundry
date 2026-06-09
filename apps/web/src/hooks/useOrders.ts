@@ -24,6 +24,7 @@ export const useProcessOrder = (orderId: string) => {
     mutationFn: (payload: {
       total_weight_kg: number;
       items: { laundry_item_id: string; quantity: number }[];
+      breakdown?: { clothing_type_id: string; quantity: number }[];
       notes?: string;
     }) => orderService.processOrder(orderId, payload),
     onSuccess: () => {
