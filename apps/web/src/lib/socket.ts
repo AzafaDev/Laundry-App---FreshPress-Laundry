@@ -39,6 +39,7 @@ export function disconnectSocket() {
 }
 
 export function reconnectSocket() {
+  if (socket?.connected) return socket;
   disconnectSocket();
   return getSocket();
 }
