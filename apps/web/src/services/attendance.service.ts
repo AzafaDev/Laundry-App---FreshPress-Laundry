@@ -1,5 +1,3 @@
-// apps/web/src/services/attendance.service.ts
-
 import { axiosInstance } from "@/lib/axios";
 import {
   Attendance,

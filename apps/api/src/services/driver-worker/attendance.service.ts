@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
-import { emitToRoom, emitToUser, emitToRole } from "../../lib/socket.js";
+import { emitToRoom, emitToRole } from "../../lib/socket.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import {
   canCheckIn,
@@ -16,7 +16,6 @@ import {
 import {
   getEmployeeOutlet,
   getEmployeeShiftForDate,
-  getShiftForDateTime,
   hasActiveDriverTask,
 } from "./attendance.utils.db.js";
 
@@ -113,9 +112,9 @@ export const attendanceService = {
       ...(body?.lng !== undefined && { check_in_longitude: body.lng }),
     };
 
-    const attendance = existing
-      ? await prisma.attendance.update({ where: { id: existing.id }, data: checkInData })
-      : await prisma.attendance.create({ data: { employee_id: employeeId, date: today, ...checkInData } });
+    const attendance = await prisma.attendance.create({
+      data: { employee_id: employeeId, date: today, ...checkInData },
+    });
 
     const employee = await prisma.employee.findUnique({
       where: { id: employeeId },
@@ -131,7 +130,6 @@ export const attendanceService = {
         attendanceId: attendance.id,
       });
     }
-    emitToUser(employeeId, "attendance:updated", { type: "checkin", attendanceId: attendance.id });
     emitToRole("super_admin", "attendance:updated", { type: "checkin", attendanceId: attendance.id, outletId: employee?.outlet_id });
 
     return attendance;
@@ -174,7 +172,6 @@ export const attendanceService = {
         attendanceId,
       });
     }
-    emitToUser(employeeId, "attendance:updated", { type: "checkout", attendanceId });
     emitToRole("super_admin", "attendance:updated", { type: "checkout", attendanceId, outletId: employee?.outlet_id });
 
     return updated;
@@ -275,31 +272,4 @@ export const attendanceService = {
     return buildShiftPayload(employeeId, shiftInfo, now, todayAttendance);
   },
 
-  async getCurrentShift(employeeId: string) {
-    const now = getNow();
-    const today = getTodayLocalStart();
-    const [shiftInfo, todayAttendance] = await Promise.all([
-      getShiftForDateTime(employeeId, now),
-      prisma.attendance.findUnique({
-        where: { employee_id_date: { employee_id: employeeId, date: today } },
-        select: { check_in_time: true, check_out_time: true },
-      }),
-    ]);
-    if (!shiftInfo) return null;
-    return buildShiftPayload(employeeId, shiftInfo, now, todayAttendance);
-  },
 };
-
-export async function assertShiftEligibility(employeeId: string): Promise<string> {
-  const [currentShift, todayAttendance, outletId] = await Promise.all([
-    attendanceService.getCurrentShift(employeeId),
-    attendanceService.checkTodayAttendance(employeeId),
-    getEmployeeOutlet(employeeId),
-  ]);
-
-  if (!currentShift?.isActive) throw new AppError("Shift tidak aktif", 403);
-  if (!todayAttendance?.check_in_time) throw new AppError("Anda belum melakukan check-in hari ini", 403);
-  if (todayAttendance.check_out_time) throw new AppError("Anda sudah check-out hari ini", 403);
-
-  return outletId;
-}
