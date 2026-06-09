@@ -54,7 +54,6 @@ function UnitCard({ title, subtitle, unit, icon: Icon, items, qtys, onSetQty }: 
 
   if (!selectedItem) return null;
 
-  // Items that have been added (qty > 0)
   const addedItems = items.filter((i) => (qtys[i.id] ?? 0) > 0);
 
   function handleAdd() {
@@ -82,7 +81,6 @@ function UnitCard({ title, subtitle, unit, icon: Icon, items, qtys, onSetQty }: 
 
       {/* Dropdown + qty + add button */}
       <div className="flex flex-col gap-2">
-        {/* Dropdown */}
         <div className="relative">
           <select
             value={selectedId}
@@ -98,7 +96,6 @@ function UnitCard({ title, subtitle, unit, icon: Icon, items, qtys, onSetQty }: 
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         </div>
 
-        {/* Qty row + add button */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-1.5">
             <button
@@ -178,14 +175,15 @@ function UnitCard({ title, subtitle, unit, icon: Icon, items, qtys, onSetQty }: 
 export const PriceCalculator = ({ id }: { id?: string }) => {
   const [qtys, setQtys] = useState<Record<string, number>>({});
 
+  // ✅ listForCustomer: hits /v1/customer/laundry-items, returns LaundryItem[] directly
   const { data: items = [], isLoading, isError } = useQuery<LaundryItem[]>({
-    queryKey: ["laundry-items"],
-    queryFn: laundryItemService.list,
+    queryKey: ["laundry-items-public"],
+    queryFn: () => laundryItemService.listForCustomer(),
     staleTime: 5 * 60 * 1000,
   });
 
-  const kgItems = useMemo(() => items.filter((i) => i.unit === "kg"), [items]);
-  const pcsItems = useMemo(() => items.filter((i) => i.unit === "pcs"), [items]);
+  const kgItems  = useMemo(() => items.filter((i) => i.unit === "kg"),  [items]);
+  const pcsItems = useMemo(() => items.filter((i) => i.unit !== "kg"), [items]);
 
   function setQty(itemId: string, value: number) {
     setQtys((prev) => ({ ...prev, [itemId]: value }));
@@ -203,7 +201,7 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
   }, [qtys, items]);
 
   const hasItems = breakdown.length > 0;
-  
+
   const user = useAuthStore((s) => s.user);
   const ctaHref = user ? "/customer/pickup" : "/register";
 

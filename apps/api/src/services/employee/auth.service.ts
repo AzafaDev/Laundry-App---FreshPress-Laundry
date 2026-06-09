@@ -209,10 +209,11 @@ export const forgotPassword = async (email: string) => {
   return { message: "Jika email terdaftar, link reset akan dikirimkan." };
 };
 
-export const resetPassword = async (rawToken: string, newPassword: string) => {
+export const resetPassword = async (rawToken: string, newPassword: string, res: Response) => {
   const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
   const record = await prisma.passwordResetToken.findFirst({
     where: { token_hash: tokenHash, used_at: null, expires_at: { gt: new Date() } },
+    include: { employee: true },
   });
 
   if (!record) throw new AppError("Token tidak valid atau sudah kadaluarsa.", 400);
@@ -229,7 +230,40 @@ export const resetPassword = async (rawToken: string, newPassword: string) => {
     }),
   ]);
 
-  return { message: "Password berhasil diubah. Silakan login." };
+  // Auto-login: issue tokens so the frontend can redirect to the correct dashboard
+  const employee = record.employee;
+  const newTokenVersion = employee.token_version + 1;
+
+  const accessToken = signAccessToken({
+    userId: employee.id,
+    role: employee.role,
+    email: employee.email,
+    outletId: employee.outlet_id,
+    tokenVersion: newTokenVersion,
+  });
+
+  const refreshToken = signRefreshToken({
+    userId: employee.id,
+    role: employee.role,
+    email: employee.email,
+    outletId: employee.outlet_id,
+    tokenVersion: newTokenVersion,
+  });
+
+  const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
+  const expiresMs = parseDuration(expiresIn);
+  const expiresAt = new Date(Date.now() + expiresMs);
+  await storeRefreshToken(employee.id, refreshToken, expiresAt);
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: expiresMs,
+  });
+
+  const { password_hash: _, ...employeeWithoutPassword } = employee;
+  return { accessToken, employee: employeeWithoutPassword };
 };
 
 export const changePassword = async (

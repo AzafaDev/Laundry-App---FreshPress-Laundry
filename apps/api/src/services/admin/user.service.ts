@@ -1,6 +1,8 @@
+import crypto from "crypto";
 import { Prisma } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import { hashPassword } from "../../utils/hash.util.js";
+import { sendEmployeeInviteEmail } from "../../lib/email.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import type {
   CreateUserInput,
@@ -73,12 +75,20 @@ export const getUserById = async (id: string) => {
   return user;
 };
 
-/** Create a new employee account. */
+/** Create a new employee account.
+ *  - If `password` is provided: set it directly (no email sent).
+ *  - If `password` is omitted: create with a random placeholder hash, then
+ *    store a PasswordResetToken (24 h) and send an invite email so the
+ *    employee sets their own password via /employee/reset-password.
+ */
 export const createUser = async (input: CreateUserInput) => {
   const existing = await prisma.employee.findUnique({ where: { email: input.email } });
   if (existing) throw new AppError("Email sudah terdaftar.", 409);
 
-  const password_hash = await hashPassword(input.password);
+  // Use provided password or a random placeholder
+  const password_hash = await hashPassword(
+    input.password ?? crypto.randomBytes(24).toString("hex"),
+  );
 
   const user = await prisma.employee.create({
     data: {
@@ -93,7 +103,23 @@ export const createUser = async (input: CreateUserInput) => {
     select: PUBLIC_EMPLOYEE_SELECT,
   });
 
-  return user;
+  // If no password was supplied, generate a PasswordResetToken and send invite
+  if (!input.password) {
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    await prisma.passwordResetToken.create({
+      data: { employee_id: user.id, token_hash: tokenHash, expires_at: expiresAt },
+    });
+
+    // Fire-and-forget — don't block the API response on email delivery
+    sendEmployeeInviteEmail(user.email, user.full_name, rawToken).catch((err) =>
+      console.error("Failed to send invite email:", err),
+    );
+  }
+
+  return { ...user, invite_sent: !input.password };
 };
 
 /** Patch an existing employee. */

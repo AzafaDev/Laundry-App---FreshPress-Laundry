@@ -11,6 +11,11 @@ import {
   Clock,
   LogOut,
   Shirt,
+  ShoppingBag,
+  PlayCircle,
+  ShieldAlert,
+  CalendarCheck,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
@@ -39,7 +44,19 @@ const NAV: NavItem[] = [
     href: "/dashboard/admin/outlets",
     label: "Outlets",
     icon: Store,
-    roles: ["super_admin", "outlet_admin"],
+    roles: ["super_admin"],
+  },
+  {
+    href: "/dashboard/admin/laundry-items",
+    label: "Laundry Items",
+    icon: ShoppingBag,
+    roles: ["super_admin"],
+  },
+  {
+    href: "/dashboard/admin/clothing-types",
+    label: "Jenis Pakaian",
+    icon: Shirt,
+    roles: ["super_admin"],
   },
   {
     href: "/dashboard/admin/shifts",
@@ -54,6 +71,18 @@ const NAV: NavItem[] = [
     roles: ["super_admin", "outlet_admin"],
   },
   {
+    href: "/dashboard/admin/orders/create",
+    label: "Proses Order Masuk",
+    icon: PlayCircle,
+    roles: ["outlet_admin"],
+  },
+  {
+    href: "/dashboard/admin/bypass-requests",
+    label: "Bypass Requests",
+    icon: ShieldAlert,
+    roles: ["outlet_admin"],
+  },
+  {
     href: "/dashboard/admin/reports",
     label: "Reports",
     icon: BarChart3,
@@ -62,12 +91,17 @@ const NAV: NavItem[] = [
   {
     href: "/dashboard/outlet-admin/attendance-report",
     label: "Attendance Report",
-    icon: BarChart3,
+    icon: CalendarCheck,
     roles: ["outlet_admin"],
   },
 ];
 
-export function AdminSidebar() {
+interface AdminSidebarProps {
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export function AdminSidebar({ open = false, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, clearAuth } = useEmployeeAuthStore();
@@ -78,25 +112,31 @@ export function AdminSidebar() {
   };
 
   const role = user?.role as "super_admin" | "outlet_admin" | undefined;
-  const items = NAV.filter((n) =>
-    role && (role === "super_admin" || role === "outlet_admin")
-      ? n.roles.includes(role)
-      : false,
-  );
+  const items = NAV.filter((n) => (role ? n.roles.includes(role) : false));
 
-  return (
-    <aside className="hidden lg:flex flex-col h-screen fixed left-0 top-0 w-72 bg-surface-container-low border-r border-outline-variant shadow-sm z-40">
+  const sidebarContent = (
+    <div className="flex flex-col h-full">
       {/* Brand */}
-      <div className="flex items-center gap-3 px-5 py-6">
-        <Shirt className="text-primary w-7 h-7" />
-        <span className="text-xl font-bold text-primary tracking-tight">
-          FreshPress Admin
-        </span>
+      <div className="flex items-center justify-between px-5 py-5">
+        <div className="flex items-center gap-3">
+          <Shirt className="text-primary w-6 h-6" />
+          <span className="text-lg font-bold text-primary tracking-tight">
+            FreshPress Admin
+          </span>
+        </div>
+        {/* Close button — mobile only */}
+        <button
+          onClick={onClose}
+          className="lg:hidden p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface-variant"
+          aria-label="Tutup sidebar"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
 
       {/* User card */}
-      <div className="mx-4 p-4 bg-surface-container-high rounded-xl flex items-center gap-3 mb-2">
-        <div className="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-semibold flex-shrink-0">
+      <div className="mx-4 p-3 bg-surface-container-high rounded-xl flex items-center gap-3 mb-1">
+        <div className="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center font-semibold flex-shrink-0 text-sm">
           {user?.full_name?.slice(0, 1).toUpperCase() ?? "A"}
         </div>
         <div className="flex flex-col min-w-0">
@@ -121,13 +161,14 @@ export function AdminSidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onClose}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
                 active
-                  ? "bg-primary-container/15 text-primary font-semibold shadow-sm"
+                  ? "bg-primary/10 text-primary font-semibold"
                   : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
               }`}
             >
-              <Icon className="w-5 h-5" />
+              <Icon className="w-5 h-5 flex-shrink-0" />
               <span>{label}</span>
               {active && (
                 <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
@@ -137,7 +178,7 @@ export function AdminSidebar() {
         })}
       </nav>
 
-      {/* Bottom actions */}
+      {/* Sign out */}
       <div className="p-3 mt-auto">
         <button
           onClick={handleLogout}
@@ -147,6 +188,35 @@ export function AdminSidebar() {
           Sign Out
         </button>
       </div>
-    </aside>
+    </div>
+  );
+
+  return (
+    <>
+      {/* ── Desktop: always-visible fixed sidebar ─────────────────────────── */}
+      <aside className="hidden lg:flex flex-col h-screen fixed left-0 top-0 w-72 bg-surface-container-low border-r border-outline-variant shadow-sm z-40">
+        {sidebarContent}
+      </aside>
+
+      {/* ── Mobile: backdrop + slide-in drawer ────────────────────────────── */}
+      {/* Backdrop */}
+      <div
+        className={`lg:hidden fixed inset-0 z-40 bg-black/40 transition-opacity duration-300 ${
+          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Drawer */}
+      <aside
+        className={`lg:hidden fixed left-0 top-0 h-full w-72 bg-surface-container-low border-r border-outline-variant shadow-xl z-50 transform transition-transform duration-300 ease-in-out ${
+          open ? "translate-x-0" : "-translate-x-full"
+        }`}
+        aria-label="Sidebar navigation"
+      >
+        {sidebarContent}
+      </aside>
+    </>
   );
 }

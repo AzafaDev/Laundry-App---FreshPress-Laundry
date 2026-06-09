@@ -90,3 +90,25 @@ export const sendEmailChangeVerification = async (
     `,
   });
 };
+
+export const sendEmployeeInviteEmail = async (
+  to: string,
+  name: string,
+  token: string,
+): Promise<void> => {
+  const link = `${env.CLIENT_URL}/employee/reset-password?token=${token}`;
+  await getResend().emails.send({
+    from: FROM,
+    to,
+    subject: "Undangan Akun Karyawan FreshPress Laundry",
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+        <h2 style="color:#00685f;">Selamat Datang di FreshPress Laundry!</h2>
+        <p>Halo <strong>${name}</strong>,</p>
+        <p>Akun karyawan Anda telah dibuat oleh admin. Klik tombol di bawah untuk membuat password dan mengaktifkan akun Anda. Link berlaku selama <strong>24 jam</strong>.</p>
+        <a href="${link}" style="display:inline-block;background:#00685f;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0;">Buat Password & Aktifkan Akun</a>
+        <p style="color:#666;font-size:13px;">Jika Anda tidak merasa membuat akun ini, abaikan email ini.</p>
+      </div>
+    `,
+  });
+};

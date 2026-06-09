@@ -8,6 +8,11 @@ import { getAttendanceReport, exportAttendanceReport } from "../../controllers/a
 import * as UserCtrl from "../../controllers/admin/user.controller.js";
 import * as OutletCtrl from "../../controllers/admin/outlet.controller.js";
 import * as ShiftCtrl from "../../controllers/admin/shift.controller.js";
+import * as LaundryItemCtrl from "../../controllers/admin/laundryItem.controller.js";
+import * as OrderCtrl from "../../controllers/admin/order.controller.js";
+import * as BypassCtrl from "../../controllers/admin/bypass.controller.js";
+import * as ClothingCtrl from "../../controllers/admin/clothingType.controller.js";
+import { getSalesReport, getEmployeePerformanceReport } from "../../controllers/admin/report.controller.js";
 import {
   createUserSchema,
   updateUserSchema,
@@ -22,6 +27,10 @@ import {
   updateWorkShiftSchema,
   assignEmployeeShiftSchema,
 } from "../../validations/shift.validation.js";
+import {
+  createLaundryItemSchema,
+  updateLaundryItemSchema,
+} from "../../validations/laundryItem.validation.js";
 
 const router = Router();
 
@@ -129,7 +138,7 @@ router.post(
   OutletCtrl.assignUserToOutlet,
 );
 
-// ── WorkShifts (super_admin only) ─────────────────────────────────────────────
+// ── WorkShifts ────────────────────────────────────────────────────────────────
 router.get(
   "/admin/shifts",
   requireRole("super_admin", "outlet_admin"),
@@ -156,6 +165,111 @@ router.delete(
   "/admin/shifts/:id",
   requireRole("super_admin"),
   ShiftCtrl.deleteWorkShift,
+);
+
+// ── Laundry Items ─────────────────────────────────────────────────────────────
+// GET is accessible by both super_admin and outlet_admin (needed for create order)
+router.get(
+  "/admin/laundry-items",
+  requireRole("super_admin", "outlet_admin"),
+  LaundryItemCtrl.listLaundryItems,
+);
+router.get(
+  "/admin/laundry-items/:id",
+  requireRole("super_admin", "outlet_admin"),
+  LaundryItemCtrl.getLaundryItem,
+);
+router.post(
+  "/admin/laundry-items",
+  requireRole("super_admin"),
+  validate(createLaundryItemSchema),
+  LaundryItemCtrl.createLaundryItem,
+);
+router.patch(
+  "/admin/laundry-items/:id",
+  requireRole("super_admin"),
+  validate(updateLaundryItemSchema),
+  LaundryItemCtrl.updateLaundryItem,
+);
+router.delete(
+  "/admin/laundry-items/:id",
+  requireRole("super_admin"),
+  LaundryItemCtrl.deleteLaundryItem,
+);
+
+// ── Orders ────────────────────────────────────────────────────────────────────
+router.get(
+  "/admin/orders",
+  requireRole("super_admin", "outlet_admin"),
+  OrderCtrl.listOrders,
+);
+router.get(
+  "/admin/orders/:id",
+  requireRole("super_admin", "outlet_admin"),
+  OrderCtrl.getOrder,
+);
+
+router.post(
+  "/admin/orders/:id/process",
+  requireRole("outlet_admin"),
+  OrderCtrl.processOrder,
+);
+
+// ── Bypass Requests ───────────────────────────────────────────────────────────
+router.get(
+  "/admin/bypass-requests",
+  requireRole("super_admin", "outlet_admin"),
+  BypassCtrl.listBypassRequests,
+);
+router.get(
+  "/admin/bypass-requests/:id",
+  requireRole("super_admin", "outlet_admin"),
+  BypassCtrl.getBypassRequest,
+);
+router.patch(
+  "/admin/bypass-requests/:id/review",
+  requireRole("outlet_admin"),
+  BypassCtrl.reviewBypassRequest,
+);
+
+// ── Clothing Types (master data) ──────────────────────────────────────────────
+// GET accessible by outlet_admin too (needed for processOrder breakdown)
+router.get(
+  "/admin/clothing-types",
+  requireRole("super_admin", "outlet_admin"),
+  ClothingCtrl.listClothingTypes,
+);
+router.get(
+  "/admin/clothing-types/:id",
+  requireRole("super_admin", "outlet_admin"),
+  ClothingCtrl.getClothingType,
+);
+router.post(
+  "/admin/clothing-types",
+  requireRole("super_admin"),
+  ClothingCtrl.createClothingType,
+);
+router.patch(
+  "/admin/clothing-types/:id",
+  requireRole("super_admin"),
+  ClothingCtrl.updateClothingType,
+);
+router.delete(
+  "/admin/clothing-types/:id",
+  requireRole("super_admin"),
+  ClothingCtrl.deleteClothingType,
+);
+
+// ── Sales & Employee Performance Reports ──────────────────────────────────────
+router.get(
+  "/reports/sales",
+  requireRole("super_admin", "outlet_admin"),
+  getSalesReport,
+);
+router.get(
+  "/reports/employees",
+  requireRole("super_admin", "outlet_admin"),
+  getEmployeePerformanceReport,
 );
 
 export default router;

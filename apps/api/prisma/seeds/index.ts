@@ -6,11 +6,30 @@ import { seedCustomers, seededCustomerEmails } from './customers.seed.js';
 import { seedEmployeeShifts } from './employee-shifts.seed.js';
 import { seedAttendances } from './attendances.seed.js';
 import { seedOrders } from './orders.seed.js';
+import { seedLaundryItems } from './laundryItems.seed.js';
+import { seedBypassRequests } from './bypassRequests.seed.js';
 
 export async function runAllSeeds() {
   console.log('🌱 Starting database seeding...\n');
 
   console.log('🗑️ Cleaning up existing data...');
+  // Delete leaf-level records first (no outgoing FKs to core tables)
+  await prisma.notification.deleteMany({});
+  await prisma.driverTask.deleteMany({});
+  await prisma.orderItemBreakdown.deleteMany({});
+  await prisma.orderItem.deleteMany({});
+  await prisma.orderStatusHistory.deleteMany({});
+  await prisma.processLog.deleteMany({});
+  await prisma.order.deleteMany({});
+  await prisma.customerAddress.deleteMany({});
+  await prisma.customer.deleteMany({});
+  await prisma.attendance.deleteMany({});
+  await prisma.employeeShift.deleteMany({});
+  await prisma.passwordResetToken.deleteMany({});
+  await prisma.employee.deleteMany({});
+  await prisma.workShift.deleteMany({});
+  await prisma.laundryItem.deleteMany({});
+  await prisma.outlet.deleteMany({});
   await prisma.$transaction(async tx => {
     // Order-related child tables first
     await tx.notification.deleteMany({});
@@ -55,7 +74,11 @@ export async function runAllSeeds() {
 
   await seedAttendances(employees, shifts);
 
+  await seedLaundryItems();
+
   await seedOrders(mainOutlet, employees, customers);
+
+  await seedBypassRequests();
 
   console.log('\n✅ All seeds completed successfully');
 }
@@ -101,6 +124,7 @@ export async function runModuleSeed(moduleName: string) {
       });
 
       await seedOrders(outletList[0], empList, customerList);
+      await seedBypassRequests();
       break;
     }
     case 'attendances': {
@@ -116,6 +140,12 @@ export async function runModuleSeed(moduleName: string) {
       });
       break;
     }
+    case 'laundry-items':
+      await seedLaundryItems();
+      break;
+    case 'bypass-requests':
+      await seedBypassRequests();
+      break;
     default:
       console.log(`Module ${moduleName} not recognized`);
   }
