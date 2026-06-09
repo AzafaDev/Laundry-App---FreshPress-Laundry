@@ -2,8 +2,9 @@ import { prisma } from "../../lib/prisma.js";
 import { emitToRoom, emitToUser } from "../../lib/socket.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { Prisma, OrderStatus } from "../../../generated/prisma/client.js";
-import { hasActiveDriverTask } from "./attendance.utils.js";
-import { attendanceService, assertShiftEligibility } from "./attendance.service.js";
+import { hasActiveDriverTask } from "./attendance.utils.db.js";
+import { attendanceService } from "./attendance.service.js";
+import { assertShiftEligibility } from "./shift.guard.js";
 
 const DRIVER_TASK_DETAIL_SELECT = {
   id: true,

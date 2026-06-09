@@ -1,19 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
-import { MapPin, Phone, Loader2 } from "lucide-react";
+import { MapPin, Phone } from "lucide-react";
 import { TaskTypeIcon } from "./TaskTypeIcon";
 import type { DriverTask } from "@/services/driverTask.service";
 
 export function ActiveTaskCard({
   task,
-  isCompleting,
-  onRequestComplete,
+  onClick,
 }: {
   task: DriverTask;
-  isCompleting: boolean;
-  onRequestComplete: () => void;
+  onClick: () => void;
 }) {
   const order = task.order;
   const address =
@@ -28,7 +25,8 @@ export function ActiveTaskCard({
     <motion.div
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="relative overflow-hidden bg-primary rounded-2xl p-5 shadow-lg shadow-primary/20"
+      onClick={onClick}
+      className="relative overflow-hidden bg-primary rounded-2xl p-5 shadow-lg shadow-primary/20 cursor-pointer active:scale-[0.99] transition-transform"
     >
       <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full border-[12px] border-on-primary/10 pointer-events-none" />
 
@@ -66,20 +64,10 @@ export function ActiveTaskCard({
         </a>
       )}
 
-      <div className="flex gap-3 mt-4">
-        <Link
-          href={`/dashboard/driver/task-detail?taskId=${task.id}`}
-          className="flex-1 py-2.5 bg-on-primary text-primary rounded-xl font-bold text-sm text-center hover:opacity-90 active:scale-[0.98] transition-all"
-        >
-          Detail Task
-        </Link>
-        <button
-          onClick={onRequestComplete}
-          disabled={isCompleting}
-          className="flex-1 py-2.5 border-2 border-on-primary/40 text-on-primary rounded-xl font-bold text-sm hover:bg-on-primary/10 active:scale-[0.98] transition-all disabled:opacity-60"
-        >
-          {isCompleting ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Selesai"}
-        </button>
+      <div className="mt-4">
+        <span className="block w-full py-2.5 bg-on-primary text-primary rounded-xl font-bold text-sm text-center">
+          Lihat Detail & Selesaikan
+        </span>
       </div>
     </motion.div>
   );

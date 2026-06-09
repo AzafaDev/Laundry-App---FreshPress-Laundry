@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft,
   CheckCircle2,
+  ChevronDown,
   Circle,
   ClipboardList,
   Loader2,
@@ -50,20 +51,6 @@ const ORDER_STATUS_LABEL: Record<CustomerOrderStatus, string> = {
   cancelled: "Dibatalkan",
 };
 
-const ORDER_STATUS_STYLE: Record<CustomerOrderStatus, string> = {
-  waiting_pickup_driver: "bg-amber-100 text-amber-800",
-  laundry_to_outlet: "bg-blue-100 text-blue-800",
-  laundry_arrived_outlet: "bg-cyan-100 text-cyan-800",
-  washing: "bg-sky-100 text-sky-800",
-  ironing: "bg-indigo-100 text-indigo-800",
-  packing: "bg-violet-100 text-violet-800",
-  waiting_payment: "bg-orange-100 text-orange-800",
-  ready_for_delivery: "bg-teal-100 text-teal-800",
-  delivery_to_customer: "bg-pink-100 text-pink-800",
-  received_by_customer: "bg-emerald-100 text-emerald-800",
-  completed: "bg-green-100 text-green-800",
-  cancelled: "bg-red-100 text-red-800",
-};
 
 const formatDateTime = (value: string | Date) =>
   new Intl.DateTimeFormat("id-ID", {
@@ -80,11 +67,20 @@ const getProgressIndex = (status: CustomerOrderStatus) =>
 export default function CustomerProgressPage() {
   const router = useRouter();
   const { accessToken, user, _hasHydrated } = useAuthStore();
+  const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
+
+  const toggleDropdown = (orderId: string) => {
+    setOpenDropdowns((prev) => {
+      const next = new Set(prev);
+      next.has(orderId) ? next.delete(orderId) : next.add(orderId);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!_hasHydrated) return;
     if (!accessToken) {
-      router.replace("/customer/login?redirect=/customer/progress");
+      router.replace("/customer/login");
     }
   }, [_hasHydrated, accessToken, router]);
 
@@ -218,11 +214,6 @@ export default function CustomerProgressPage() {
                       </p>
                     </div>
                     <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${ORDER_STATUS_STYLE[order.status]}`}
-                      >
-                        {ORDER_STATUS_LABEL[order.status]}
-                      </span>
                       <p className="text-sm font-semibold text-on-surface">
                         {order.total_price !== null && order.total_price !== undefined
                           ? formatRupiah(Number(order.total_price))
@@ -238,35 +229,45 @@ export default function CustomerProgressPage() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {/* Step grid */}
-                      <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                        {ORDER_PROGRESS_STEPS.map((step, idx) => {
-                          const isDone = idx < activeIndex;
-                          const isCurrent = idx === activeIndex;
+                      {/* Current status */}
+                      <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">Status Order</p>
+                      <button
+                        type="button"
+                        onClick={() => toggleDropdown(order.id)}
+                        className="w-full flex items-center justify-between rounded-xl border border-primary bg-primary/10 px-4 py-3 text-sm text-primary font-semibold hover:bg-primary/20 transition-colors"
+                      >
+                        <span>{ORDER_PROGRESS_STEPS[activeIndex]?.label ?? ORDER_STATUS_LABEL[order.status]}</span>
+                        <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${openDropdowns.has(order.id) ? "rotate-180" : ""}`} />
+                      </button>
 
-                          return (
-                            <div
-                              key={`${order.id}-${step.key}`}
-                              className={`rounded-xl border px-3 py-2 text-xs ${
-                                isCurrent
-                                  ? "border-primary bg-primary/10 text-primary"
-                                  : isDone
-                                    ? "border-green-200 bg-green-50 text-green-700"
-                                    : "border-outline-variant bg-surface-container-low text-on-surface-variant"
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
+                      {/* Dropdown: semua step lainnya */}
+                      {openDropdowns.has(order.id) && (
+                        <div className="rounded-xl border border-outline-variant bg-surface-container-low divide-y divide-outline-variant overflow-hidden">
+                          {ORDER_PROGRESS_STEPS.map((step, idx) => {
+                            const isDone = idx < activeIndex;
+                            const isCurrent = idx === activeIndex;
+                            return (
+                              <div
+                                key={step.key}
+                                className={`flex items-center gap-3 px-4 py-2.5 text-xs ${
+                                  isCurrent
+                                    ? "bg-primary/10 text-primary font-semibold"
+                                    : isDone
+                                      ? "text-green-700"
+                                      : "text-on-surface-variant"
+                                }`}
+                              >
                                 {isDone || isCurrent ? (
                                   <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                                 ) : (
                                   <Circle className="w-3.5 h-3.5 shrink-0" />
                                 )}
-                                <span className="font-medium">{step.label}</span>
+                                <span>{step.label}</span>
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            );
+                          })}
+                        </div>
+                      )}
 
                       {/* Latest history */}
                       {order.status_histories && order.status_histories.length > 0 && (

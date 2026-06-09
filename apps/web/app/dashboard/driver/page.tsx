@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingBag, Truck } from "lucide-react";
 import { DriverSidebar } from "@/components/dashboard/DriverSidebar";
@@ -10,25 +8,25 @@ import { DriverTopBar } from "@/components/dashboard/DriverTopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { CheckInPrompt } from "@/components/dashboard/CheckInPrompt";
 import { EmployeeWelcomeBanner } from "@/components/dashboard/EmployeeWelcomeBanner";
-import { ConfirmCompleteDialog } from "@/components/driver/ConfirmCompleteDialog";
 import { AvailableTaskCard } from "@/components/driver/AvailableTaskCard";
 import { ActiveTaskCard } from "@/components/driver/ActiveTaskCard";
 import { LockedTaskPreview } from "@/components/driver/LockedTaskPreview";
 import { EmptyState } from "@/components/driver/EmptyState";
 import { TaskSkeleton } from "@/components/driver/TaskSkeleton";
+import { TaskDetailModal } from "@/components/driver/TaskDetailModal";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useDriverTasks } from "@/hooks/useDriverTasks";
 import { useDriverTaskSocket } from "@/hooks/useDriverTaskSocket";
+import type { DriverTask } from "@/services/driverTask.service";
 
 type TaskTab = "pickup" | "delivery";
 
 export default function DriverDashboardPage() {
-  const router = useRouter();
   const { user, _hasHydrated } = useEmployeeAuthStore();
-  const [claimingTaskId, setClaimingTaskId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TaskTab>("pickup");
-  const [showCompleteDialog, setShowCompleteDialog] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<DriverTask | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { currentShift, checkedIn, checkInTime } = useAttendance();
   const {
@@ -42,6 +40,7 @@ export default function DriverDashboardPage() {
     isLoadingDeliveries,
     claimTask,
     completeTask,
+    isClaiming,
     isCompleting,
   } = useDriverTasks();
 
@@ -51,22 +50,21 @@ export default function DriverDashboardPage() {
     return <div className="min-h-screen flex items-center justify-center text-on-surface-variant text-sm">Memuat...</div>;
   }
 
+  const handleOpenModal = (task?: DriverTask) => {
+    setSelectedTask(task ?? null);
+    setIsModalOpen(true);
+  };
+
   const handleClaim = (taskId: string) => {
-    setClaimingTaskId(taskId);
     claimTask(taskId, {
-      onSuccess: () => router.push(`/dashboard/driver/task-detail?taskId=${taskId}`),
-      onError: () => setClaimingTaskId(null),
+      onSuccess: () => setIsModalOpen(false),
     });
   };
 
   const handleComplete = () => {
     if (!activeTask) return;
     completeTask(activeTask.id, {
-      onSuccess: () => {
-        setShowCompleteDialog(false);
-        router.push("/dashboard/driver");
-      },
-      onError: () => setShowCompleteDialog(false),
+      onSuccess: () => setIsModalOpen(false),
     });
   };
 
@@ -77,13 +75,16 @@ export default function DriverDashboardPage() {
 
   return (
     <div className="min-h-screen bg-background pb-24 lg:pb-0">
-      {showCompleteDialog && (
-        <ConfirmCompleteDialog
-          onConfirm={handleComplete}
-          onCancel={() => setShowCompleteDialog(false)}
-          isLoading={isCompleting}
-        />
-      )}
+      <TaskDetailModal
+        task={selectedTask}
+        activeTask={isModalOpen && !selectedTask ? activeTask : null}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onClaim={handleClaim}
+        onComplete={handleComplete}
+        isClaiming={isClaiming}
+        isCompleting={isCompleting}
+      />
       <DriverSidebar />
       <DriverTopBar />
       <main className="lg:pl-80 p-4 md:p-8 space-y-5">
@@ -107,33 +108,14 @@ export default function DriverDashboardPage() {
             </h2>
             <ActiveTaskCard
               task={activeTask}
-              isCompleting={isCompleting}
-              onRequestComplete={() => setShowCompleteDialog(true)}
+              onClick={() => handleOpenModal()}
             />
-          </div>
-        )}
-
-        {hasActiveTask && (pickupCount > 0 || deliveryCount > 0) && (
-          <div className="flex items-center gap-2 px-4 py-2.5 bg-surface-container-low border border-outline-variant rounded-xl text-xs text-on-surface-variant">
-            <span className="font-medium">Antrian berikutnya:</span>
-            {pickupCount > 0 && (
-              <span className="flex items-center gap-1 bg-tertiary/10 text-tertiary font-bold px-2 py-0.5 rounded-full">
-                <ShoppingBag className="w-3 h-3" />
-                {pickupCount} pickup
-              </span>
-            )}
-            {deliveryCount > 0 && (
-              <span className="flex items-center gap-1 bg-primary/10 text-primary font-bold px-2 py-0.5 rounded-full">
-                <Truck className="w-3 h-3" />
-                {deliveryCount} delivery
-              </span>
-            )}
           </div>
         )}
 
         {!checkedIn && !hasActiveTask && <LockedTaskPreview />}
 
-        {checkedIn && !hasActiveTask && (
+        {checkedIn && (
           <div>
             <div className="flex items-center gap-1 bg-surface-container-low rounded-xl p-1 mb-4">
               {(["pickup", "delivery"] as TaskTab[]).map((tab) => {
@@ -187,8 +169,8 @@ export default function DriverDashboardPage() {
                       <AvailableTaskCard
                         key={task.id}
                         task={task}
-                        onClaim={handleClaim}
-                        isClaiming={claimingTaskId === task.id}
+                        onSelect={() => handleOpenModal(task)}
+                        disabled={hasActiveTask}
                       />
                     ))}
                   </div>

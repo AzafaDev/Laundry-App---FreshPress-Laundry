@@ -3,6 +3,7 @@ import { Toaster } from "react-hot-toast";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { ReactQueryProvider } from "@/components/ui/ReactQueryProvider";
+import { WhatsAppCTA } from "@/components/ui/WhatsAppCTA";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,6 +28,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ReactQueryProvider>{children}</ReactQueryProvider>
         <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
+        <WhatsAppCTA />
       </body>
     </html>
   );

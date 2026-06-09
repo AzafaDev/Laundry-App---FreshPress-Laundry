@@ -1,7 +1,8 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma.js';
 import { subDays } from 'date-fns';
-import { getNow, getEmployeeShiftForDate, getTodayLocalStart } from '../services/driver-worker/attendance.utils.js';
+import { getNow, getTodayLocalStart } from '../services/driver-worker/attendance.utils.js';
+import { getEmployeeShiftForDate } from '../services/driver-worker/attendance.utils.db.js';
 
 const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
 

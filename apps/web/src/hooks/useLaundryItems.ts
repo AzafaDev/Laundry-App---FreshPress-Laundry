@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import {
   useMutation,
   useQuery,
@@ -45,3 +46,13 @@ export const useDeleteLaundryItem = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 };
+=======
+import { useQuery } from "@tanstack/react-query";
+import { laundryItemService } from "@/services/laundryItem.service";
+
+export const useLaundryItems = () =>
+  useQuery({
+    queryKey: ["laundry-items"],
+    queryFn: laundryItemService.list,
+  });
+>>>>>>> 95e9e1d60807a7cc73eb681fe54cba94e8e499e5

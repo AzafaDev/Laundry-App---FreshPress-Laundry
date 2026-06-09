@@ -1,18 +1,18 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { MapPin, Loader2 } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { TaskTypeIcon } from "./TaskTypeIcon";
 import type { DriverTask } from "@/services/driverTask.service";
 
 export function AvailableTaskCard({
   task,
-  onClaim,
-  isClaiming,
+  onSelect,
+  disabled,
 }: {
   task: DriverTask;
-  onClaim: (id: string) => void;
-  isClaiming: boolean;
+  onSelect: () => void;
+  disabled?: boolean;
 }) {
   const order = task.order;
   const address =
@@ -26,7 +26,13 @@ export function AvailableTaskCard({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-surface border border-outline-variant rounded-xl p-4 shadow-sm hover:shadow-md hover:border-primary/30 transition-all"
+      onClick={disabled ? undefined : onSelect}
+      title={disabled ? "Selesaikan task aktif dulu" : undefined}
+      className={`bg-surface border border-outline-variant rounded-xl p-4 shadow-sm transition-all ${
+        disabled
+          ? "opacity-50 cursor-not-allowed"
+          : "hover:shadow-md hover:border-primary/30 cursor-pointer active:scale-[0.99]"
+      }`}
     >
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-2">
@@ -42,13 +48,9 @@ export function AvailableTaskCard({
         <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-primary/60" />
         <span className="line-clamp-2">{address || "Alamat tidak tersedia"}</span>
       </div>
-      <button
-        onClick={() => onClaim(task.id)}
-        disabled={isClaiming}
-        className="w-full py-2.5 bg-primary text-on-primary rounded-lg font-semibold text-sm hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-      >
-        {isClaiming ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Ambil Task"}
-      </button>
+      <div className="w-full py-2.5 bg-primary/10 text-primary rounded-lg font-semibold text-sm text-center">
+        Lihat Detail
+      </div>
     </motion.div>
   );
 }
