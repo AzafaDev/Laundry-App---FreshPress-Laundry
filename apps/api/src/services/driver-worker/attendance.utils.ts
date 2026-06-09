@@ -114,6 +114,11 @@ export function isLate(
   return diffMinutes > LATE_THRESHOLD_MINUTES;
 }
 
+export function calcLateMinutes(checkInTime: Date, shiftStartTime: Date): number {
+  const diff = (checkInTime.getTime() - shiftStartTime.getTime()) / (1000 * 60);
+  return Math.max(0, Math.floor(diff));
+}
+
 export function determineAttendanceStatus(
   checkInTime: Date | null,
   shiftStartTime: Date | null,

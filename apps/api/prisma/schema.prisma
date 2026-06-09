@@ -612,6 +612,7 @@ model Attendance {
   check_out_longitude Decimal?  @db.Decimal(11, 8)
   notes               String?
   is_late             Boolean?
+  late_minutes        Int?
   status              String?   @db.VarChar(20)
   created_at          DateTime  @default(now()) @db.Timestamptz
   updated_at          DateTime  @default(now()) @updatedAt @db.Timestamptz

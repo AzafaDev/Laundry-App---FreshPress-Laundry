@@ -7,6 +7,7 @@ import {
   canCheckIn,
   canCheckOut,
   isLate,
+  calcLateMinutes,
   determineAttendanceStatus,
   getTodayLocalStart,
   getShiftForDateTime,
@@ -26,6 +27,7 @@ interface CheckInData {
   check_in_time: Date;
   outlet_id: string;
   is_late: boolean;
+  late_minutes: number;
   status: "on_time" | "late" | "absent";
   check_in_latitude?: number;
   check_in_longitude?: number;
@@ -103,6 +105,7 @@ export const attendanceService = {
       check_in_time: now,
       outlet_id: outletId,
       is_late: isLate(now, shift.startTime),
+      late_minutes: calcLateMinutes(now, shift.startTime),
       status: determineAttendanceStatus(now, shift.startTime),
       ...(body?.lat !== undefined && { check_in_latitude: body.lat }),
       ...(body?.lng !== undefined && { check_in_longitude: body.lng }),
