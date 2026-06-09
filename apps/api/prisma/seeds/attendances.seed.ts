@@ -33,9 +33,10 @@ function generateAttendanceTimes(
   if (status === 'late') {
     const lateMinutes = Math.floor(Math.random() * 25) + 5;
     checkInUTC.setUTCMinutes(checkInUTC.getUTCMinutes() + lateMinutes);
+    return { check_in_time: checkInUTC, check_out_time: checkOutUTC, late_minutes: lateMinutes };
   }
 
-  return { check_in_time: checkInUTC, check_out_time: checkOutUTC };
+  return { check_in_time: checkInUTC, check_out_time: checkOutUTC, late_minutes: 0 };
 }
 
 export async function seedAttendances(
@@ -74,7 +75,7 @@ export async function seedAttendances(
 
       if (status === 'absent') continue;
 
-      const { check_in_time, check_out_time } = generateAttendanceTimes(shift, randomDate, status);
+      const { check_in_time, check_out_time, late_minutes } = generateAttendanceTimes(shift, randomDate, status);
       records.push({
         employee_id: emp.id,
         outlet_id: emp.outlet_id,
@@ -85,6 +86,7 @@ export async function seedAttendances(
         check_in_longitude: 106.816666,
         status: status === 'on_time' ? 'on_time' : 'late',
         is_late: status === 'late',
+        late_minutes,
       });
     }
 
