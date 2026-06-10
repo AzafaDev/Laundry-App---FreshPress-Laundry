@@ -5,7 +5,7 @@
 
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/stores/authStore";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { OutletDashboardSidebar } from "@/components/admin/OutletDashboardSidebar";
 import { AdminTopBar } from "@/components/admin/AdminTopBar";
 
@@ -15,22 +15,21 @@ export default function OutletDashboardLayout({
   children: ReactNode;
 }) {
   const router = useRouter();
-  const { user, accessToken } = useAuthStore();
+  const { user } = useEmployeeAuthStore();
 
   useEffect(() => {
-    if (!accessToken || !user) {
-      router.replace("/login");
+    if (!user) {
+      router.replace("/employee/login");
       return;
     }
     if (user.role !== "outlet_admin") {
-      // Super admins have their own area; send them there. Everyone else is denied.
       router.replace(
         user.role === "super_admin" ? "/dashboard/admin" : "/access-denied",
       );
     }
-  }, [user, accessToken, router]);
+  }, [user, router]);
 
-  if (!user || !accessToken || user.role !== "outlet_admin") {
+  if (!user || user.role !== "outlet_admin") {
     return null;
   }
 

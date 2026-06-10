@@ -9,14 +9,10 @@ import { StationStatusCard, LockedStationPreview } from "@/components/worker/Sta
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useWorkerStation } from "@/hooks/useWorkerStation";
-import { useWorkerSocket } from "@/hooks/useWorkerSocket";
-
 export default function WorkerDashboardPage() {
   const { _hasHydrated, user } = useEmployeeAuthStore();
   const { currentShift, checkedIn, checkInTime } = useAttendance();
   const { stationOrders, stationType, isLoading: isLoadingStation } = useWorkerStation();
-
-  useWorkerSocket();
 
   if (!_hasHydrated) {
     return (

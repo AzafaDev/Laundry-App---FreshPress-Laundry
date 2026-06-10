@@ -20,12 +20,12 @@ import { useRouter } from "next/navigation";
 
 export default function LocationsPage() {
   const router = useRouter();
-  const { user, accessToken, _hasHydrated } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
 
   useEffect(() => {
     if (!_hasHydrated) return;
-    if (!accessToken) router.replace("/login");
-  }, [_hasHydrated, accessToken, router]);
+    if (!user) router.replace("/login");
+  }, [_hasHydrated, user, router]);
 
   const [addresses, setAddresses] = useState<CustomerAddress[]>([]);
   const [loading, setLoading] = useState(true);

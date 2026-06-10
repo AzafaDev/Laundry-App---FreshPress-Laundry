@@ -2,7 +2,6 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { attendanceService } from "@/services/attendance.service";
-import { useSocket } from "./useSocket";
 import { formatTime } from "@/utils/formatDate";
 import { useGeolocation } from "./useGeolocation";
 import { useEffect, useRef, useState } from "react";
@@ -14,22 +13,11 @@ import type { AttendanceReportParams } from "@/types/attendance.type";
 export function useAttendance() {
   const [optimisticCheckedIn, setOptimisticCheckedIn] = useState(false);
   const queryClient = useQueryClient();
-  const { on } = useSocket();
   const { latitude, longitude, permissionDenied } = useGeolocation();
 
   const { user } = useEmployeeAuthStore();
   const isEmployee = !!user;
   const employeeId = user?.id;
-
-  useEffect(() => {
-    if (!isEmployee) return;
-    const unsubscribe = on("attendance:updated", () => {
-      queryClient.invalidateQueries({ queryKey: ["attendance", "today", employeeId] });
-      queryClient.invalidateQueries({ queryKey: ["attendance", "logs", employeeId] });
-      queryClient.invalidateQueries({ queryKey: ["attendance", "currentShift", employeeId] });
-    });
-    return unsubscribe;
-  }, [on, queryClient, isEmployee, employeeId]);
 
   const todayQuery = useQuery({
     queryKey: ["attendance", "today", employeeId],

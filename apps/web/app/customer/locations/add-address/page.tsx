@@ -42,12 +42,12 @@ function AddAddressPageInner() {
   const editId = searchParams.get("edit");
   const isEditMode = Boolean(editId);
 
-  const { accessToken, _hasHydrated } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
 
   useEffect(() => {
     if (!_hasHydrated) return;
-    if (!accessToken) router.replace("/login");
-  }, [_hasHydrated, accessToken, router]);
+    if (!user) router.replace("/login");
+  }, [_hasHydrated, user, router]);
 
   const [province, setProvince] = useState("");
   const [city, setCity] = useState("");
@@ -71,7 +71,7 @@ function AddAddressPageInner() {
   const [loadingEdit, setLoadingEdit] = useState(isEditMode);
 
   useEffect(() => {
-    if (!editId || !accessToken) return;
+    if (!editId || !user) return;
     (async () => {
       try {
         const addresses = await addressService.list();
@@ -103,7 +103,7 @@ function AddAddressPageInner() {
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editId, accessToken]);
+  }, [editId, user]);
 
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);

@@ -45,6 +45,7 @@ export const changePassword = async (
       req.user!.userId,
       current_password,
       new_password,
+      res,
     );
     res.json(result);
   } catch (err) {
