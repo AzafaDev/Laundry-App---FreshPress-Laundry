@@ -269,6 +269,16 @@ export default function CustomerProgressPage() {
                         </div>
                       )}
 
+                      {/* Payment CTA */}
+                      {order.status === "waiting_payment" && order.payment?.status !== "paid" && (
+                        <Link
+                          href={`/customer/payment/${order.id}`}
+                          className="block w-full text-center rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white hover:bg-primary-container hover:text-on-primary-container transition-colors"
+                        >
+                          Bayar Sekarang
+                        </Link>
+                      )}
+
                       {/* Latest history */}
                       {order.status_histories && order.status_histories.length > 0 && (
                         <div className="rounded-xl bg-surface-container-low px-3 py-3 text-xs text-on-surface-variant space-y-1">

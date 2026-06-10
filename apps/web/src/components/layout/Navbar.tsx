@@ -25,6 +25,7 @@ export const Navbar = () => {
     { label: "Pickup", href: "/customer/pickup" },
     { label: "Orders", href: "/customer/orders" },
     { label: "Alamat", href: "/customer/locations" },
+    { label: "Pembayaran", href: "/customer/payment" },
   ];
 
   return (

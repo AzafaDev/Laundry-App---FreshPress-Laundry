@@ -4,6 +4,7 @@ import * as ProfileCtrl from "../../controllers/customer/profile.controller.js";
 import * as AddressCtrl from "../../controllers/customer/address.controller.js";
 import * as OrderCtrl from "../../controllers/customer/order.controller.js";
 import * as LaundryItemCtrl from "../../controllers/customer/laundryItem.controller.js";
+import * as PaymentCtrl from "../../controllers/customer/payment.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
 import {
@@ -61,5 +62,11 @@ router.get("/laundry-items", LaundryItemCtrl.listLaundryItems);
 router.post("/orders", authenticate, validate(createOrderSchema), OrderCtrl.createOrder);
 router.get("/orders", authenticate, OrderCtrl.listOrders);
 router.get("/orders/:id", authenticate, OrderCtrl.getOrderById);
+
+// Payment Routes
+router.post("/payment/notification", PaymentCtrl.handleNotification); // public webhook (Midtrans)
+router.post("/payment/:orderId/create-transaction", authenticate, PaymentCtrl.createTransaction);
+router.get("/payment/:orderId/status", authenticate, PaymentCtrl.getStatus);
+router.post("/payment/:orderId/sync", authenticate, PaymentCtrl.syncStatus);
 
 export default router;

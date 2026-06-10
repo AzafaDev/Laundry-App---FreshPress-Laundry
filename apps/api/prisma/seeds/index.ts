@@ -6,6 +6,7 @@ import { seedCustomers, seededCustomerEmails } from './customers.seed.js';
 import { seedEmployeeShifts } from './employee-shifts.seed.js';
 import { seedAttendances } from './attendances.seed.js';
 import { seedOrders } from './orders.seed.js';
+import { seedWaitingPaymentOrders } from './waitingPayment.seed.js';
 
 export async function runAllSeeds() {
   console.log('🌱 Starting database seeding...\n');
@@ -103,6 +104,9 @@ export async function runModuleSeed(moduleName: string) {
       await seedOrders(outletList[0], empList, customerList);
       break;
     }
+    case 'waiting-payment':
+      await seedWaitingPaymentOrders();
+      break;
     case 'attendances': {
       const employees = await prisma.employee.findMany();
       const shifts = await prisma.workShift.findMany();
