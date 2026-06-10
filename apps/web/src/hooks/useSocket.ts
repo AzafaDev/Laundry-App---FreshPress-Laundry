@@ -6,9 +6,9 @@ import { useCallback, useEffect } from "react";
 type EventHandler = (...args: any[]) => void;
 
 export function useSocket() {
-  const customerToken = useAuthStore((s) => s.accessToken);
+  const customerUser = useAuthStore((s) => s.user);
   const employeeUser = useEmployeeAuthStore((s) => s.user);
-  const isLoggedIn = !!employeeUser || !!customerToken;
+  const isLoggedIn = !!employeeUser || !!customerUser;
 
   useEffect(() => {
     if (!isLoggedIn) {

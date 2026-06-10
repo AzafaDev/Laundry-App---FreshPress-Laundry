@@ -7,30 +7,9 @@ import {
   signRefreshToken,
   verifyRefreshToken,
 } from "../../utils/jwt.util.js";
+import { parseDuration, storeRefreshToken, revokeRefreshToken } from "../../utils/token.util.js";
 import { sendEmployeeResetPasswordEmail } from "../../lib/email.js";
 import { Response } from "express";
-
-async function storeRefreshToken(
-  userId: string,
-  token: string,
-  expiresAt: Date,
-) {
-  return prisma.refreshToken.create({
-    data: {
-      user_type: "employee",
-      user_id: userId,
-      token,
-      expires_at: expiresAt,
-    },
-  });
-}
-
-async function revokeRefreshToken(token: string) {
-  return prisma.refreshToken.updateMany({
-    where: { token, revoked_at: null },
-    data: { revoked_at: new Date() },
-  });
-}
 
 export const loginEmployee = async (
   email: string,
@@ -74,7 +53,7 @@ export const loginEmployee = async (
   const expiresMs = parseDuration(expiresIn);
   const expiresAt = new Date(Date.now() + expiresMs);
 
-  await storeRefreshToken(employee.id, refreshToken, expiresAt);
+  await storeRefreshToken(employee.id, refreshToken, expiresAt, "employee");
 
   const accessExpiresMs = parseDuration(process.env.JWT_EXPIRES_IN || "15m");
 
@@ -146,7 +125,7 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
   const expiresMs = parseDuration(expiresIn);
   const expiresAt = new Date(Date.now() + expiresMs);
 
-  await storeRefreshToken(payload.userId, newRefreshToken, expiresAt);
+  await storeRefreshToken(payload.userId, newRefreshToken, expiresAt, "employee");
 
   const accessExpiresMs = parseDuration(process.env.JWT_EXPIRES_IN || "15m");
 
@@ -253,7 +232,7 @@ export const resetPassword = async (rawToken: string, newPassword: string, res: 
   const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
   const expiresMs = parseDuration(expiresIn);
   const expiresAt = new Date(Date.now() + expiresMs);
-  await storeRefreshToken(employee.id, refreshToken, expiresAt);
+  await storeRefreshToken(employee.id, refreshToken, expiresAt, "employee");
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
@@ -337,19 +316,3 @@ export const changePassword = async (
   return { message: "Password berhasil diubah." };
 };
 
-function parseDuration(duration: string): number {
-  const match = duration.match(/^(\d+)([dhm])$/);
-  if (!match) return 7 * 24 * 60 * 60 * 1000;
-  const value = parseInt(match[1], 10);
-  const unit = match[2];
-  switch (unit) {
-    case "d":
-      return value * 24 * 60 * 60 * 1000;
-    case "h":
-      return value * 60 * 60 * 1000;
-    case "m":
-      return value * 60 * 1000;
-    default:
-      return 7 * 24 * 60 * 60 * 1000;
-  }
-}

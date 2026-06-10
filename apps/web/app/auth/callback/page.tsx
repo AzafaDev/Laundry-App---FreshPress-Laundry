@@ -11,10 +11,9 @@ function AuthCallbackContent() {
   const { setAuth } = useAuthStore();
 
   useEffect(() => {
-    const token = searchParams.get("token");
     const userEncoded = searchParams.get("user");
 
-    if (!token || !userEncoded) {
+    if (!userEncoded) {
       router.replace("/login?error=Login+Google+gagal.");
       return;
     }
@@ -24,7 +23,7 @@ function AuthCallbackContent() {
         Buffer.from(userEncoded, "base64").toString("utf-8"),
       ) as User;
 
-      setAuth(user, token);
+      setAuth(user);
 
       const path = getDashboardPath(user.role);
       router.replace(path);

@@ -9,26 +9,26 @@ export const authenticate = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const userType = req.headers["x-user-type"] as string | undefined;
-    let token: string | undefined;
-
-    if (userType === "employee") {
-      token = req.cookies?.accessToken;
-    } else {
-      const authHeader = req.headers.authorization;
-      if (authHeader?.startsWith("Bearer ")) {
-        token = authHeader.slice(7);
-      }
-    }
+    const token = req.cookies?.accessToken;
 
     if (!token) {
       throw new AppError("Autentikasi diperlukan.", 401);
     }
+
     const payload = verifyAccessToken(token);
 
     let userExists = false;
 
-    if (userType === "employee" || payload.role !== "customer") {
+    if (payload.role === "customer") {
+      const customer = await prisma.customer.findFirst({
+        where: { id: payload.userId, deleted_at: null },
+        select: { id: true, token_version: true },
+      });
+      if (customer && payload.tokenVersion !== undefined && customer.token_version !== payload.tokenVersion) {
+        throw new AppError("Sesi tidak valid. Silakan login kembali.", 401);
+      }
+      userExists = !!customer;
+    } else {
       const employee = await prisma.employee.findFirst({
         where: { id: payload.userId, deleted_at: null },
         select: { id: true, token_version: true },
@@ -37,12 +37,6 @@ export const authenticate = async (
         throw new AppError("Sesi tidak valid. Silakan login kembali.", 401);
       }
       userExists = !!employee;
-    } else {
-      const customer = await prisma.customer.findFirst({
-        where: { id: payload.userId, deleted_at: null },
-        select: { id: true },
-      });
-      userExists = !!customer;
     }
 
     if (!userExists) {

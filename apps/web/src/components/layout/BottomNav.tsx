@@ -33,7 +33,7 @@ const NavItem = ({
 
 export const BottomNav = () => {
   const pathname = usePathname();
-  const { accessToken: customerToken } = useAuthStore();
+  const { user: customerUser } = useAuthStore();
   const { user: employeeUser } = useEmployeeAuthStore();
 
   let activeRole: Role = null;
@@ -43,12 +43,12 @@ export const BottomNav = () => {
       ["washing_worker", "ironing_worker", "packing_worker"].includes(employeeUser.role)
     )
       activeRole = "worker";
-  } else if (customerToken) {
+  } else if (customerUser) {
     activeRole = "customer";
   }
 
   if (activeRole === "customer") {
-    const isAuthenticated = !!customerToken;
+    const isAuthenticated = !!customerUser;
     return (
       <nav className="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center bg-surface py-2 px-4 border-t border-outline-variant shadow-lg rounded-t-xl pb-safe">
         <NavItem icon={Home} label="Home" href="/" active={pathname === "/"} />
