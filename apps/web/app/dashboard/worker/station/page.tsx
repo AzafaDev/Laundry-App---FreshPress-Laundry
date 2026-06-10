@@ -1,175 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useWorkerStation } from "@/hooks/useWorkerStation";
+import { useWorkerStationSocket } from "@/hooks/useWorkerStationSocket";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { useAttendance } from "@/hooks/useAttendance";
+import { useQueryClient } from "@tanstack/react-query";
 import { WorkerSidebar } from "@/components/dashboard/WorkerSidebar";
 import { WorkerTopBar } from "@/components/dashboard/WorkerTopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { Loader2, Package, Shirt, Blend, CheckCircle, Clock, AlertCircle, Wifi, WifiOff, Clock3 } from "lucide-react";
+import { OrderCard } from "@/components/worker/OrderCard";
 import { StationModal } from "@/components/worker/StationModal";
 import { WorkerBypassModal } from "@/components/worker/WorkerBypassModal";
-import { useSocket } from "@/hooks/useSocket";
-import { useQueryClient } from "@tanstack/react-query";
+import { stationConfig, type BypassState } from "@/components/worker/stationConfig";
+import { Loader2, AlertCircle, Wifi, WifiOff } from "lucide-react";
 import toast from "react-hot-toast";
-import { socketToast } from "@/lib/socketToast";
-import type { StationOrder, Discrepancy } from "@/services/workerStation.service";
+import type { Discrepancy } from "@/services/workerStation.service";
 import { workerStationService } from "@/services/workerStation.service";
-
-const stationConfig = {
-  washing: {
-    title: "Stasiun Cuci",
-    subtitle: "Proses cucian yang masuk",
-    Icon: Shirt,
-    accentClass: "bg-blue-50 border-blue-100",
-    iconClass: "text-blue-500 bg-blue-100",
-    badgeClass: "bg-blue-100 text-blue-700",
-  },
-  ironing: {
-    title: "Stasiun Setrika",
-    subtitle: "Proses setrika yang masuk",
-    Icon: Blend,
-    accentClass: "bg-orange-50 border-orange-100",
-    iconClass: "text-orange-500 bg-orange-100",
-    badgeClass: "bg-orange-100 text-orange-700",
-  },
-  packing: {
-    title: "Stasiun Packing",
-    subtitle: "Proses packing yang masuk",
-    Icon: Package,
-    accentClass: "bg-emerald-50 border-emerald-100",
-    iconClass: "text-emerald-600 bg-emerald-100",
-    badgeClass: "bg-emerald-100 text-emerald-700",
-  },
-};
-
-const statusLabel: Record<string, string> = {
-  washing_in_progress: "Sedang dicuci",
-  ironing_in_progress: "Sedang disetrika",
-  packing_in_progress: "Sedang dipacking",
-  ready_for_washing: "Antri cuci",
-  ready_for_ironing: "Antri setrika",
-  ready_for_packing: "Antri packing",
-  washing: "Antri cuci",
-  ironing: "Antri setrika",
-  packing: "Antri packing",
-};
-
-function computeWaiting(createdAt: string): { label: string; urgent: boolean } {
-  const diffMin = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
-  if (diffMin < 30) return { label: `${diffMin} mnt lalu`, urgent: false };
-  if (diffMin < 60) return { label: `${diffMin} mnt lalu`, urgent: true };
-  const hours = Math.floor(diffMin / 60);
-  return { label: `${hours} jam lalu`, urgent: true };
-}
-
-interface BypassState {
-  discrepancies: Discrepancy[];
-  actualItems: Array<{ clothing_type_id: string; actual_quantity: number }>;
-  submitted: boolean;
-}
-
-function PendingBypassBanner() {
-  return (
-    <div className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 mt-3">
-      <Clock3 className="w-4 h-4 text-amber-600 shrink-0" />
-      <p className="text-sm text-amber-700 font-medium">Menunggu persetujuan admin</p>
-    </div>
-  );
-}
-
-function OrderCard({
-  order,
-  onProcess,
-  isProcessing,
-  bypassState,
-}: {
-  order: StationOrder;
-  onProcess: (id: string) => void;
-  isProcessing: boolean;
-  bypassState?: BypassState;
-}) {
-  const [waiting, setWaiting] = useState<{ label: string; urgent: boolean }>({ label: "", urgent: false });
-  useEffect(() => {
-    setWaiting(computeWaiting(order.created_at));
-    const timer = setInterval(() => setWaiting(computeWaiting(order.created_at)), 60000);
-    return () => clearInterval(timer);
-  }, [order.created_at]);
-
-  const rawStatus = statusLabel[order.status] ?? order.status;
-  const isPendingBypass = bypassState?.submitted || order.hasPendingBypass;
-
-  return (
-    <div
-      className={`bg-surface border rounded-xl p-4 shadow-sm transition-all ${
-        waiting.urgent ? "border-amber-200 bg-amber-50/30" : "border-outline-variant"
-      }`}
-    >
-      {/* Top row */}
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-            #{order.invoice_number}
-          </span>
-          <span className="text-xs text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-full border border-outline-variant">
-            {rawStatus}
-          </span>
-        </div>
-        <div
-          className={`flex items-center gap-1 text-xs font-medium shrink-0 ${
-            waiting.urgent ? "text-amber-600" : "text-on-surface-variant"
-          }`}
-        >
-          {waiting.urgent && <AlertCircle className="w-3 h-3" />}
-          <Clock className="w-3 h-3" />
-          {waiting.label}
-        </div>
-      </div>
-
-      {/* Customer */}
-      <h3 className="text-base font-bold text-on-surface">{order.customer.full_name}</h3>
-      <p className="text-sm text-on-surface-variant mt-0.5 mb-4">
-        {order.order_item_breakdowns.length} jenis item
-        {order.total_weight_kg ? ` • ${order.total_weight_kg} kg` : ""}
-      </p>
-
-      {/* Items preview */}
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {order.order_item_breakdowns.slice(0, 3).map((item) => (
-          <span
-            key={item.id}
-            className="text-xs bg-surface-container-low text-on-surface-variant px-2 py-0.5 rounded-md border border-outline-variant"
-          >
-            {item.clothing_type.name} ×{item.quantity}
-          </span>
-        ))}
-        {order.order_item_breakdowns.length > 3 && (
-          <span className="text-xs text-on-surface-variant px-1">
-            +{order.order_item_breakdowns.length - 3} lagi
-          </span>
-        )}
-      </div>
-
-      {isPendingBypass ? (
-        <PendingBypassBanner />
-      ) : (
-        <button
-          onClick={() => onProcess(order.id)}
-          disabled={isProcessing}
-          className="w-full py-2.5 bg-primary text-on-primary rounded-lg font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-        >
-          {isProcessing ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <CheckCircle className="w-4 h-4" />
-          )}
-          {isProcessing ? "Memproses..." : "Verifikasi Items"}
-        </button>
-      )}
-    </div>
-  );
-}
 
 export default function WorkerStationPage() {
   const { user, _hasHydrated } = useEmployeeAuthStore();
@@ -187,56 +34,9 @@ export default function WorkerStationPage() {
 
   const { checkedIn } = useAttendance();
   const { stationOrders, isLoading } = useWorkerStation();
-  const { on } = useSocket();
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (!station) return;
-
-    const unsubNewOrder = on("station:new-order", (data: { station: string }) => {
-      if (data.station === station) {
-        socketToast(`Order baru masuk ke ${stationConfig[station].title}`);
-        queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
-      }
-    });
-
-    const unsubBypassCreated = on("bypass:created", () => {
-      queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
-    });
-
-    const unsubApproved = on("bypass:approved", (data: { orderId: string }) => {
-      socketToast("Bypass disetujui! Order akan dilanjutkan.");
-      setBypassState((prev) => {
-        const next = { ...prev };
-        delete next[data.orderId];
-        return next;
-      });
-      queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
-    });
-
-    const unsubRejected = on("bypass:rejected", (data: { orderId: string; admin_notes?: string }) => {
-      socketToast(`Bypass ditolak${data.admin_notes ? `: ${data.admin_notes}` : ""}`, "error");
-      setBypassState((prev) => {
-        if (!prev[data.orderId]) return prev;
-        return {
-          ...prev,
-          [data.orderId]: { ...prev[data.orderId], submitted: false },
-        };
-      });
-    });
-
-    const unsubConnect = on("connect", () => setIsConnected(true));
-    const unsubDisconnect = on("disconnect", () => setIsConnected(false));
-
-    return () => {
-      unsubNewOrder();
-      unsubBypassCreated();
-      unsubApproved();
-      unsubRejected();
-      unsubConnect();
-      unsubDisconnect();
-    };
-  }, [on, queryClient, station]);
+  useWorkerStationSocket({ station, setIsConnected, setBypassState });
 
   if (_hasHydrated && !station) {
     return (
@@ -362,7 +162,6 @@ export default function WorkerStationPage() {
       <main className="lg:pl-72 p-4 md:p-8">
         <div className="max-w-5xl mx-auto space-y-6">
 
-          {/* Station header */}
           <div className={`flex items-center justify-between p-4 rounded-2xl border ${cfg.accentClass}`}>
             <div className="flex items-center gap-3">
               <div className={`p-2.5 rounded-xl ${cfg.iconClass}`}>
@@ -384,7 +183,6 @@ export default function WorkerStationPage() {
             </div>
           </div>
 
-          {/* Check-in gate */}
           {!checkedIn ? (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center space-y-1">
               <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
