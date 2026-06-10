@@ -47,6 +47,7 @@ export function useDriverTasks() {
   const completeTaskMutation = useMutation({
     mutationFn: (taskId: string) => driverTaskService.completeTask(taskId),
     onSuccess: () => {
+      toast.success("Task berhasil diselesaikan!");
       queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "active"] });
       queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-pickups"] });
       queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-deliveries"] });

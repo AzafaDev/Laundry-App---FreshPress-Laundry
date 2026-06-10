@@ -19,11 +19,6 @@ export function useDriverTaskSocket() {
       queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-deliveries"] });
     });
 
-    const unsubOrderUpdate = on("order:status-updated", (data: { orderId: string; invoiceNumber?: string; status: string }) => {
-      const label = data.invoiceNumber ? `#${data.invoiceNumber}` : "Order";
-      socketToast(`${label} status diperbarui: ${data.status}`);
-    });
-
     const unsubTasksReleased = on("driver:tasks-released", (data: { count: number }) => {
       socketToast(`${data.count} task pickup baru tersedia`);
       queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-pickups"] });
@@ -32,7 +27,6 @@ export function useDriverTaskSocket() {
     return () => {
       unsubClaimed();
       unsubCompleted();
-      unsubOrderUpdate();
       unsubTasksReleased();
     };
   }, [on, queryClient]);
