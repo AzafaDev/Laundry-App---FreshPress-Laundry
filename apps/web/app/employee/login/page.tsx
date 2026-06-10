@@ -31,7 +31,7 @@ export default function EmployeeLoginPage() {
     if (!_hasHydrated || !user) return;
     const paths: Record<string, string> = {
       super_admin: "/dashboard/admin",
-      outlet_admin: "/dashboard/outlet-admin",
+      outlet_admin: "/dashboard/admin",
       driver: "/dashboard/driver",
       washing_worker: "/dashboard/worker",
       ironing_worker: "/dashboard/worker",
