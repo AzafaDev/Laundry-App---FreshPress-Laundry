@@ -35,6 +35,8 @@ router.post("/auth/resend-verification", authRateLimiter, validate(emailSchema),
 router.post("/auth/login", loginRateLimiter, validate(loginSchema), AuthCtrl.login);
 router.post("/auth/forgot-password", authRateLimiter, validate(emailSchema), AuthCtrl.forgotPassword);
 router.post("/auth/reset-password", authRateLimiter, validate(resetSchema), AuthCtrl.resetPassword);
+router.post("/auth/refresh", AuthCtrl.refresh);
+router.post("/auth/logout", AuthCtrl.logout);
 
 // Profile Routes (protected)
 router.get("/profile", authenticate, ProfileCtrl.getProfile);

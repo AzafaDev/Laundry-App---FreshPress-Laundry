@@ -13,37 +13,30 @@ let failedQueue: Array<{
   reject: (reason?: unknown) => void;
 }> = [];
 
-const processQueue = (error: Error | null, token: string | null = null) => {
+const processQueue = (error: Error | null) => {
   failedQueue.forEach((prom) => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
+    if (error) prom.reject(error);
+    else prom.resolve();
   });
   failedQueue = [];
 };
 
 const getAuthType = () => {
   const { user: employeeUser } = useEmployeeAuthStore.getState();
-  const { accessToken: customerToken } = useAuthStore.getState();
+  const { user: customerUser } = useAuthStore.getState();
 
-  if (employeeUser) return { type: "employee" as const, token: null };
-  if (customerToken) return { type: "customer" as const, token: customerToken };
-  return { type: null, token: null };
+  if (employeeUser) return "employee";
+  if (customerUser) return "customer";
+  return null;
 };
 
 const clearAuthByType = (type: "employee" | "customer") => {
   if (type === "employee") {
     useEmployeeAuthStore.getState().clearAuth();
-    if (typeof window !== "undefined") {
-      window.location.href = "/employee/login";
-    }
+    if (typeof window !== "undefined") window.location.href = "/employee/login";
   } else {
     useAuthStore.getState().clearAuth();
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
+    if (typeof window !== "undefined") window.location.href = "/login";
   }
 };
 
@@ -53,28 +46,15 @@ const PUBLIC_ENDPOINTS = [
   "/v1/customer/auth/verify",
   "/v1/customer/auth/forgot-password",
   "/v1/customer/auth/reset-password",
+  "/v1/customer/auth/refresh",
+  "/v1/customer/auth/logout",
   "/v1/employee/auth/login",
   "/v1/employee/auth/refresh",
 ];
 
+// No headers need to be injected — both customer and employee use httpOnly cookies
 axiosInstance.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const isPublic = PUBLIC_ENDPOINTS.some((endpoint) =>
-      config.url?.includes(endpoint),
-    );
-
-    if (isPublic) {
-      return config;
-    }
-
-    const { token, type } = getAuthType();
-    if (type === "employee") {
-      if (config.headers) config.headers["X-User-Type"] = "employee";
-    } else if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
+  (config: InternalAxiosRequestConfig) => config,
   (error) => Promise.reject(error),
 );
 
@@ -89,15 +69,12 @@ axiosInstance.interceptors.response.use(
       originalRequest.url?.includes(endpoint),
     );
 
-    if (error.response?.status !== 401 || originalRequest._retry) {
+    if (error.response?.status !== 401 || originalRequest._retry || isPublic) {
       return Promise.reject(error);
     }
 
-    const { type } = getAuthType();
-
-    if (type !== "employee" || isPublic) {
-      return Promise.reject(error);
-    }
+    const authType = getAuthType();
+    if (!authType) return Promise.reject(error);
 
     if (isRefreshing) {
       try {
@@ -112,20 +89,24 @@ axiosInstance.interceptors.response.use(
 
     isRefreshing = true;
 
+    const refreshUrl =
+      authType === "employee"
+        ? "/v1/employee/auth/refresh"
+        : "/v1/customer/auth/refresh";
+
     try {
       await axios.post(
-        `${process.env.NEXT_PUBLIC_URL || "http://localhost:8080/api"}/v1/employee/auth/refresh`,
+        `${process.env.NEXT_PUBLIC_URL || "http://localhost:8080/api"}${refreshUrl}`,
         {},
         { withCredentials: true },
       );
 
-      processQueue(null, null);
-
+      processQueue(null);
       originalRequest._retry = true;
       return axiosInstance(originalRequest);
     } catch (refreshError) {
-      processQueue(refreshError as Error, null);
-      clearAuthByType("employee");
+      processQueue(refreshError as Error);
+      clearAuthByType(authType);
       return Promise.reject(refreshError);
     } finally {
       isRefreshing = false;

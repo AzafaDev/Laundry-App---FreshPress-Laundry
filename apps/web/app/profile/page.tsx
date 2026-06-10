@@ -29,11 +29,11 @@ const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { user, accessToken, updateUser, clearAuth } = useAuthStore();
+  const { user, updateUser, clearAuth } = useAuthStore();
 
   useEffect(() => {
-    if (!accessToken) router.replace("/login?redirect=/profile");
-  }, [accessToken, router]);
+    if (!user) router.replace("/login?redirect=/profile");
+  }, [user, router]);
 
   const [profileForm, setProfileForm] = useState({
     full_name: user?.full_name ?? "",
@@ -98,7 +98,6 @@ export default function ProfilePage() {
       const { data } = await axiosInstance.patch(
         "/v1/customer/profile",
         payload,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       updateUser(data.user ?? data);
       setProfileSuccess(data.message ?? "Profil berhasil diperbarui.");
@@ -115,7 +114,7 @@ export default function ProfilePage() {
     if (pwdForm.newPassword !== pwdForm.confirm) { setPwdError("Konfirmasi password tidak cocok."); return; }
     setPwdLoading(true);
     try {
-      await axiosInstance.patch("/v1/customer/profile/password", { currentPassword: pwdForm.currentPassword, newPassword: pwdForm.newPassword }, { headers: { Authorization: `Bearer ${accessToken}` } });
+      await axiosInstance.patch("/v1/customer/profile/password", { currentPassword: pwdForm.currentPassword, newPassword: pwdForm.newPassword });
       setPwdSuccess("Password berhasil diubah.");
       setPwdForm({ currentPassword: "", newPassword: "", confirm: "" });
     } catch (err: unknown) {
@@ -133,7 +132,7 @@ export default function ProfilePage() {
     const formData = new FormData();
     formData.append("avatar", file);
     try {
-      const { data } = await axiosInstance.post("/v1/customer/profile/avatar", formData, { headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "multipart/form-data" } });
+      const { data } = await axiosInstance.post("/v1/customer/profile/avatar", formData, { headers: { "Content-Type": "multipart/form-data" } });
       updateUser({ avatar_url: data.avatar_url ?? data.user?.avatar_url });
     } catch (err: unknown) {
       setAvatarError((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Gagal mengunggah foto.");

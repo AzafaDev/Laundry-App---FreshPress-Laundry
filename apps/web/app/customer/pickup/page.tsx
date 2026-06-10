@@ -49,7 +49,7 @@ const PICKUP_DATES = Array.from({ length: 4 }, (_, offset) => {
 export default function CustomerOrderPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { accessToken, user, _hasHydrated } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
 
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateKey());
@@ -59,10 +59,10 @@ export default function CustomerOrderPage() {
 
   useEffect(() => {
     if (!_hasHydrated) return;
-    if (!accessToken) {
+    if (!user) {
       router.replace("/customer/login?redirect=/customer/order");
     }
-  }, [_hasHydrated, accessToken, router]);
+  }, [_hasHydrated, user, router]);
 
   const {
     data: addresses = [],
@@ -72,7 +72,7 @@ export default function CustomerOrderPage() {
   } = useQuery<CustomerAddress[]>({
     queryKey: ["customer", "addresses"],
     queryFn: addressService.list,
-    enabled: _hasHydrated && !!accessToken,
+    enabled: _hasHydrated && !!user,
   });
 
   // Auto-select primary address when addresses load
@@ -125,7 +125,7 @@ export default function CustomerOrderPage() {
     });
   };
 
-  if (!_hasHydrated || (!accessToken && !user)) {
+  if (!_hasHydrated || !user) {
     return (
       <div className="min-h-screen bg-background text-on-surface flex items-center justify-center">
         <div className="flex items-center gap-3 text-on-surface-variant">
