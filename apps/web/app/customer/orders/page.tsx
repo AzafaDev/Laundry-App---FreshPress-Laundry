@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -14,6 +14,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
+import { ComplaintModal } from "@/components/customer/ComplaintModal";
 import {
   orderService,
   type CustomerOrder,
@@ -66,8 +67,10 @@ const getProgressIndex = (status: CustomerOrderStatus) =>
 
 export default function CustomerProgressPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user, _hasHydrated } = useAuthStore();
   const [openDropdowns, setOpenDropdowns] = useState<Set<string>>(new Set());
+  const [complaintOrderId, setComplaintOrderId] = useState<string | null>(null);
 
   const toggleDropdown = (orderId: string) => {
     setOpenDropdowns((prev) => {
@@ -95,6 +98,13 @@ export default function CustomerProgressPage() {
     queryFn: orderService.listOrders,
     enabled: _hasHydrated && !!user,
     refetchInterval: 20_000,
+  });
+
+  const completeOrderMutation = useMutation({
+    mutationFn: (orderId: string) => orderService.completeOrder(orderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["customer", "orders"] });
+    },
   });
 
   if (!_hasHydrated || !user) {
@@ -222,6 +232,33 @@ export default function CustomerProgressPage() {
                     </div>
                   </div>
 
+                  {/* Laundry items input by outlet admin */}
+                  {order.order_items && order.order_items.length > 0 && (
+                    <div className="rounded-xl border border-outline-variant bg-surface-container-low px-3 py-3 space-y-2">
+                      <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">
+                        Detail Item Laundry
+                      </p>
+                      <div className="space-y-1">
+                        {order.order_items.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between text-sm"
+                          >
+                            <span className="text-on-surface">
+                              {item.laundry_item.name}{" "}
+                              <span className="text-on-surface-variant">
+                                x{Number(item.quantity)} {item.laundry_item.unit}
+                              </span>
+                            </span>
+                            <span className="font-medium text-on-surface">
+                              {formatRupiah(Number(item.price_at_order) * Number(item.quantity))}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Progress */}
                   {order.status === "cancelled" ? (
                     <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">
@@ -279,6 +316,29 @@ export default function CustomerProgressPage() {
                         </Link>
                       )}
 
+                      {/* Confirm completion / complaint CTA */}
+                      {order.status === "received_by_customer" && (
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <button
+                            type="button"
+                            onClick={() => completeOrderMutation.mutate(order.id)}
+                            disabled={completeOrderMutation.isPending}
+                            className="flex-1 text-center rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white hover:bg-primary-container hover:text-on-primary-container transition-colors disabled:opacity-50"
+                          >
+                            {completeOrderMutation.isPending && completeOrderMutation.variables === order.id
+                              ? "Memproses..."
+                              : "Pesanan Selesai"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setComplaintOrderId(order.id)}
+                            className="flex-1 text-center rounded-xl border border-error px-4 py-3 text-sm font-bold text-error hover:bg-error/10 transition-colors"
+                          >
+                            Komplain
+                          </button>
+                        </div>
+                      )}
+
                       {/* Latest history */}
                       {order.status_histories && order.status_histories.length > 0 && (
                         <div className="rounded-xl bg-surface-container-low px-3 py-3 text-xs text-on-surface-variant space-y-1">
@@ -298,6 +358,12 @@ export default function CustomerProgressPage() {
           </div>
         )}
       </main>
+
+      <ComplaintModal
+        open={complaintOrderId !== null}
+        orderId={complaintOrderId}
+        onClose={() => setComplaintOrderId(null)}
+      />
     </div>
   );
 }

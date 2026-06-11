@@ -4,6 +4,7 @@ import { z } from "zod";
 import { OrderStatus } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
+import { notifyCustomer } from "../../lib/notification.js";
 import { buildPagination, getSkipTake } from "../../utils/pagination.js";
 
 const ORDER_STATUSES = Object.values(OrderStatus);
@@ -258,6 +259,14 @@ export const processOrder = async (
 
       return updatedOrder;
     });
+
+    await notifyCustomer(
+      updated.customer_id,
+      "Detail pesanan telah diinput",
+      `Outlet admin telah menginput detail item untuk pesanan ${updated.invoice_number}.`,
+      "order_details",
+      updated.id,
+    );
 
     res.json({ success: true, data: updated });
   } catch (err) {

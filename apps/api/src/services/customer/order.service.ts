@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
+import { notifyCustomer } from "../../lib/notification.js";
 
 const WASH_AND_FOLD_RATE_PER_KG = 7_000;
 const DRY_CLEANING_START_PRICE = 25_000;
@@ -262,6 +263,98 @@ export const listCustomerOrders = async (customerId: string) => {
           paid_at: true,
         },
       },
+      order_items: {
+        include: {
+          laundry_item: {
+            select: { id: true, name: true, unit: true },
+          },
+        },
+      },
+    },
+  });
+};
+
+export const completeCustomerOrder = async (customerId: string, orderId: string) => {
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, customer_id: customerId, deleted_at: null },
+  });
+
+  if (!order) {
+    throw new AppError("Order tidak ditemukan.", 404);
+  }
+
+  if (order.status !== "received_by_customer") {
+    throw new AppError("Order belum bisa diselesaikan.", 400);
+  }
+
+  await prisma.$transaction([
+    prisma.order.update({
+      where: { id: order.id },
+      data: { status: "completed" },
+    }),
+    prisma.orderStatusHistory.create({
+      data: {
+        order_id: order.id,
+        old_status: "received_by_customer",
+        new_status: "completed",
+        changed_by_type: "customer",
+        changed_by_id: customerId,
+        note: "Customer mengonfirmasi pesanan telah selesai.",
+      },
+    }),
+  ]);
+
+  await notifyCustomer(
+    customerId,
+    "Pesanan selesai",
+    `Pesanan ${order.invoice_number} telah selesai. Terima kasih telah menggunakan layanan kami.`,
+    "order_completed",
+    order.id,
+  );
+
+  return prisma.order.findUnique({
+    where: { id: order.id },
+    include: {
+      outlet: { select: { id: true, name: true, city: true } },
+      status_histories: { orderBy: { created_at: "desc" }, take: 20 },
+      payment: { select: { status: true, amount: true, paid_at: true } },
+      order_items: {
+        include: {
+          laundry_item: { select: { id: true, name: true, unit: true } },
+        },
+      },
+    },
+  });
+};
+
+export interface CreateComplaintInput {
+  complaint_type: string;
+  description: string;
+}
+
+export const createCustomerComplaint = async (
+  customerId: string,
+  orderId: string,
+  input: CreateComplaintInput,
+) => {
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, customer_id: customerId, deleted_at: null },
+  });
+
+  if (!order) {
+    throw new AppError("Order tidak ditemukan.", 404);
+  }
+
+  if (order.status !== "received_by_customer") {
+    throw new AppError("Komplain hanya bisa diajukan untuk pesanan yang sudah diterima.", 400);
+  }
+
+  return prisma.complaint.create({
+    data: {
+      order_id: order.id,
+      customer_id: customerId,
+      complaint_type: input.complaint_type,
+      description: input.description,
     },
   });
 };

@@ -1,5 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { emitToRoom, emitToUser } from "../../lib/socket.js";
+import { notifyCustomer } from "../../lib/notification.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { Prisma, OrderStatus } from "../../../generated/prisma/client.js";
 import { hasActiveDriverTask } from "./attendance.utils.db.js";
@@ -158,6 +159,26 @@ export const driverService = {
         });
       }
 
+      if (claimedTask?.order.customer_id) {
+        if (claimedTask.task_type === "pickup") {
+          await notifyCustomer(
+            claimedTask.order.customer_id,
+            "Driver dalam perjalanan",
+            `Driver sedang menuju lokasi penjemputan untuk pesanan ${claimedTask.order.invoice_number}.`,
+            "driver_pickup_started",
+            claimedTask.order_id,
+          );
+        } else if (claimedTask.task_type === "delivery") {
+          await notifyCustomer(
+            claimedTask.order.customer_id,
+            "Driver dalam perjalanan",
+            `Driver sedang mengantarkan pesanan ${claimedTask.order.invoice_number} ke lokasi Anda.`,
+            "driver_delivery_started",
+            claimedTask.order_id,
+          );
+        }
+      }
+
       return claimedTask;
     });
 
@@ -250,6 +271,23 @@ export const driverService = {
         status: newOrderStatus,
       });
 
+      if (task.task_type === "pickup") {
+        await notifyCustomer(
+          task.order.customer_id,
+          "Driver telah tiba di outlet",
+          "Laundry Anda telah tiba di outlet dan akan segera diproses.",
+          "driver_arrived_outlet",
+          task.order_id,
+        );
+      } else if (task.task_type === "delivery") {
+        await notifyCustomer(
+          task.order.customer_id,
+          "Driver telah tiba",
+          "Driver telah tiba di lokasi Anda dengan pesanan laundry Anda.",
+          "driver_arrived_customer",
+          task.order_id,
+        );
+      }
       const completeNotifContent = task.task_type === "pickup"
         ? { title: "Laundry tiba di outlet", body: "Laundry Anda telah tiba di outlet dan siap diproses." }
         : { title: "Laundry telah diterima", body: "Laundry Anda telah diterima. Terima kasih!" };

@@ -78,3 +78,15 @@ export const createOrderSchema = z.object({
   estimated_weight_kg: z.number().min(0).max(100).optional(),
   notes: z.string().max(500).optional(),
 });
+
+export const createComplaintSchema = z.object({
+  complaint_type: z.enum([
+    "missing_item",
+    "damaged_item",
+    "wrong_item",
+    "late_delivery",
+    "quality_issue",
+    "other",
+  ]),
+  description: z.string().min(10, "Deskripsi minimal 10 karakter.").max(1000),
+});
