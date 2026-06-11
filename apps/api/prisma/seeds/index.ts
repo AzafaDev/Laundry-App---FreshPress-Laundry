@@ -6,6 +6,7 @@ import { seedCustomers, seededCustomerEmails } from './customers.seed.js';
 import { seedEmployeeShifts } from './employee-shifts.seed.js';
 import { seedAttendances } from './attendances.seed.js';
 import { seedOrders } from './orders.seed.js';
+import { seedWaitingPaymentOrders } from './waitingPayment.seed.js';
 import { seedLaundryItems } from './laundryItems.seed.js';
 import { seedBypassRequests } from './bypassRequests.seed.js';
 
@@ -127,6 +128,9 @@ export async function runModuleSeed(moduleName: string) {
       await seedBypassRequests();
       break;
     }
+    case 'waiting-payment':
+      await seedWaitingPaymentOrders();
+      break;
     case 'attendances': {
       const employees = await prisma.employee.findMany();
       const shifts = await prisma.workShift.findMany();
