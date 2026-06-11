@@ -58,19 +58,7 @@ export const driverService = {
       orderBy: { created_at: "asc" },
     });
 
-    if (tasks.length > 0) return { tasks, next_release_at: null };
-
-    const nextPending = await prisma.driverTask.findFirst({
-      where: { task_type: "pickup", status: "pending", order: { outlet_id: outletId } },
-      orderBy: { order: { pickup_schedule: "asc" } },
-      select: { order: { select: { pickup_schedule: true } } },
-    });
-
-    const next_release_at = nextPending?.order?.pickup_schedule
-      ? new Date(nextPending.order.pickup_schedule.getTime() - 60 * 60 * 1000).toISOString()
-      : null;
-
-    return { tasks, next_release_at };
+    return { tasks };
   },
 
   async getAvailableDeliveryOrders(employeeId: string) {
@@ -84,7 +72,7 @@ export const driverService = {
       },
       include: { order: { include: { customer: true, pickup_address: true } } },
     });
-    return { tasks, next_release_at: null };
+    return { tasks };
   },
 
   async getActiveTask(employeeId: string) {
@@ -104,7 +92,11 @@ export const driverService = {
   },
 
   async claimTask(employeeId: string, taskId: string) {
-    const { employeeOutletId } = await this.assertDriverEligibility(employeeId);
+    const [{ employeeOutletId }, employee] = await Promise.all([
+      this.assertDriverEligibility(employeeId),
+      prisma.employee.findUnique({ where: { id: employeeId }, select: { full_name: true } }),
+    ]);
+    const driverName = employee?.full_name ?? "Driver";
 
     const claimedTask = await prisma.$transaction(async (tx) => {
       const task = await tx.driverTask.findUnique({
@@ -136,9 +128,13 @@ export const driverService = {
         pickup: "waiting_pickup_driver",
         delivery: "ready_for_delivery",
       };
+      const now = new Date();
       await tx.order.update({
         where: { id: task.order_id },
-        data: { status: claimStatusMap[task.task_type] },
+        data: {
+          status: claimStatusMap[task.task_type],
+          ...(task.task_type === "pickup" ? { pickup_schedule: now } : {}),
+        },
       });
       await tx.orderStatusHistory.create({
         data: {
@@ -164,7 +160,7 @@ export const driverService = {
           await notifyCustomer(
             claimedTask.order.customer_id,
             "Driver dalam perjalanan",
-            `Driver sedang menuju lokasi penjemputan untuk pesanan ${claimedTask.order.invoice_number}.`,
+            `Driver ${driverName} sedang menuju lokasi penjemputan untuk pesanan ${claimedTask.order.invoice_number}.`,
             "driver_pickup_started",
             claimedTask.order_id,
           );
@@ -172,7 +168,7 @@ export const driverService = {
           await notifyCustomer(
             claimedTask.order.customer_id,
             "Driver dalam perjalanan",
-            `Driver sedang mengantarkan pesanan ${claimedTask.order.invoice_number} ke lokasi Anda.`,
+            `Driver ${driverName} sedang mengantarkan pesanan ${claimedTask.order.invoice_number} ke lokasi Anda.`,
             "driver_delivery_started",
             claimedTask.order_id,
           );
@@ -184,8 +180,8 @@ export const driverService = {
 
     if (claimedTask?.order.customer_id) {
       const notifContent = claimedTask.task_type === "pickup"
-        ? { title: "Driver menuju lokasi Anda", body: "Driver sedang dalam perjalanan untuk mengambil laundry Anda." }
-        : { title: "Driver mengantarkan laundry Anda", body: "Driver sedang dalam perjalanan mengantar laundry Anda." };
+        ? { title: "Driver menuju lokasi Anda", body: `Driver ${driverName} sedang dalam perjalanan untuk mengambil laundry Anda.` }
+        : { title: "Driver mengantarkan laundry Anda", body: `Driver ${driverName} sedang dalam perjalanan mengantar laundry Anda.` };
 
       await prisma.notification.create({
         data: {

@@ -377,7 +377,7 @@ model Order {
   outlet_id                  String      @db.Uuid
   pickup_address_id          String      @db.Uuid
   status                     OrderStatus @default(waiting_pickup_driver)
-  pickup_schedule            DateTime    @db.Timestamptz
+  pickup_schedule            DateTime?   @db.Timestamptz
   total_weight_kg            Decimal?    @db.Decimal(6, 2)
   delivery_fee               Decimal     @default(0) @db.Decimal(10, 2)
   total_price                Decimal?    @db.Decimal(12, 2)
@@ -407,7 +407,7 @@ model Order {
   @@index([customer_id])
   @@index([outlet_id])
   @@index([status])
-  @@index([pickup_schedule])
+
   @@index([payment_deadline])
   @@index([created_at])
   @@map("orders")
