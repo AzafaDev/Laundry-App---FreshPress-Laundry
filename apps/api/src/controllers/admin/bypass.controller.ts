@@ -5,6 +5,7 @@ import { BypassStatus } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { buildPagination, getSkipTake } from "../../utils/pagination.js";
+import { emitToUser } from "../../lib/socket.js";
 
 // ── Validation schemas ────────────────────────────────────────────────────────
 const listBypassQuerySchema = z.object({
@@ -182,6 +183,15 @@ export const reviewBypassRequest = async (
         requester: { select: { id: true, full_name: true, role: true } },
         reviewer: { select: { id: true, full_name: true } },
       },
+    });
+
+    // Notify the requesting worker via WebSocket
+    emitToUser(bypass.requested_by, "bypass:reviewed", {
+      bypassId: id,
+      status: newStatus,
+      admin_notes: body.admin_notes ?? null,
+      orderId: updated.order.id,
+      invoiceNumber: updated.order.invoice_number,
     });
 
     const action = body.action === "approve" ? "disetujui" : "ditolak";
