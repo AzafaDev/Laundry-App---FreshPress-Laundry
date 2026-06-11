@@ -262,6 +262,13 @@ export const listCustomerOrders = async (customerId: string) => {
           paid_at: true,
         },
       },
+      order_items: {
+        include: {
+          laundry_item: {
+            select: { id: true, name: true, unit: true },
+          },
+        },
+      },
     },
   });
 };

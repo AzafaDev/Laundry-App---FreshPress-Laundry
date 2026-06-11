@@ -222,6 +222,33 @@ export default function CustomerProgressPage() {
                     </div>
                   </div>
 
+                  {/* Laundry items input by outlet admin */}
+                  {order.order_items && order.order_items.length > 0 && (
+                    <div className="rounded-xl border border-outline-variant bg-surface-container-low px-3 py-3 space-y-2">
+                      <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">
+                        Detail Item Laundry
+                      </p>
+                      <div className="space-y-1">
+                        {order.order_items.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between text-sm"
+                          >
+                            <span className="text-on-surface">
+                              {item.laundry_item.name}{" "}
+                              <span className="text-on-surface-variant">
+                                x{Number(item.quantity)} {item.laundry_item.unit}
+                              </span>
+                            </span>
+                            <span className="font-medium text-on-surface">
+                              {formatRupiah(Number(item.price_at_order) * Number(item.quantity))}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Progress */}
                   {order.status === "cancelled" ? (
                     <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">

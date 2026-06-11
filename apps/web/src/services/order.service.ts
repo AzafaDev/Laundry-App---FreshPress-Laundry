@@ -27,6 +27,17 @@ export interface CustomerOrderHistory {
   note?: string | null;
 }
 
+export interface CustomerOrderItem {
+  id: string;
+  quantity: string | number;
+  price_at_order: string | number;
+  laundry_item: {
+    id: string;
+    name: string;
+    unit: string;
+  };
+}
+
 export interface CustomerOrder {
   id: string;
   invoice_number: string;
@@ -47,6 +58,7 @@ export interface CustomerOrder {
     paid_at?: string;
   } | null;
   status_histories?: CustomerOrderHistory[];
+  order_items?: CustomerOrderItem[];
 }
 
 export interface CreateCustomerOrderPayload {

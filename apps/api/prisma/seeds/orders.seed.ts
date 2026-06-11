@@ -96,6 +96,11 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
       throw new Error(`Primary address for customer ${customerId} not found`);
     }
 
+    const itemsTotalPrice = laundryItems.reduce(
+      (sum, item, i) => sum + Number(item.base_price) * (i + 2),
+      0,
+    );
+
     const existing = await prisma.order.findFirst({
       where: { invoice_number: invoiceNumber },
       include: { order_items: true },
@@ -114,6 +119,14 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
         });
         console.log(`✅ Order items ditambahkan ke ${invoiceNumber}`);
       }
+      // Selaraskan total_price dengan total order_items (perbaikan data lama)
+      if (Number(existing.total_price) !== itemsTotalPrice) {
+        await prisma.order.update({
+          where: { id: existing.id },
+          data: { total_price: itemsTotalPrice },
+        });
+        console.log(`✅ total_price ${invoiceNumber} disesuaikan ke ${itemsTotalPrice}`);
+      }
       return existing;
     }
 
@@ -128,7 +141,7 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
           ? new Date(Date.now() + 3 * 60 * 60 * 1000) // 3 jam ke depan — di luar window H-1 jam (DRV-02)
           : new Date(Date.now() - 30 * 60 * 1000),    // 30 menit lalu — dalam window H-1 jam
         total_weight_kg: 3.5,
-        total_price: 35000,
+        total_price: itemsTotalPrice,
         notes: `Seed order untuk testing ${status}`,
       },
     });

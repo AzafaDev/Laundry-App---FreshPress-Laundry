@@ -51,10 +51,15 @@ export async function seedWaitingPaymentOrders(customerId: string = TARGET_CUSTO
   ]);
 
   const orderScenarios = [
-    { suffix: 'WAITPAY-1', weight: 3, totalPrice: 45000 },
-    { suffix: 'WAITPAY-2', weight: 4, totalPrice: 60000 },
-    { suffix: 'WAITPAY-3', weight: 2.5, totalPrice: 32000 },
+    { suffix: 'WAITPAY-1', weight: 3 },
+    { suffix: 'WAITPAY-2', weight: 4 },
+    { suffix: 'WAITPAY-3', weight: 2.5 },
   ];
+
+  const itemsTotalPrice = laundryItems.reduce(
+    (sum, item, i) => sum + Number(item.base_price) * (i + 1),
+    0,
+  );
 
   for (const scenario of orderScenarios) {
     const invoiceNumber = `INV-SEED-${scenario.suffix}`;
@@ -74,7 +79,7 @@ export async function seedWaitingPaymentOrders(customerId: string = TARGET_CUSTO
         status: 'waiting_payment',
         pickup_schedule: new Date(Date.now() - 60 * 60 * 1000),
         total_weight_kg: scenario.weight,
-        total_price: scenario.totalPrice,
+        total_price: itemsTotalPrice,
         payment_deadline: new Date(Date.now() + 24 * 60 * 60 * 1000),
         notes: `Seed order untuk testing pembayaran (${scenario.suffix})`,
       },
@@ -92,7 +97,7 @@ export async function seedWaitingPaymentOrders(customerId: string = TARGET_CUSTO
     await prisma.payment.create({
       data: {
         order_id: order.id,
-        amount: scenario.totalPrice,
+        amount: itemsTotalPrice,
         payment_method: 'gateway',
         status: 'pending',
       },
