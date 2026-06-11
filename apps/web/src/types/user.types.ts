@@ -52,7 +52,7 @@ export interface CreateUserPayload {
   email: string;
   phone?: string;
   role: UserRole;
-  password: string;
+  password?: string;
   outlet_id?: string;
   is_active?: boolean;
 }
@@ -63,7 +63,6 @@ export type UpdateUserPayload = Partial<
 
 export interface AuthState {
   user: User | null;
-  accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 }

@@ -9,10 +9,10 @@ import { useRouter } from "next/navigation";
 export const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const { user, accessToken, clearAuth } = useAuthStore();
+  const { user, clearAuth } = useAuthStore();
   const router = useRouter();
 
-  const isAuthenticated = !!accessToken && !!user;
+  const isAuthenticated = !!user;
 
   const handleLogout = () => {
     clearAuth();

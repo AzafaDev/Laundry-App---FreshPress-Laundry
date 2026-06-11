@@ -199,16 +199,44 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
   const stationStatuses = ['washing', 'ironing', 'packing'];
 
   const orderScenarios: Array<{ suffix: string; status: OrderStatus; pickup?: boolean; delivery?: boolean; pickupPending?: boolean }> = [
+    // --- waiting_pickup_driver ---
     { suffix: 'PICKUP-1', status: 'waiting_pickup_driver', pickup: true },
     { suffix: 'PICKUP-2', status: 'waiting_pickup_driver', pickup: true },
     { suffix: 'PICKUP-3', status: 'waiting_pickup_driver', pickupPending: true }, // DRV-02: task pending, belum visible di dashboard
+
+    // --- laundry_to_outlet ---
+    { suffix: 'TO-OUTLET-1', status: 'laundry_to_outlet' },
+
+    // --- laundry_arrived_outlet (penting: trigger ProcessOrderModal) ---
+    { suffix: 'ARRIVED-1', status: 'laundry_arrived_outlet' },
+    { suffix: 'ARRIVED-2', status: 'laundry_arrived_outlet' },
+
+    // --- station processing ---
     { suffix: 'WASHING-1', status: 'washing' },   // happy path (submit sesuai)
     { suffix: 'WASHING-2', status: 'washing' },   // bypass path (submit berbeda)
     { suffix: 'IRONING-1', status: 'ironing' },   // happy path
     { suffix: 'IRONING-2', status: 'ironing' },   // bypass path
     { suffix: 'PACKING-1', status: 'packing' },   // happy path
     { suffix: 'PACKING-2', status: 'packing' },   // bypass path
+
+    // --- waiting_payment ---
+    { suffix: 'PAYMENT-1', status: 'waiting_payment' },
+
+    // --- ready_for_delivery ---
     { suffix: 'DELIVERY-1', status: 'ready_for_delivery', delivery: true },
+
+    // --- delivery_to_customer ---
+    { suffix: 'DELIVERING-1', status: 'delivery_to_customer' },
+
+    // --- received_by_customer ---
+    { suffix: 'RECEIVED-1', status: 'received_by_customer' },
+
+    // --- completed ---
+    { suffix: 'COMPLETED-1', status: 'completed' },
+    { suffix: 'COMPLETED-2', status: 'completed' },
+
+    // --- cancelled ---
+    { suffix: 'CANCELLED-1', status: 'cancelled' },
   ];
 
   for (const [index, scenario] of orderScenarios.entries()) {

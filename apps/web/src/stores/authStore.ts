@@ -4,9 +4,8 @@ import type { User } from "../types/user.types";
 
 interface AuthStore {
   user: User | null;
-  accessToken: string | null;
   _hasHydrated: boolean;
-  setAuth: (user: User, accessToken: string) => void;
+  setAuth: (user: User) => void;
   clearAuth: () => void;
   updateUser: (partial: Partial<User>) => void;
   setHasHydrated: (state: boolean) => void;
@@ -16,10 +15,9 @@ export const useAuthStore = create<AuthStore>()(
   persist(
     (set) => ({
       user: null,
-      accessToken: null,
       _hasHydrated: false,
-      setAuth: (user, accessToken) => set({ user, accessToken }),
-      clearAuth: () => set({ user: null, accessToken: null }),
+      setAuth: (user) => set({ user }),
+      clearAuth: () => set({ user: null }),
       updateUser: (partial) =>
         set((state) => ({
           user: state.user ? { ...state.user, ...partial } : null,
@@ -28,10 +26,7 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: "freshpress-auth",
-      partialize: (state) => ({
-        user: state.user,
-        accessToken: state.accessToken,
-      }),
+      partialize: (state) => ({ user: state.user }),
       onRehydrateStorage: () => (state) => {
         state?.setHasHydrated(true);
       },

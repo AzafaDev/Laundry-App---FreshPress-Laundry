@@ -1,22 +1,46 @@
 import crypto from "crypto";
 import { OAuth2Client } from "google-auth-library";
+import { Request, Response } from "express";
 import { prisma } from "../../lib/prisma.js";
 import { hashPassword, comparePassword } from "../../utils/hash.util.js";
 import {
   signAccessToken,
+  signRefreshToken,
   signEmailToken,
   verifyEmailToken,
+  verifyRefreshToken,
 } from "../../utils/jwt.util.js";
+import { parseDuration, storeRefreshToken, revokeRefreshToken } from "../../utils/token.util.js";
 import {
   sendVerificationEmail,
   sendResetPasswordEmail,
 } from "../../lib/email.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { env } from "../../config/env.js";
-import {
-  VERIFICATION_TOKEN_EXPIRY_MS,
-  RESET_PASSWORD_TOKEN_EXPIRY_MS,
-} from "../../config/constants.js";
+
+const COOKIE_OPTS = (maxAge: number) => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: (process.env.NODE_ENV === "production" ? "none" : "strict") as "none" | "strict",
+  maxAge,
+});
+
+function issueTokenCookies(
+  res: Response,
+  payload: { userId: string; role: string; email: string; tokenVersion: number },
+) {
+  const accessExpiresMs = parseDuration(process.env.JWT_EXPIRES_IN || "15m");
+  const refreshExpiresMs = parseDuration(process.env.JWT_REFRESH_EXPIRES_IN || "7d");
+
+  const accessToken = signAccessToken(payload);
+  const refreshToken = signRefreshToken(payload);
+
+  res.cookie("accessToken", accessToken, COOKIE_OPTS(accessExpiresMs));
+  res.cookie("refreshToken", refreshToken, COOKIE_OPTS(refreshExpiresMs));
+
+  const expiresAt = new Date(Date.now() + refreshExpiresMs);
+  storeRefreshToken(payload.userId, refreshToken, expiresAt, "customer");
+}
 
 /** Register new customer – no password at this step */
 export const registerCustomer = async (data: {
@@ -27,7 +51,6 @@ export const registerCustomer = async (data: {
   const existing = await prisma.customer.findUnique({ where: { email: data.email } });
   if (existing) throw new AppError("Email sudah terdaftar.", 409);
 
-  // Placeholder password hash – will be replaced on verification
   const tempHash = await hashPassword(crypto.randomBytes(16).toString("hex"));
 
   const customer = await prisma.customer.create({
@@ -64,10 +87,7 @@ export const resendVerification = async (email: string) => {
 };
 
 /** Verify email and set password */
-export const verifyEmailAndSetPassword = async (
-  token: string,
-  password: string,
-) => {
+export const verifyEmailAndSetPassword = async (token: string, password: string) => {
   let payload: { userId: string; email: string; purpose: string };
   try {
     payload = verifyEmailToken<typeof payload>(token);
@@ -91,7 +111,7 @@ export const verifyEmailAndSetPassword = async (
 };
 
 /** Login with email + password */
-export const loginCustomer = async (email: string, password: string) => {
+export const loginCustomer = async (email: string, password: string, res: Response) => {
   const customer = await prisma.customer.findUnique({ where: { email } });
   if (!customer) throw new AppError("Email atau password salah.", 401);
   if (!customer.password_hash) throw new AppError("Email atau password salah.", 401);
@@ -99,20 +119,78 @@ export const loginCustomer = async (email: string, password: string) => {
   const valid = await comparePassword(password, customer.password_hash);
   if (!valid) throw new AppError("Email atau password salah.", 401);
 
-  const accessToken = signAccessToken({
+  if (!customer.is_verified) throw new AppError("Akun belum diverifikasi.", 403);
+
+  issueTokenCookies(res, {
     userId: customer.id,
     role: "customer",
     email: customer.email,
+    tokenVersion: customer.token_version,
   });
 
   const { password_hash: _, ...safeCustomer } = customer;
-  return { accessToken, user: safeCustomer };
+  return { user: safeCustomer };
+};
+
+/** Refresh customer access token */
+export const refreshCustomerToken = async (req: Request, res: Response) => {
+  const refreshToken = req.cookies?.refreshToken;
+  if (!refreshToken) throw new AppError("Refresh token tidak ditemukan.", 401);
+
+  let payload: { userId: string; role: string; email: string; tokenVersion?: number };
+  try {
+    payload = verifyRefreshToken(refreshToken);
+  } catch {
+    throw new AppError("Refresh token tidak valid atau kadaluarsa.", 401);
+  }
+
+  const storedToken = await prisma.refreshToken.findFirst({
+    where: {
+      token: refreshToken,
+      user_type: "customer",
+      user_id: payload.userId,
+      revoked_at: null,
+      expires_at: { gt: new Date() },
+    },
+  });
+
+  if (!storedToken) throw new AppError("Refresh token tidak valid.", 401);
+
+  await revokeRefreshToken(refreshToken);
+
+  const customer = await prisma.customer.findFirst({
+    where: { id: payload.userId, deleted_at: null },
+    select: { id: true, token_version: true },
+  });
+
+  if (!customer) throw new AppError("Akun tidak ditemukan.", 401);
+
+  issueTokenCookies(res, {
+    userId: customer.id,
+    role: "customer",
+    email: payload.email,
+    tokenVersion: customer.token_version,
+  });
+
+  return {};
+};
+
+/** Logout customer */
+export const logoutCustomer = async (req: Request, res: Response) => {
+  const refreshToken = req.cookies?.refreshToken;
+  if (refreshToken) {
+    await revokeRefreshToken(refreshToken);
+  }
+
+  res.clearCookie("accessToken", COOKIE_OPTS(0));
+  res.clearCookie("refreshToken", COOKIE_OPTS(0));
+
+  return { message: "Logout berhasil." };
 };
 
 /** Forgot password – send reset email */
 export const forgotPassword = async (email: string) => {
-  const customer = await prisma.customer.findUnique({ where: { email } });
-  // Silently succeed even if no user found (security)
+  const customer = await prisma.customer.findFirst({ where: { email, deleted_at: null } });
   if (!customer || !customer.is_verified) {
     return { message: "Jika email terdaftar, link reset akan dikirimkan." };
   }
@@ -148,7 +226,7 @@ export const resetPassword = async (token: string, newPassword: string) => {
   const password_hash = await hashPassword(newPassword);
   await prisma.customer.update({
     where: { id: customer.id },
-    data: { password_hash },
+    data: { password_hash, token_version: { increment: 1 } },
   });
 
   return { message: "Password berhasil diubah. Silakan login." };
@@ -177,7 +255,7 @@ export const getGoogleAuthUrl = (): string => {
   });
 };
 
-export const googleLogin = async (code: string) => {
+export const googleLogin = async (code: string, res: Response) => {
   if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
     throw new AppError("Google OAuth belum dikonfigurasi.", 501);
   }
@@ -194,20 +272,20 @@ export const googleLogin = async (code: string) => {
     idToken: tokens.id_token,
     audience: env.GOOGLE_CLIENT_ID,
   });
-  const payload = ticket.getPayload();
-  if (!payload?.email) throw new AppError("Tidak ada email dari Google.", 400);
+  const oauthPayload = ticket.getPayload();
+  if (!oauthPayload?.email) throw new AppError("Tidak ada email dari Google.", 400);
 
-  let customer = await prisma.customer.findUnique({ where: { email: payload.email } });
+  let customer = await prisma.customer.findUnique({ where: { email: oauthPayload.email } });
 
   if (!customer) {
     customer = await prisma.customer.create({
       data: {
-        email: payload.email,
-        full_name: payload.name ?? payload.email,
+        email: oauthPayload.email,
+        full_name: oauthPayload.name ?? oauthPayload.email,
         phone: "",
         password_hash: await hashPassword(crypto.randomBytes(16).toString("hex")),
         is_verified: true,
-        avatar_url: payload.picture ?? null,
+        avatar_url: oauthPayload.picture ?? null,
       },
     });
   } else if (!customer.is_verified) {
@@ -217,12 +295,13 @@ export const googleLogin = async (code: string) => {
     });
   }
 
-  const accessToken = signAccessToken({
+  issueTokenCookies(res, {
     userId: customer.id,
     role: "customer",
     email: customer.email,
+    tokenVersion: customer.token_version,
   });
 
   const { password_hash: _, ...safeCustomer } = customer;
-  return { accessToken, user: safeCustomer };
+  return { user: safeCustomer };
 };

@@ -41,12 +41,12 @@ function AddAddressPageInner() {
   const editId = searchParams.get("edit");
   const isEditMode = Boolean(editId);
 
-  const { accessToken, _hasHydrated } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
 
   useEffect(() => {
     if (!_hasHydrated) return;
-    if (!accessToken) router.replace("/login");
-  }, [_hasHydrated, accessToken, router]);
+    if (!user) router.replace("/login");
+  }, [_hasHydrated, user, router]);
 
   const [province, setProvince] = useState("");
   const [city, setCity] = useState("");
@@ -70,7 +70,7 @@ function AddAddressPageInner() {
   const [loadingEdit, setLoadingEdit] = useState(isEditMode);
 
   useEffect(() => {
-    if (!editId || !accessToken) return;
+    if (!editId || !user) return;
     (async () => {
       try {
         const addresses = await addressService.list();
@@ -102,7 +102,7 @@ function AddAddressPageInner() {
       }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editId, accessToken]);
+  }, [editId, user]);
 
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
@@ -389,11 +389,13 @@ function AddAddressPageInner() {
         <button
           type="button"
           onClick={handleSave}
-          disabled={saving}
-          className="w-full h-12 bg-primary text-on-primary rounded-xl text-sm font-bold shadow flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-primary/90 transition-all active:scale-[0.98]"
+          className="w-full h-12 bg-primary text-on-primary rounded-xl text-sm font-bold shadow flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {saving ? "Menyimpan..." : isEditMode ? "Simpan Perubahan" : "Simpan Alamat"}
+          {saving ? (
+            <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : (
+            "Simpan Alamat"
+          )}
         </button>
       </div>
     </div>
@@ -402,7 +404,7 @@ function AddAddressPageInner() {
 
 export default function AddAddressPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>}>
+    <Suspense>
       <AddAddressPageInner />
     </Suspense>
   );

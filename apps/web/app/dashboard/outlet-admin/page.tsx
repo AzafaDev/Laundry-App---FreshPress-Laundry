@@ -1,14 +1,11 @@
 "use client";
 
-import { Store, BarChart3, ReceiptText } from "lucide-react";
 import Link from "next/link";
+import { ReceiptText, BarChart3, CalendarCheck } from "lucide-react";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
 export default function OutletAdminDashboardPage() {
-  const { _hasHydrated, user } = useEmployeeAuthStore();
-  if (!_hasHydrated) {
-    return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
-  }
+  const user = useEmployeeAuthStore((s) => s.user);
 
   return (
     <>
@@ -23,22 +20,22 @@ export default function OutletAdminDashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <DashCard
-          href="/dashboard/outlet-admin/orders"
+          href="/dashboard/admin/orders"
           icon={<ReceiptText className="w-6 h-6 text-primary" />}
-          title="Order Management"
+          title="Orders"
           description="Lihat dan kelola semua order di outlet Anda."
         />
         <DashCard
-          href="/dashboard/outlet-admin/reports"
+          href="/dashboard/admin/reports"
           icon={<BarChart3 className="w-6 h-6 text-primary" />}
           title="Reports"
-          description="Laporan pendapatan dan performa karyawan."
+          description="Laporan pendapatan dan performa karyawan outlet."
         />
         <DashCard
-          href="/dashboard/outlet-admin/staff"
-          icon={<Store className="w-6 h-6 text-primary" />}
-          title="Staff Management"
-          description="Lihat absensi dan kinerja karyawan."
+          href="/dashboard/outlet-admin/attendance-report"
+          icon={<CalendarCheck className="w-6 h-6 text-primary" />}
+          title="Attendance Report"
+          description="Pantau absensi harian karyawan di outlet Anda."
         />
       </div>
     </>

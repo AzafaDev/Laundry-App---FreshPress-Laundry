@@ -126,11 +126,10 @@ function CustomerLoginContent() {
     setErrors({});
     try {
       const { data } = await axiosInstance.post<{
-        accessToken: string;
         user: UserType;
       }>("/v1/customer/auth/login", { email, password });
 
-      setAuth(data.user, data.accessToken);
+      setAuth(data.user);
 
       const redirectTo = searchParams.get("redirect") ?? "/";
       router.push(redirectTo);

@@ -7,30 +7,9 @@ import {
   signRefreshToken,
   verifyRefreshToken,
 } from "../../utils/jwt.util.js";
+import { parseDuration, storeRefreshToken, revokeRefreshToken } from "../../utils/token.util.js";
 import { sendEmployeeResetPasswordEmail } from "../../lib/email.js";
 import { Response } from "express";
-
-async function storeRefreshToken(
-  userId: string,
-  token: string,
-  expiresAt: Date,
-) {
-  return prisma.refreshToken.create({
-    data: {
-      user_type: "employee",
-      user_id: userId,
-      token,
-      expires_at: expiresAt,
-    },
-  });
-}
-
-async function revokeRefreshToken(token: string) {
-  return prisma.refreshToken.updateMany({
-    where: { token, revoked_at: null },
-    data: { revoked_at: new Date() },
-  });
-}
 
 export const loginEmployee = async (
   email: string,
@@ -74,7 +53,7 @@ export const loginEmployee = async (
   const expiresMs = parseDuration(expiresIn);
   const expiresAt = new Date(Date.now() + expiresMs);
 
-  await storeRefreshToken(employee.id, refreshToken, expiresAt);
+  await storeRefreshToken(employee.id, refreshToken, expiresAt, "employee");
 
   const accessExpiresMs = parseDuration(process.env.JWT_EXPIRES_IN || "15m");
 
@@ -146,7 +125,7 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
   const expiresMs = parseDuration(expiresIn);
   const expiresAt = new Date(Date.now() + expiresMs);
 
-  await storeRefreshToken(payload.userId, newRefreshToken, expiresAt);
+  await storeRefreshToken(payload.userId, newRefreshToken, expiresAt, "employee");
 
   const accessExpiresMs = parseDuration(process.env.JWT_EXPIRES_IN || "15m");
 
@@ -209,10 +188,11 @@ export const forgotPassword = async (email: string) => {
   return { message: "Jika email terdaftar, link reset akan dikirimkan." };
 };
 
-export const resetPassword = async (rawToken: string, newPassword: string) => {
+export const resetPassword = async (rawToken: string, newPassword: string, res: Response) => {
   const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
   const record = await prisma.passwordResetToken.findFirst({
     where: { token_hash: tokenHash, used_at: null, expires_at: { gt: new Date() } },
+    include: { employee: true },
   });
 
   if (!record) throw new AppError("Token tidak valid atau sudah kadaluarsa.", 400);
@@ -229,7 +209,40 @@ export const resetPassword = async (rawToken: string, newPassword: string) => {
     }),
   ]);
 
-  return { message: "Password berhasil diubah. Silakan login." };
+  // Auto-login: issue tokens so the frontend can redirect to the correct dashboard
+  const employee = record.employee;
+  const newTokenVersion = employee.token_version + 1;
+
+  const accessToken = signAccessToken({
+    userId: employee.id,
+    role: employee.role,
+    email: employee.email,
+    outletId: employee.outlet_id,
+    tokenVersion: newTokenVersion,
+  });
+
+  const refreshToken = signRefreshToken({
+    userId: employee.id,
+    role: employee.role,
+    email: employee.email,
+    outletId: employee.outlet_id,
+    tokenVersion: newTokenVersion,
+  });
+
+  const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
+  const expiresMs = parseDuration(expiresIn);
+  const expiresAt = new Date(Date.now() + expiresMs);
+  await storeRefreshToken(employee.id, refreshToken, expiresAt, "employee");
+
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: expiresMs,
+  });
+
+  const { password_hash: _, ...employeeWithoutPassword } = employee;
+  return { accessToken, employee: employeeWithoutPassword };
 };
 
 export const changePassword = async (
@@ -303,19 +316,3 @@ export const changePassword = async (
   return { message: "Password berhasil diubah." };
 };
 
-function parseDuration(duration: string): number {
-  const match = duration.match(/^(\d+)([dhm])$/);
-  if (!match) return 7 * 24 * 60 * 60 * 1000;
-  const value = parseInt(match[1], 10);
-  const unit = match[2];
-  switch (unit) {
-    case "d":
-      return value * 24 * 60 * 60 * 1000;
-    case "h":
-      return value * 60 * 60 * 1000;
-    case "m":
-      return value * 60 * 1000;
-    default:
-      return 7 * 24 * 60 * 60 * 1000;
-  }
-}

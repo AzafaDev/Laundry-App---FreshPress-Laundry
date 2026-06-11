@@ -4,11 +4,26 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, EyeOff, Eye, Shirt } from "lucide-react";
 import { employeeAuthService } from "@/services/employeeAuth.service";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import type { EmployeeRole } from "@/types/employee.types";
+
+const getDashboardPath = (role: EmployeeRole): string => {
+  switch (role) {
+    case "super_admin":    return "/dashboard/admin";
+    case "outlet_admin":   return "/dashboard/admin";
+    case "driver":         return "/dashboard/driver";
+    case "washing_worker":
+    case "ironing_worker":
+    case "packing_worker": return "/dashboard/worker";
+    default:               return "/employee/login";
+  }
+};
 
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  const { setAuth } = useEmployeeAuthStore();
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -32,8 +47,10 @@ function ResetPasswordForm() {
     setIsLoading(true);
     setError(null);
     try {
-      await employeeAuthService.resetPassword(token!, newPassword);
-      router.push("/employee/login");
+      const result = await employeeAuthService.resetPassword(token!, newPassword);
+      // Auto-login: save auth state then redirect to role dashboard
+      setAuth(result.employee as any);
+      router.replace(getDashboardPath(result.employee.role as EmployeeRole));
     } catch (err: unknown) {
       const status = (err as any)?.response?.status;
       if (status === 400 || status === 410 || status === 404) {
@@ -56,10 +73,7 @@ function ResetPasswordForm() {
     >
       <div
         className="h-1.5 w-full"
-        style={{
-          background:
-            "linear-gradient(90deg, #00685f 0%, #89f5e7 60%, #00685f 100%)",
-        }}
+        style={{ background: "linear-gradient(90deg, #00685f 0%, #89f5e7 60%, #00685f 100%)" }}
       />
 
       <div className="p-8">
@@ -67,15 +81,12 @@ function ResetPasswordForm() {
           Buat Password Baru
         </h2>
         <p className="text-sm text-gray-500 mb-6">
-          Masukkan password baru Anda di bawah.
+          Masukkan password baru Anda untuk mengaktifkan akun.
         </p>
 
         {tokenInvalid ? (
           <div className="space-y-4">
-            <div
-              className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl"
-              role="alert"
-            >
+            <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl" role="alert">
               {error}
             </div>
             <a
@@ -88,19 +99,13 @@ function ResetPasswordForm() {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div
-                className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl"
-                role="alert"
-              >
+              <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl" role="alert">
                 {error}
               </div>
             )}
 
             <div className="space-y-1.5">
-              <label
-                htmlFor="newPassword"
-                className="text-xs font-bold text-gray-500 uppercase tracking-wider block"
-              >
+              <label htmlFor="newPassword" className="text-xs font-bold text-gray-500 uppercase tracking-wider block">
                 Password Baru
               </label>
               <div className="relative">
@@ -115,26 +120,15 @@ function ResetPasswordForm() {
                   minLength={8}
                   className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-sm placeholder:text-gray-400 transition-all"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowNew((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                  aria-label="Toggle visibility"
-                >
-                  {showNew ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                <button type="button" onClick={() => setShowNew((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors" aria-label="Toggle visibility">
+                  {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label
-                htmlFor="confirmPassword"
-                className="text-xs font-bold text-gray-500 uppercase tracking-wider block"
-              >
+              <label htmlFor="confirmPassword" className="text-xs font-bold text-gray-500 uppercase tracking-wider block">
                 Konfirmasi Password
               </label>
               <div className="relative">
@@ -148,17 +142,9 @@ function ResetPasswordForm() {
                   required
                   className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-sm placeholder:text-gray-400 transition-all"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                  aria-label="Toggle visibility"
-                >
-                  {showConfirm ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                <button type="button" onClick={() => setShowConfirm((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors" aria-label="Toggle visibility">
+                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -171,7 +157,7 @@ function ResetPasswordForm() {
               {isLoading ? (
                 <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
-                "Simpan Password"
+                "Simpan & Masuk"
               )}
             </button>
           </form>
@@ -185,39 +171,25 @@ export default function EmployeeResetPasswordPage() {
   return (
     <main
       className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{
-        background:
-          "linear-gradient(145deg, #00685f 0%, #00534b 55%, #003d38 100%)",
-      }}
+      style={{ background: "linear-gradient(145deg, #00685f 0%, #00534b 55%, #003d38 100%)" }}
     >
       <div
         aria-hidden
         className="absolute -top-32 -right-32 w-96 h-96 rounded-full opacity-20"
-        style={{
-          background: "radial-gradient(circle, #89f5e7 0%, transparent 70%)",
-        }}
+        style={{ background: "radial-gradient(circle, #89f5e7 0%, transparent 70%)" }}
       />
 
       <style>{`@keyframes card-enter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}`}</style>
       <div className="w-full max-w-100 relative">
-        {/* Brand */}
         <div className="text-center mb-8">
           <div
             className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
-            style={{
-              background: "rgba(255,255,255,0.15)",
-              backdropFilter: "blur(8px)",
-              boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
-            }}
+            style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)", boxShadow: "0 4px 24px rgba(0,0,0,0.15)" }}
           >
             <Shirt className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tight leading-none">
-            FreshPress
-          </h1>
-          <p className="text-white/60 mt-2 text-sm font-medium tracking-wide uppercase">
-            Portal Staff
-          </p>
+          <h1 className="text-3xl font-black text-white tracking-tight leading-none">FreshPress</h1>
+          <p className="text-white/60 mt-2 text-sm font-medium tracking-wide uppercase">Portal Staff</p>
         </div>
 
         <Suspense

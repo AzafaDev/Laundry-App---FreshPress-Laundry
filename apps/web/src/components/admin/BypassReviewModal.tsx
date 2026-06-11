@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, type ClipboardEvent } from "react";
-import { X, ShieldAlert, AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { X, ShieldAlert, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 
 interface BypassRequest {
   id: string;
@@ -27,44 +27,7 @@ export function BypassReviewModal({
   onApprove,
   onReject,
 }: BypassReviewModalProps) {
-  const [pin, setPin] = useState(["", "", "", "", "", ""]);
   const [adminNote, setAdminNote] = useState("");
-  const pinRefs = useRef<(HTMLInputElement | null)[]>([]);
-
-  const handlePinChange = (index: number, value: string) => {
-    if (!/^\d?$/.test(value)) return;
-    const newPin = [...pin];
-    newPin[index] = value;
-    setPin(newPin);
-    if (value !== "" && index < 5) {
-      pinRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handlePinKeyDown = (
-    index: number,
-    e: React.KeyboardEvent<HTMLInputElement>,
-  ) => {
-    if (e.key === "Backspace" && pin[index] === "" && index > 0) {
-      pinRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handlePinPaste = (e: ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData("text").trim();
-    if (/^\d{6}$/.test(pasted)) {
-      const digits = pasted.split("");
-      setPin(digits);
-      digits.forEach((digit, i) => {
-        if (pinRefs.current[i]) pinRefs.current[i]!.value = digit;
-      });
-      pinRefs.current[5]?.focus();
-    }
-  };
-
-  const pinCode = pin.join("");
-  const isPinComplete = pinCode.length === 6;
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
@@ -85,7 +48,7 @@ export function BypassReviewModal({
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-5">
           <div className="bg-surface-container-low rounded-xl p-4 space-y-3">
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
@@ -102,9 +65,25 @@ export function BypassReviewModal({
               </div>
               <div>
                 <span className="text-on-surface-variant">Status</span>
-                <span className="inline-block px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">
-                  Pending
-                </span>
+                <div className="mt-0.5">
+                  {request.status === "pending" && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">
+                      Pending
+                    </span>
+                  )}
+                  {request.status === "approved" && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full font-medium">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Approved
+                    </span>
+                  )}
+                  {request.status === "rejected" && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-error/10 text-error text-xs rounded-full font-medium">
+                      <XCircle className="w-3 h-3" />
+                      Rejected
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -130,60 +109,46 @@ export function BypassReviewModal({
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-sm font-bold text-on-surface-variant block">
-              Admin Note
-            </label>
-            <textarea
-              rows={3}
-              placeholder="Tambahkan catatan (opsional)"
-              value={adminNote}
-              onChange={(e) => setAdminNote(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant bg-white focus:outline-none focus:border-primary transition-all text-sm resize-none"
-            />
-          </div>
-
-          <div className="space-y-3">
-            <label className="text-sm font-bold text-on-surface-variant block">
-              PIN Authentication
-            </label>
-            <div className="grid grid-cols-6 gap-2">
-              {pin.map((digit, index) => (
-                <input
-                  key={index}
-                  ref={(el) => {
-                    pinRefs.current[index] = el;
-                  }}
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handlePinChange(index, e.target.value)}
-                  onKeyDown={(e) => handlePinKeyDown(index, e)}
-                  onPaste={index === 0 ? handlePinPaste : undefined}
-                  aria-label={`PIN digit ${index + 1}`}
-                  className="w-full aspect-square text-center text-xl font-bold border-2 rounded-xl bg-surface transition-all outline-none border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/10"
+          {request.status === "pending" ? (
+            <>
+              <div className="space-y-1">
+                <label className="text-sm font-bold text-on-surface-variant block">
+                  Admin Note
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Tambahkan catatan (opsional)"
+                  value={adminNote}
+                  onChange={(e) => setAdminNote(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant bg-white focus:outline-none focus:border-primary transition-all text-sm resize-none"
                 />
-              ))}
-            </div>
-          </div>
+              </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <button
-              onClick={() => onReject(pinCode, adminNote)}
-              disabled={!isPinComplete}
-              className="py-3 px-6 rounded-xl border-2 border-error text-error font-bold hover:bg-error/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Reject
-            </button>
-            <button
-              onClick={() => onApprove(pinCode, adminNote)}
-              disabled={!isPinComplete}
-              className="py-3 px-6 rounded-xl bg-primary text-on-primary font-bold hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
-            >
-              Approve
-            </button>
-          </div>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => onReject("", adminNote)}
+                  className="py-3 px-6 rounded-xl border-2 border-error text-error font-bold hover:bg-error/5 transition-all"
+                >
+                  Reject
+                </button>
+                <button
+                  onClick={() => onApprove("", adminNote)}
+                  className="py-3 px-6 rounded-xl bg-primary text-on-primary font-bold hover:opacity-90 transition-all shadow-lg shadow-primary/20"
+                >
+                  Approve
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="pt-1">
+              <button
+                onClick={onClose}
+                className="w-full py-3 px-6 rounded-xl border-2 border-outline-variant text-on-surface font-medium hover:bg-surface-container-high transition-all"
+              >
+                Tutup
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -47,10 +47,11 @@ export const employeeAuthService = {
     return data.data;
   },
 
-  resetPassword: async (token: string, newPassword: string): Promise<{ message: string }> => {
-    const { data } = await axiosInstance.post<{ success: true; data: { message: string } }>(
+  resetPassword: async (token: string, newPassword: string): Promise<{ accessToken: string; employee: { id: string; role: string; email: string; full_name: string; outlet_id: string | null } }> => {
+    const { data } = await axiosInstance.post<{ success: true; data: { accessToken: string; employee: { id: string; role: string; email: string; full_name: string; outlet_id: string | null } } }>(
       "/v1/employee/auth/reset-password",
       { token, newPassword },
+      { withCredentials: true },
     );
     return data.data;
   },

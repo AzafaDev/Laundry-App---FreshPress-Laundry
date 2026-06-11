@@ -18,7 +18,7 @@ const getDashboardPath = (role: EmployeeRole): string => {
     case "super_admin":
       return "/dashboard/admin";
     case "outlet_admin":
-      return "/dashboard/outlet-admin";
+      return "/dashboard/admin";
     default:
       return "/employee/login";
   }

@@ -25,7 +25,8 @@ export const createUserSchema = z.object({
     .optional(),
   role: employeeRoleSchema,
   outlet_id: z.string().uuid("outlet_id harus UUID.").optional(),
-  password: passwordSchema,
+  // password is now optional — if omitted, an invite email is sent
+  password: passwordSchema.optional(),
   is_active: z.boolean().optional().default(true),
 });
 
