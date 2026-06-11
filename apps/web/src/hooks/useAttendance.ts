@@ -38,7 +38,6 @@ export function useAttendance() {
     queryKey: ["attendance", "currentShift", employeeId],
     queryFn: attendanceService.getCurrentShift,
     staleTime: 0,
-    refetchInterval: 60_000,
     enabled: isEmployee && !!employeeId,
   });
 

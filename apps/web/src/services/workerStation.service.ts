@@ -26,6 +26,26 @@ export interface StationOrder {
       name: string;
     };
   }>;
+  order_items: Array<{
+    id: string;
+    quantity: number;
+    laundry_item: {
+      name: string;
+      unit: string;
+    };
+  }>;
+}
+
+export interface BypassDetail {
+  id: string;
+  status: "pending" | "approved" | "rejected";
+  station: string;
+  expected_items: Array<{ clothing_type_id: string; name: string; quantity: number }>;
+  actual_items: Array<{ clothing_type_id: string; name: string; actual_quantity: number }>;
+  discrepancy_description: string;
+  photo_evidence: string[];
+  attempt_number: number;
+  created_at: string;
 }
 
 export interface Discrepancy {
@@ -64,6 +84,13 @@ export const workerStationService = {
       success: true;
       data: { order: StationOrder; createdDeliveryTask: boolean };
     }>(`/v1/worker/station/${station}/orders/${orderId}/complete`);
+    return data.data;
+  },
+
+  getBypassDetail: async (orderId: string): Promise<BypassDetail | null> => {
+    const { data } = await axiosInstance.get<{ success: true; data: BypassDetail | null }>(
+      `/v1/worker/orders/${orderId}/bypass`
+    );
     return data.data;
   },
 };

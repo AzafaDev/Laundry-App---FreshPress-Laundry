@@ -1,16 +1,15 @@
 import { NextFunction, Request, Response } from "express";
-import {
-  checkInSchema,
-  checkOutSchema,
-  getMyLogsQuerySchema,
-} from "../../validations/attendance.validation.js";
+import type { z } from "zod";
+import type { getMyLogsQuerySchema } from "../../validations/attendance.validation.js";
 import { attendanceService } from "../../services/driver-worker/index.js";
 import { requireUserId } from "../../utils/asyncHandler.js";
+
+type MyLogsQuery = z.infer<typeof getMyLogsQuerySchema>;
 
 export const checkIn = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const employeeId = requireUserId(req);
-    const { lat, lng } = checkInSchema.parse(req.body);
+    const { lat, lng } = req.body;
     if (!lat || !lng) throw new Error("Lokasi tidak tersedia. Aktifkan GPS untuk check-in.");
 
     // radius check dinonaktifkan sementara — aktifkan saat production
@@ -28,7 +27,7 @@ export const checkIn = async (req: Request, res: Response, next: NextFunction) =
 export const checkOut = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const employeeId = requireUserId(req);
-    const { attendanceId } = checkOutSchema.parse(req.body);
+    const { attendanceId } = req.body;
     const attendance = await attendanceService.checkOut(attendanceId, employeeId);
     res.json({ success: true, data: attendance });
   } catch (error) {
@@ -39,7 +38,7 @@ export const checkOut = async (req: Request, res: Response, next: NextFunction) 
 export const getMyLogs = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const employeeId = requireUserId(req);
-    const { page, limit, startDate, endDate } = getMyLogsQuerySchema.parse(req.query);
+    const { page, limit, startDate, endDate } = req.query as unknown as MyLogsQuery;
     const result = await attendanceService.getMyAttendanceLogs(employeeId, page, limit, startDate, endDate);
     res.json({ success: true, ...result });
   } catch (error) {

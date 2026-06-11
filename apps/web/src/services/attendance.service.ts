@@ -66,7 +66,6 @@ export const attendanceService = {
     return { data: data.data, pagination: data.pagination };
   },
 
-  // Perubahan utama: status filter & employeeId
   getReport: async (params: AttendanceReportParams): Promise<AttendanceLogsResponse> => {
     const cleanParams = Object.fromEntries(
       Object.entries(params).filter(([, v]) => v !== undefined && v !== "" && v !== null),

@@ -2,22 +2,32 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Lock, EyeOff, Eye, Shirt } from "lucide-react";
+import { Lock, EyeOff, Eye } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { employeeAuthService } from "@/services/employeeAuth.service";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import type { EmployeeRole } from "@/types/employee.types";
+import { getDashboardPath } from "@/utils/employeeRoutes";
+import { AuthPageShell } from "@/components/employee/AuthPageShell";
+import { AuthCard } from "@/components/employee/AuthCard";
+import { AuthErrorAlert } from "@/components/employee/AuthErrorAlert";
+import { AuthFormField } from "@/components/employee/AuthFormField";
+import { AuthInput } from "@/components/employee/AuthInput";
+import { AuthSubmitButton } from "@/components/employee/AuthSubmitButton";
 
-const getDashboardPath = (role: EmployeeRole): string => {
-  switch (role) {
-    case "super_admin":    return "/dashboard/admin";
-    case "outlet_admin":   return "/dashboard/admin";
-    case "driver":         return "/dashboard/driver";
-    case "washing_worker":
-    case "ironing_worker":
-    case "packing_worker": return "/dashboard/worker";
-    default:               return "/employee/login";
-  }
-};
+const resetSchema = z
+  .object({
+    newPassword: z.string().min(8, "Password minimal 8 karakter"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Password tidak cocok",
+    path: ["confirmPassword"],
+  });
+
+type ResetFormData = z.infer<typeof resetSchema>;
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -25,30 +35,26 @@ function ResetPasswordForm() {
   const token = searchParams.get("token");
   const { setAuth } = useEmployeeAuthStore();
 
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tokenInvalid, setTokenInvalid] = useState(false);
 
+  const { register, handleSubmit, formState: { errors } } = useForm<ResetFormData>({
+    resolver: zodResolver(resetSchema),
+  });
+
   useEffect(() => {
     if (!token) router.replace("/employee/forgot-password");
   }, [token, router]);
 
-  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      setError("Konfirmasi password tidak cocok.");
-      return;
-    }
+  const onSubmit = async (data: ResetFormData) => {
     if (isLoading) return;
     setIsLoading(true);
     setError(null);
     try {
-      const result = await employeeAuthService.resetPassword(token!, newPassword);
-      // Auto-login: save auth state then redirect to role dashboard
+      const result = await employeeAuthService.resetPassword(token!, data.newPassword);
       setAuth(result.employee as any);
       router.replace(getDashboardPath(result.employee.role as EmployeeRole));
     } catch (err: unknown) {
@@ -67,146 +73,87 @@ function ResetPasswordForm() {
   if (!token) return null;
 
   return (
-    <div
-      className="bg-white rounded-2xl overflow-hidden"
-      style={{ boxShadow: "0 24px 64px rgba(0,0,0,0.22)", animation: "card-enter 0.4s ease-out" }}
-    >
-      <div
-        className="h-1.5 w-full"
-        style={{ background: "linear-gradient(90deg, #00685f 0%, #89f5e7 60%, #00685f 100%)" }}
-      />
+    <AuthCard>
+      <h2 className="text-xl font-bold text-gray-800 mb-1">Buat Password Baru</h2>
+      <p className="text-sm text-gray-500 mb-6">
+        Masukkan password baru Anda untuk mengaktifkan akun.
+      </p>
 
-      <div className="p-8">
-        <h2 className="text-xl font-bold text-gray-800 mb-1">
-          Buat Password Baru
-        </h2>
-        <p className="text-sm text-gray-500 mb-6">
-          Masukkan password baru Anda untuk mengaktifkan akun.
-        </p>
+      {tokenInvalid ? (
+        <div className="space-y-4">
+          {error && <AuthErrorAlert message={error} />}
+          <a
+            href="/employee/forgot-password"
+            className="block w-full text-center py-3 bg-primary text-white font-bold rounded-xl text-sm hover:brightness-105 transition-all"
+          >
+            Minta Link Reset Baru
+          </a>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {error && <AuthErrorAlert message={error} />}
 
-        {tokenInvalid ? (
-          <div className="space-y-4">
-            <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl" role="alert">
-              {error}
-            </div>
-            <a
-              href="/employee/forgot-password"
-              className="block w-full text-center py-3 bg-primary text-white font-bold rounded-xl text-sm hover:brightness-105 transition-all"
-            >
-              Minta Link Reset Baru
-            </a>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl" role="alert">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <label htmlFor="newPassword" className="text-xs font-bold text-gray-500 uppercase tracking-wider block">
-                Password Baru
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  id="newPassword"
-                  type={showNew ? "text" : "password"}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Min. 8 karakter"
-                  required
-                  minLength={8}
-                  className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-sm placeholder:text-gray-400 transition-all"
-                />
-                <button type="button" onClick={() => setShowNew((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors" aria-label="Toggle visibility">
+          <AuthFormField label="Password Baru" htmlFor="newPassword" error={errors.newPassword?.message}>
+            <AuthInput
+              id="newPassword"
+              type={showNew ? "text" : "password"}
+              placeholder="Min. 8 karakter"
+              icon={<Lock className="w-4 h-4" />}
+              registration={register("newPassword")}
+              rightSlot={
+                <button
+                  type="button"
+                  onClick={() => setShowNew((v) => !v)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label="Toggle visibility"
+                >
                   {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
-              </div>
-            </div>
+              }
+            />
+          </AuthFormField>
 
-            <div className="space-y-1.5">
-              <label htmlFor="confirmPassword" className="text-xs font-bold text-gray-500 uppercase tracking-wider block">
-                Konfirmasi Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  id="confirmPassword"
-                  type={showConfirm ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Ulangi password baru"
-                  required
-                  className="w-full pl-10 pr-10 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 text-sm placeholder:text-gray-400 transition-all"
-                />
-                <button type="button" onClick={() => setShowConfirm((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors" aria-label="Toggle visibility">
+          <AuthFormField label="Konfirmasi Password" htmlFor="confirmPassword" error={errors.confirmPassword?.message}>
+            <AuthInput
+              id="confirmPassword"
+              type={showConfirm ? "text" : "password"}
+              placeholder="Ulangi password baru"
+              icon={<Lock className="w-4 h-4" />}
+              registration={register("confirmPassword")}
+              rightSlot={
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((v) => !v)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  aria-label="Toggle visibility"
+                >
                   {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
-              </div>
-            </div>
+              }
+            />
+          </AuthFormField>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-primary text-white font-bold py-3 rounded-xl hover:brightness-105 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-sm"
-            >
-              {isLoading ? (
-                <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                "Simpan & Masuk"
-              )}
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
+          <AuthSubmitButton isLoading={isLoading}>
+            Simpan & Masuk
+          </AuthSubmitButton>
+        </form>
+      )}
+    </AuthCard>
   );
 }
 
 export default function EmployeeResetPasswordPage() {
   return (
-    <main
-      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{ background: "linear-gradient(145deg, #00685f 0%, #00534b 55%, #003d38 100%)" }}
-    >
-      <div
-        aria-hidden
-        className="absolute -top-32 -right-32 w-96 h-96 rounded-full opacity-20"
-        style={{ background: "radial-gradient(circle, #89f5e7 0%, transparent 70%)" }}
-      />
-
-      <style>{`@keyframes card-enter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}`}</style>
-      <div className="w-full max-w-100 relative">
-        <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
-            style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)", boxShadow: "0 4px 24px rgba(0,0,0,0.15)" }}
-          >
-            <Shirt className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-black text-white tracking-tight leading-none">FreshPress</h1>
-          <p className="text-white/60 mt-2 text-sm font-medium tracking-wide uppercase">Portal Staff</p>
-        </div>
-
-        <Suspense
-          fallback={
-            <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: "0 24px 64px rgba(0,0,0,0.22)" }}>
-              <div className="h-1.5 w-full" style={{ background: "linear-gradient(90deg, #00685f 0%, #89f5e7 60%, #00685f 100%)" }} />
-              <div className="p-8 animate-pulse h-64" />
-            </div>
-          }
-        >
-          <ResetPasswordForm />
-        </Suspense>
-
-        <p className="text-center text-xs text-white/30 mt-6">
-          © {new Date().getFullYear()} FreshPress Laundry. Hak akses karyawan.
-        </p>
-      </div>
-    </main>
+    <AuthPageShell>
+      <Suspense
+        fallback={
+          <AuthCard>
+            <div className="animate-pulse h-64" />
+          </AuthCard>
+        }
+      >
+        <ResetPasswordForm />
+      </Suspense>
+    </AuthPageShell>
   );
 }
