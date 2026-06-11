@@ -206,7 +206,7 @@ export const createCustomerOrder = async (
       data: {
         order_id: createdOrder.id,
         task_type: "pickup",
-        status: "pending",
+        status: "available",
       },
     });
 
