@@ -31,35 +31,13 @@ export async function runAllSeeds() {
   await prisma.workShift.deleteMany({});
   await prisma.laundryItem.deleteMany({});
   await prisma.outlet.deleteMany({});
-  await prisma.$transaction(async tx => {
-    // Order-related child tables first
-    await tx.notification.deleteMany({});
-    await tx.activityLog.deleteMany({});
-    await tx.complaint.deleteMany({});
-    await tx.payment.deleteMany({});
-    await tx.driverTask.deleteMany({});
-    await tx.processLog.deleteMany({});
-    await tx.bypassRequest.deleteMany({});
-    await tx.orderStatusHistory.deleteMany({});
-    await tx.orderItemBreakdown.deleteMany({});
-    await tx.orderItem.deleteMany({});
-    await tx.order.deleteMany({});
-
-    // Employee/customer auth dependencies
-    await tx.attendance.deleteMany({});
-    await tx.employeeShift.deleteMany({});
-    await tx.passwordResetToken.deleteMany({});
-    await tx.refreshToken.deleteMany({});
-    await tx.emailToken.deleteMany({});
-    await tx.socialAccount.deleteMany({});
-
-    // Parent tables
-    await tx.customerAddress.deleteMany({});
-    await tx.customer.deleteMany({});
-    await tx.employee.deleteMany({});
-    await tx.workShift.deleteMany({});
-    await tx.outlet.deleteMany({});
-  });
+  await prisma.activityLog.deleteMany({});
+  await prisma.complaint.deleteMany({});
+  await prisma.payment.deleteMany({});
+  await prisma.bypassRequest.deleteMany({});
+  await prisma.refreshToken.deleteMany({});
+  await prisma.emailToken.deleteMany({});
+  await prisma.socialAccount.deleteMany({});
   console.log('✅ Data cleaned.\n');
 
   const outlets = await seedOutlets();
