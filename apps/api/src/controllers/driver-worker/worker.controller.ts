@@ -149,3 +149,14 @@ export const completeStation = async (
     next(err);
   }
 };
+
+export const getBypassForOrder = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const employeeId = requireUserId(req);
+    const orderId = req.params.orderId as string;
+    const bypass = await workerService.getBypassForOrder(employeeId, orderId);
+    res.json({ success: true, data: bypass });
+  } catch (err) {
+    next(err);
+  }
+};

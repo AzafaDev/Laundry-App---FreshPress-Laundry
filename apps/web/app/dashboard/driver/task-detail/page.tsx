@@ -11,7 +11,7 @@ function TaskDetailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const taskId = searchParams.get("id");
-  const { availablePickups, availableDeliveries, activeTask, isLoadingActive } = useDriverTasks();
+  const { availablePickups, availableDeliveries, activeTask, isLoadingActive } = useDriverTasks({ checkedIn: true });
 
   const allTasks: DriverTask[] = [
     ...(availablePickups ?? []),

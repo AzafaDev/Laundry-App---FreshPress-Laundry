@@ -202,6 +202,32 @@ export const workerService = {
     return { isMatch: discrepancies.length === 0, discrepancies };
   },
 
+  async getBypassForOrder(employeeId: string, orderId: string) {
+    const outletId = await getEmployeeOutlet(employeeId);
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { outlet_id: true },
+    });
+    if (!order) throw new AppError("Order tidak ditemukan", 404);
+    if (order.outlet_id !== outletId) throw new AppError("Order bukan dari outlet Anda", 403);
+
+    return prisma.bypassRequest.findFirst({
+      where: { order_id: orderId },
+      orderBy: { created_at: "desc" },
+      select: {
+        id: true,
+        status: true,
+        station: true,
+        expected_items: true,
+        actual_items: true,
+        discrepancy_description: true,
+        photo_evidence: true,
+        attempt_number: true,
+        created_at: true,
+      },
+    });
+  },
+
   async submitItems(
     employeeId: string,
     station: "washing" | "ironing" | "packing",

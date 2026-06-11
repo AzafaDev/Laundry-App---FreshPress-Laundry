@@ -1,4 +1,3 @@
-// src/hooks/useEmployeeAuth.ts
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
@@ -6,24 +5,19 @@ import {
   type EmployeeLoginPayload,
 } from "@/services/employeeAuth.service";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
-import type { EmployeeRole } from "@/types/employee.types";
+import { getDashboardPath } from "@/utils/employeeRoutes";
 
-const getDashboardPath = (role: EmployeeRole): string => {
-  switch (role) {
-    case "super_admin":
-      return "/dashboard/admin";
-    case "outlet_admin":
-      return "/dashboard/admin";
-    case "driver":
-      return "/dashboard/driver";
-    case "washing_worker":
-    case "ironing_worker":
-    case "packing_worker":
-      return "/dashboard/worker";
-    default:
-      return "/";
-  }
-};
+const SAFE_LOGIN_ERRORS = new Set([
+  "Email atau password salah.",
+  "Akun Anda tidak aktif.",
+  "Terlalu banyak percobaan login. Coba lagi nanti.",
+]);
+
+export function getSafeLoginError(err: unknown): string {
+  const msg = (err as any)?.response?.data?.message;
+  if (msg && SAFE_LOGIN_ERRORS.has(msg)) return msg;
+  return "Login gagal. Periksa email dan password Anda.";
+}
 
 export const useEmployeeAuth = () => {
   const router = useRouter();
@@ -36,11 +30,9 @@ export const useEmployeeAuth = () => {
     onSuccess: (data) => {
       const { employee } = data;
       setAuth(employee);
-      const dashboardPath = getDashboardPath(employee.role);
-      router.push(dashboardPath);
+      router.push(getDashboardPath(employee.role));
     },
     onError: (error: any) => {
-      // Error akan ditangani di komponen
       console.log(
         "Login employee gagal:",
         error?.response?.data?.message || error.message,
@@ -52,7 +44,6 @@ export const useEmployeeAuth = () => {
     try {
       await employeeAuthService.logout();
     } catch (error) {
-      // tetap lanjut clear auth meskipun API gagal
     } finally {
       clearAuth();
       queryClient.clear();

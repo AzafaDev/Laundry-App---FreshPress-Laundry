@@ -1,11 +1,5 @@
 import { NextFunction, Request, Response } from "express";
 import {
-  loginEmployeeSchema,
-  forgotPasswordSchema,
-  resetPasswordSchema,
-  changePasswordSchema,
-} from "../../validations/employee.validation.js";
-import {
   loginEmployee,
   logoutEmployee,
   refreshEmployeeToken,
@@ -20,7 +14,7 @@ export const login = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { email, password } = loginEmployeeSchema.parse(req.body);
+    const { email, password } = req.body;
     const result = await loginEmployee(email, password, res);
     res.status(200).json({ success: true, data: result });
   } catch (error) {
@@ -60,7 +54,7 @@ export const forgotPasswordHandler = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { email } = forgotPasswordSchema.parse(req.body);
+    const { email } = req.body;
     const result = await forgotPassword(email);
     res.status(200).json({ success: true, data: result });
   } catch (error) {
@@ -74,7 +68,7 @@ export const resetPasswordHandler = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { token, newPassword } = resetPasswordSchema.parse(req.body);
+    const { token, newPassword } = req.body;
     const result = await resetPassword(token, newPassword, res);
     res.status(200).json({ success: true, data: result });
   } catch (error) {
@@ -88,7 +82,7 @@ export const changePasswordHandler = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { oldPassword, newPassword } = changePasswordSchema.parse(req.body);
+    const { oldPassword, newPassword } = req.body;
     const result = await changePassword(req.user!.userId, oldPassword, newPassword, res);
     res.status(200).json({ success: true, data: result });
   } catch (error) {

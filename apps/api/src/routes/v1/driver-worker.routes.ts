@@ -1,6 +1,12 @@
 import { Router } from "express";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import { requireRole } from "../../middlewares/role.middleware.js";
+import { validate } from "../../middlewares/validate.middleware.js";
+import {
+  checkInSchema,
+  checkOutSchema,
+  getMyLogsQuerySchema,
+} from "../../validations/attendance.validation.js";
 import {
   checkIn,
   checkOut,
@@ -9,7 +15,7 @@ import {
   getCurrentShift,
 } from "../../controllers/driver-worker/attendance.controller.js";
 import { getAvailablePickups, getAvailableDeliveries, getActiveTask, claimTask, completeTask } from "../../controllers/driver-worker/driver.controller.js";
-import { getStationOrders, completeStation, submitItems, createBypassRequest, uploadBypassPhotosMiddleware } from "../../controllers/driver-worker/worker.controller.js";
+import { getStationOrders, completeStation, submitItems, createBypassRequest, uploadBypassPhotosMiddleware, getBypassForOrder } from "../../controllers/driver-worker/worker.controller.js";
 
 const router = Router();
 
@@ -21,16 +27,19 @@ router.use(authenticate);
 router.post(
   "/attendance/check-in",
   requireRole(...EMPLOYEE_ROLES),
+  validate(checkInSchema),
   checkIn,
 );
 router.post(
   "/attendance/check-out",
   requireRole(...EMPLOYEE_ROLES),
+  validate(checkOutSchema),
   checkOut,
 );
 router.get(
   "/attendance/my-logs",
   requireRole(...EMPLOYEE_ROLES),
+  validate(getMyLogsQuerySchema, "query"),
   getMyLogs,
 );
 router.get(
@@ -84,6 +93,11 @@ router.patch(
   "/worker/station/:station/orders/:orderId/complete",
   requireRole(...WORKER_ROLES),
   completeStation,
+);
+router.get(
+  "/worker/orders/:orderId/bypass",
+  requireRole(...WORKER_ROLES),
+  getBypassForOrder,
 );
 router.post(
   "/worker/bypass",
