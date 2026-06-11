@@ -101,7 +101,7 @@ export default function AdminDashboardPage() {
         )}
         {isOutletAdmin && (
           <DashCard
-            href="/dashboard/outlet-admin/attendance-report"
+            href="/dashboard/admin/attendance-report"
             icon={<CalendarCheck className="w-6 h-6 text-primary" />}
             title="Attendance Report"
             description="Pantau absensi harian karyawan di outlet Anda."
