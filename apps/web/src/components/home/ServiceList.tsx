@@ -26,6 +26,17 @@ export const ServiceList = ({ id }: { id?: string }) => {
     queryFn: () => laundryItemService.listForCustomer(),
   });
 
+  // Mix kiloan (kg) and satuan (pcs) items, capped at 4 cards
+  const kgItems = items.filter((item) => item.unit === "kg");
+  const pcsItems = items.filter((item) => item.unit !== "kg");
+  const displayItems: typeof items = [];
+  let ki = 0;
+  let pi = 0;
+  while (displayItems.length < 4 && (ki < kgItems.length || pi < pcsItems.length)) {
+    if (ki < kgItems.length) displayItems.push(kgItems[ki++]);
+    if (displayItems.length < 4 && pi < pcsItems.length) displayItems.push(pcsItems[pi++]);
+  }
+
   return (
     <section id={id} className="bg-surface-container-low py-20 px-4 md:px-8">
       <div className="max-w-7xl mx-auto">
@@ -55,7 +66,7 @@ export const ServiceList = ({ id }: { id?: string }) => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {items.map((item, i) => {
+            {displayItems.map((item, i) => {
               const meta = CARD_META[i % CARD_META.length];
               return (
                 <div
