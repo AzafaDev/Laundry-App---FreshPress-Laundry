@@ -29,3 +29,17 @@ export const getOrderById = asyncHandler(async (req: Request, res: Response) => 
   const order = await OrderService.getCustomerOrderById(customerId, orderId);
   ok(res, order, "Detail order berhasil diambil.");
 });
+
+export const completeOrder = asyncHandler(async (req: Request, res: Response) => {
+  const customerId = req.user!.userId;
+  const orderId = getParamId(req.params.id);
+  const order = await OrderService.completeCustomerOrder(customerId, orderId);
+  ok(res, order, "Pesanan berhasil diselesaikan.");
+});
+
+export const createComplaint = asyncHandler(async (req: Request, res: Response) => {
+  const customerId = req.user!.userId;
+  const orderId = getParamId(req.params.id);
+  const complaint = await OrderService.createCustomerComplaint(customerId, orderId, req.body);
+  created(res, complaint, "Komplain berhasil diajukan.");
+});

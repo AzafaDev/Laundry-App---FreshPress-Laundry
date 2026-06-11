@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { prisma } from "../../lib/prisma.js";
 import { snap, coreApi } from "../../lib/payment.js";
 import { AppError } from "../../middlewares/error.middleware.js";
+import { notifyCustomer } from "../../lib/notification.js";
 import type { Payment, PaymentStatus } from "../../../generated/prisma/client.js";
 
 export const createPaymentTransaction = async (customerId: string, orderId: string) => {
@@ -147,9 +148,19 @@ async function applyPaymentStatus(payment: Payment, newStatus: PaymentStatus, pa
           },
         }),
         prisma.driverTask.create({
-          data: { order_id: order.id, task_type: "delivery", status: "pending" },
+          data: { order_id: order.id, task_type: "delivery", status: "available" },
         }),
       ]);
+    }
+
+    if (order) {
+      await notifyCustomer(
+        order.customer_id,
+        "Pembayaran berhasil",
+        `Pembayaran untuk pesanan ${order.invoice_number} telah berhasil dikonfirmasi.`,
+        "payment",
+        order.id,
+      );
     }
   }
 }

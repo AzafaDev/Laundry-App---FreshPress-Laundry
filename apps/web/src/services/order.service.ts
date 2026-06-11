@@ -61,6 +61,19 @@ export interface CustomerOrder {
   order_items?: CustomerOrderItem[];
 }
 
+export type ComplaintType =
+  | "missing_item"
+  | "damaged_item"
+  | "wrong_item"
+  | "late_delivery"
+  | "quality_issue"
+  | "other";
+
+export interface CreateComplaintPayload {
+  complaint_type: ComplaintType;
+  description: string;
+}
+
 export interface CreateCustomerOrderPayload {
   pickup_address_id: string;
   pickup_date: string;
@@ -125,6 +138,24 @@ export const orderService = {
   getOrderById: async (orderId: string): Promise<CustomerOrder> => {
     const { data } = await axiosInstance.get<Envelope<CustomerOrder>>(
       `/v1/customer/orders/${orderId}`,
+    );
+    return data.data;
+  },
+
+  completeOrder: async (orderId: string): Promise<CustomerOrder> => {
+    const { data } = await axiosInstance.patch<Envelope<CustomerOrder>>(
+      `/v1/customer/orders/${orderId}/complete`,
+    );
+    return data.data;
+  },
+
+  createComplaint: async (
+    orderId: string,
+    payload: CreateComplaintPayload,
+  ): Promise<{ id: string }> => {
+    const { data } = await axiosInstance.post<Envelope<{ id: string }>>(
+      `/v1/customer/orders/${orderId}/complaints`,
+      payload,
     );
     return data.data;
   },

@@ -3,6 +3,7 @@ import * as AuthCtrl from "../../controllers/customer/auth.controller.js";
 import * as ProfileCtrl from "../../controllers/customer/profile.controller.js";
 import * as AddressCtrl from "../../controllers/customer/address.controller.js";
 import * as OrderCtrl from "../../controllers/customer/order.controller.js";
+import * as NotificationCtrl from "../../controllers/customer/notification.controller.js";
 import * as LaundryItemCtrl from "../../controllers/customer/laundryItem.controller.js";
 import * as PaymentCtrl from "../../controllers/customer/payment.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
@@ -23,6 +24,7 @@ import {
   createAddressSchema,
   updateAddressSchema,
   createOrderSchema,
+  createComplaintSchema,
 } from "../../validations/customer.validation.js";
 
 const router = Router();
@@ -64,6 +66,14 @@ router.get("/laundry-items", LaundryItemCtrl.listLaundryItems);
 router.post("/orders", authenticate, validate(createOrderSchema), OrderCtrl.createOrder);
 router.get("/orders", authenticate, OrderCtrl.listOrders);
 router.get("/orders/:id", authenticate, OrderCtrl.getOrderById);
+router.patch("/orders/:id/complete", authenticate, OrderCtrl.completeOrder);
+router.post("/orders/:id/complaints", authenticate, validate(createComplaintSchema), OrderCtrl.createComplaint);
+
+// Notification Routes (protected)
+router.get("/notifications", authenticate, NotificationCtrl.listNotifications);
+router.get("/notifications/unread-count", authenticate, NotificationCtrl.getUnreadCount);
+router.patch("/notifications/read-all", authenticate, NotificationCtrl.markAllAsRead);
+router.patch("/notifications/:id/read", authenticate, NotificationCtrl.markAsRead);
 
 // Payment Routes
 router.post("/payment/notification", PaymentCtrl.handleNotification); // public webhook (Midtrans)

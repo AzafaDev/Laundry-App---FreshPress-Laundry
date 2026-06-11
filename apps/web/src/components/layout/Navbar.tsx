@@ -26,6 +26,7 @@ export const Navbar = () => {
     { label: "Orders", href: "/customer/orders" },
     { label: "Alamat", href: "/customer/locations" },
     { label: "Pembayaran", href: "/customer/payment" },
+    { label: "Notifikasi", href: "/customer/notifications" },
   ];
 
   return (
