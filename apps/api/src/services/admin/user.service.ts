@@ -18,6 +18,7 @@ const PUBLIC_EMPLOYEE_SELECT = {
   avatar_url: true,
   role: true,
   outlet_id: true,
+  outlet: { select: { id: true, name: true } },
   is_active: true,
   is_occupied: true,
   deleted_at: true,
@@ -25,14 +26,15 @@ const PUBLIC_EMPLOYEE_SELECT = {
   updated_at: true,
 } satisfies Prisma.EmployeeSelect;
 
-/** List employees with pagination, role filter, and free-text search. */
+/** List employees with pagination, role filter, outlet filter, and free-text search. */
 export const listUsers = async (query: ListUserQuery) => {
-  const { page, limit, role, search, include_deleted } = query;
+  const { page, limit, role, search, outlet_id, include_deleted } = query;
   const skip = (page - 1) * limit;
 
   const where: Prisma.EmployeeWhereInput = {
     ...(include_deleted ? {} : { deleted_at: null }),
     ...(role ? { role: role as any } : {}),
+    ...(outlet_id ? { outlet_id } : {}),
     ...(search
       ? {
           OR: [

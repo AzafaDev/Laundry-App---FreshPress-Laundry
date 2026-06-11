@@ -11,6 +11,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { useUsers, useDeleteUser } from "@/hooks/useUsers";
+import { useOutlets } from "@/hooks/useOutlets";
 import type { User, UserRole } from "@/types/user.types";
 import { UserFormModal } from "./UserFormModal";
 import { EmployeeShiftModal } from "./EmployeeShiftModal";
@@ -29,15 +30,20 @@ export function UserTable() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [role, setRole] = useState<UserRole | "all">("all");
+  const [outletFilter, setOutletFilter] = useState<string>("all");
   const [editing, setEditing] = useState<User | null>(null);
   const [creating, setCreating] = useState(false);
   const [shiftEmployee, setShiftEmployee] = useState<User | null>(null);
+
+  const { data: outletsData } = useOutlets({ limit: 100 });
+  const outlets = outletsData?.items ?? [];
 
   const { data, isFetching, isError } = useUsers({
     page,
     limit: 10,
     search: search.trim() || undefined,
     role: role === "all" ? undefined : role,
+    outlet_id: outletFilter === "all" ? undefined : outletFilter,
   });
   const deleteUser = useDeleteUser();
 
@@ -80,6 +86,21 @@ export function UserTable() {
               </option>
             ))}
           </select>
+          <select
+            value={outletFilter}
+            onChange={(e) => {
+              setOutletFilter(e.target.value);
+              setPage(1);
+            }}
+            className="px-4 py-2.5 bg-surface border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="all">Semua Outlet</option>
+            {outlets.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
         </div>
         <button
           onClick={() => setCreating(true)}
@@ -100,6 +121,7 @@ export function UserTable() {
                 <th className="text-left px-4 py-3 font-semibold">Email</th>
                 <th className="text-left px-4 py-3 font-semibold">Telepon</th>
                 <th className="text-left px-4 py-3 font-semibold">Role</th>
+                <th className="text-left px-4 py-3 font-semibold">Outlet</th>
                 <th className="text-left px-4 py-3 font-semibold">Status</th>
                 <th className="text-right px-4 py-3 font-semibold">Aksi</th>
               </tr>
@@ -107,7 +129,7 @@ export function UserTable() {
             <tbody>
               {isError && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-error">
+                  <td colSpan={7} className="px-4 py-8 text-center text-error">
                     Gagal memuat data user.
                   </td>
                 </tr>
@@ -115,7 +137,7 @@ export function UserTable() {
               {!isError && items.length === 0 && !isFetching && (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-4 py-8 text-center text-on-surface-variant"
                   >
                     Tidak ada user ditemukan.
@@ -138,6 +160,11 @@ export function UserTable() {
                     <span className="px-2 py-1 text-xs rounded-md bg-primary-container/15 text-primary font-medium capitalize">
                       {u.role.replace(/_/g, " ")}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-on-surface-variant text-sm">
+                    {u.outlet?.name ?? (
+                      <span className="text-outline italic">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {u.is_active ? (
