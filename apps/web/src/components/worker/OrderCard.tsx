@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle, Clock, AlertCircle, Clock3, Loader2 } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Clock3, Loader2, Eye } from "lucide-react";
 import type { StationOrder } from "@/services/workerStation.service";
 import { statusLabel, type BypassState } from "./stationConfig";
 
@@ -27,11 +27,13 @@ export function OrderCard({
   onProcess,
   isProcessing,
   bypassState,
+  onViewBypass,
 }: {
   order: StationOrder;
   onProcess: (id: string) => void;
   isProcessing: boolean;
   bypassState?: BypassState;
+  onViewBypass?: (id: string) => void;
 }) {
   const [waiting, setWaiting] = useState<{ label: string; urgent: boolean }>({ label: "", urgent: false });
   useEffect(() => {
@@ -92,7 +94,18 @@ export function OrderCard({
       </div>
 
       {isPendingBypass ? (
-        <PendingBypassBanner />
+        <>
+          <PendingBypassBanner />
+          {onViewBypass && (
+            <button
+              onClick={() => onViewBypass(order.id)}
+              className="w-full mt-2 py-2 border border-outline-variant rounded-lg text-sm font-medium text-on-surface-variant hover:bg-surface-container-low transition-colors flex items-center justify-center gap-2"
+            >
+              <Eye className="w-4 h-4" />
+              Lihat Detail Bypass
+            </button>
+          )}
+        </>
       ) : (
         <button
           onClick={() => onProcess(order.id)}

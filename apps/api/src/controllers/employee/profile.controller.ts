@@ -2,7 +2,6 @@ import type { NextFunction, Request, Response } from "express";
 import multer from "multer";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { MAX_AVATAR_SIZE_BYTES, ALLOWED_AVATAR_MIME_TYPES } from "../../config/constants.js";
-import { updateProfileSchema } from "../../validations/employee.validation.js";
 import { getProfile, updateProfile, updateAvatar } from "../../services/employee/profile.service.js";
 
 const upload = multer({
@@ -38,7 +37,7 @@ export const updateProfileHandler = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const data = updateProfileSchema.parse(req.body);
+    const data = req.body;
     const result = await updateProfile(req.user!.userId, data);
     res.status(200).json({ success: true, data: result });
   } catch (error) {

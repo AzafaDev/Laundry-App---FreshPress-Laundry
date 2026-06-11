@@ -3,7 +3,7 @@ import { driverTaskService, type DriverTask, type ActiveTaskResponse, type Avail
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import toast from "react-hot-toast";
 
-export function useDriverTasks() {
+export function useDriverTasks({ checkedIn }: { checkedIn: boolean }) {
   const { user } = useEmployeeAuthStore();
   const queryClient = useQueryClient();
   const isDriver = !!user && user.role === "driver";
@@ -13,6 +13,7 @@ export function useDriverTasks() {
     queryFn: driverTaskService.getActiveTask,
     enabled: isDriver,
     staleTime: 30000,
+    refetchOnWindowFocus: false,
   });
 
   const hasActiveTask = activeTaskQuery.data?.hasActiveTask ?? false;
@@ -20,15 +21,19 @@ export function useDriverTasks() {
   const availablePickupsQuery = useQuery<AvailableTasksResponse>({
     queryKey: ["driver", "tasks", "available-pickups"],
     queryFn: driverTaskService.getAvailablePickups,
-    enabled: isDriver && !hasActiveTask,
+    enabled: isDriver && checkedIn && !hasActiveTask,
     staleTime: 10000,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
   const availableDeliveriesQuery = useQuery<AvailableTasksResponse>({
     queryKey: ["driver", "tasks", "available-deliveries"],
     queryFn: driverTaskService.getAvailableDeliveries,
-    enabled: isDriver && !hasActiveTask,
+    enabled: isDriver && checkedIn && !hasActiveTask,
     staleTime: 10000,
+    retry: false,
+    refetchOnWindowFocus: false,
   });
 
   const claimTaskMutation = useMutation({

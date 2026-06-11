@@ -42,7 +42,7 @@ export default function DriverDashboardPage() {
     completeTask,
     isClaiming,
     isCompleting,
-  } = useDriverTasks();
+  } = useDriverTasks({ checkedIn });
 
   useDriverTaskSocket();
 

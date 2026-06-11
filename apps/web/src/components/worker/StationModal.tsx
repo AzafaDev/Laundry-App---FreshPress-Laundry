@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, AlertTriangle, Package, CheckCircle2, Loader2, Shirt } from "lucide-react";
+import { X, AlertTriangle, Package, CheckCircle2, Loader2, Shirt, Tag } from "lucide-react";
 import type { StationOrder } from "@/services/workerStation.service";
 
 interface StationModalProps {
@@ -16,6 +16,7 @@ export function StationModal({ orderId, orders, onClose, onConfirm, isProcessing
   const order = orders.find((o) => o.id === orderId);
 
   const breakdownItems = order?.order_item_breakdowns ?? [];
+  const pcsItems = (order?.order_items ?? []).filter((i) => i.laundry_item.unit === "pcs");
 
   const [received, setReceived] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
@@ -60,6 +61,38 @@ export function StationModal({ orderId, orders, onClose, onConfirm, isProcessing
 
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+
+          {/* Pcs Items Section (read-only) */}
+          {pcsItems.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2.5">
+                <Tag className="w-3.5 h-3.5 text-on-surface-variant" />
+                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+                  Item Satuan (referensi)
+                </p>
+              </div>
+              <div className="space-y-2">
+                {pcsItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-outline-variant bg-surface-container-low"
+                  >
+                    <div className="p-1.5 rounded-lg bg-surface-container">
+                      <Tag className="w-4 h-4 text-on-surface-variant" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-on-surface truncate">
+                        {item.laundry_item.name}
+                      </p>
+                    </div>
+                    <span className="text-sm font-bold text-on-surface shrink-0">
+                      {item.quantity} pcs
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Breakdown Section */}
           <div>

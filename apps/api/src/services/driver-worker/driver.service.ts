@@ -20,6 +20,7 @@ const DRIVER_TASK_DETAIL_SELECT = {
       id: true,
       invoice_number: true,
       outlet_id: true,
+      customer_id: true,
       pickup_address: { select: { address: true, latitude: true, longitude: true } },
       customer: { select: { full_name: true, phone: true } },
     },
@@ -104,10 +105,10 @@ export const driverService = {
   async claimTask(employeeId: string, taskId: string) {
     const { employeeOutletId } = await this.assertDriverEligibility(employeeId);
 
-    return prisma.$transaction(async (tx) => {
+    const claimedTask = await prisma.$transaction(async (tx) => {
       const task = await tx.driverTask.findUnique({
         where: { id: taskId },
-        select: { id: true, order_id: true, status: true, driver_id: true, order: { select: { outlet_id: true } } },
+        select: { id: true, order_id: true, task_type: true, status: true, driver_id: true, order: { select: { outlet_id: true } } },
       });
 
       if (!task) throw new AppError("Task tidak ditemukan", 404);
@@ -126,6 +127,29 @@ export const driverService = {
         select: DRIVER_TASK_DETAIL_SELECT,
       });
 
+      const claimStatusMap: Record<string, OrderStatus> = {
+        pickup: "laundry_to_outlet",
+        delivery: "delivery_to_customer",
+      };
+      const claimOldStatusMap: Record<string, OrderStatus> = {
+        pickup: "waiting_pickup_driver",
+        delivery: "ready_for_delivery",
+      };
+      await tx.order.update({
+        where: { id: task.order_id },
+        data: { status: claimStatusMap[task.task_type] },
+      });
+      await tx.orderStatusHistory.create({
+        data: {
+          order_id: task.order_id,
+          old_status: claimOldStatusMap[task.task_type],
+          new_status: claimStatusMap[task.task_type],
+          changed_by_type: "employee",
+          changed_by_id: employeeId,
+          note: `Driver claimed ${task.task_type} task`,
+        },
+      });
+
       if (claimedTask?.order.outlet_id) {
         emitToRoom(`outlet:${claimedTask.order.outlet_id}`, "driver:task-claimed", {
           taskId,
@@ -136,6 +160,30 @@ export const driverService = {
 
       return claimedTask;
     });
+
+    if (claimedTask?.order.customer_id) {
+      const notifContent = claimedTask.task_type === "pickup"
+        ? { title: "Driver menuju lokasi Anda", body: "Driver sedang dalam perjalanan untuk mengambil laundry Anda." }
+        : { title: "Driver mengantarkan laundry Anda", body: "Driver sedang dalam perjalanan mengantar laundry Anda." };
+
+      await prisma.notification.create({
+        data: {
+          user_type: "customer",
+          user_id: claimedTask.order.customer_id,
+          title: notifContent.title,
+          body: notifContent.body,
+          type: "driver_update",
+          related_entity_id: claimedTask.order_id,
+        },
+      });
+      emitToUser(claimedTask.order.customer_id, "notification:new", {
+        title: notifContent.title,
+        body: notifContent.body,
+        orderId: claimedTask.order_id,
+      });
+    }
+
+    return claimedTask;
   },
 
   async createDeliveryTask(orderId: string) {
@@ -167,13 +215,13 @@ export const driverService = {
     });
 
     const orderStatusMap: Record<string, OrderStatus> = {
-      pickup: "laundry_to_outlet",
+      pickup: "laundry_arrived_outlet",
       delivery: "received_by_customer",
     };
     const newOrderStatus = orderStatusMap[task.task_type];
     if (!newOrderStatus) throw new AppError("Invalid task type", 400);
 
-    const oldOrderStatus = task.task_type === "pickup" ? "waiting_pickup_driver" : "delivery_to_customer";
+    const oldOrderStatus = task.task_type === "pickup" ? "laundry_to_outlet" : "delivery_to_customer";
 
     await prisma.order.update({ where: { id: task.order_id }, data: { status: newOrderStatus } });
     await prisma.orderStatusHistory.create({
@@ -200,6 +248,26 @@ export const driverService = {
       emitToUser(task.order.customer_id, "order:status-updated", {
         orderId: task.order_id,
         status: newOrderStatus,
+      });
+
+      const completeNotifContent = task.task_type === "pickup"
+        ? { title: "Laundry tiba di outlet", body: "Laundry Anda telah tiba di outlet dan siap diproses." }
+        : { title: "Laundry telah diterima", body: "Laundry Anda telah diterima. Terima kasih!" };
+
+      await prisma.notification.create({
+        data: {
+          user_type: "customer",
+          user_id: task.order.customer_id,
+          title: completeNotifContent.title,
+          body: completeNotifContent.body,
+          type: "driver_update",
+          related_entity_id: task.order_id,
+        },
+      });
+      emitToUser(task.order.customer_id, "notification:new", {
+        title: completeNotifContent.title,
+        body: completeNotifContent.body,
+        orderId: task.order_id,
       });
     }
 

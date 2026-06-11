@@ -12,6 +12,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { OrderCard } from "@/components/worker/OrderCard";
 import { StationModal } from "@/components/worker/StationModal";
 import { WorkerBypassModal } from "@/components/worker/WorkerBypassModal";
+import { BypassViewModal } from "@/components/worker/BypassViewModal";
 import { stationConfig, type BypassState } from "@/components/worker/stationConfig";
 import { Loader2, AlertCircle, Wifi, WifiOff } from "lucide-react";
 import toast from "react-hot-toast";
@@ -26,6 +27,7 @@ export default function WorkerStationPage() {
   const [isConnected, setIsConnected] = useState(true);
   const [bypassState, setBypassState] = useState<Record<string, BypassState>>({});
   const [bypassModalOpen, setBypassModalOpen] = useState<string | null>(null);
+  const [bypassViewId, setBypassViewId] = useState<string | null>(null);
 
   let station: "washing" | "ironing" | "packing" | null = null;
   if (user?.role === "washing_worker") station = "washing";
@@ -208,6 +210,7 @@ export default function WorkerStationPage() {
                   onProcess={handleProcessClick}
                   isProcessing={processingId === order.id}
                   bypassState={bypassState[order.id]}
+                  onViewBypass={setBypassViewId}
                 />
               ))}
             </div>
@@ -235,6 +238,15 @@ export default function WorkerStationPage() {
           actualItems={activeBypassState.actualItems}
           onClose={() => setBypassModalOpen(null)}
           onSuccess={() => handleBypassSuccess(bypassOrder.id)}
+        />
+      )}
+
+      {bypassViewId && (
+        <BypassViewModal
+          open={true}
+          orderId={bypassViewId}
+          invoiceNumber={stationOrders.find((o) => o.id === bypassViewId)?.invoice_number ?? ""}
+          onClose={() => setBypassViewId(null)}
         />
       )}
     </div>
