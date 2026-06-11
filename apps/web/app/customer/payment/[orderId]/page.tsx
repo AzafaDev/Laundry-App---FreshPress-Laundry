@@ -34,16 +34,16 @@ export default function CustomerPaymentPage() {
   const router = useRouter();
   const params = useParams<{ orderId: string }>();
   const orderId = params.orderId;
-  const { accessToken, user, _hasHydrated } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
   const isSnapReady = useMidtransSnap();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!_hasHydrated) return;
-    if (!accessToken) {
+    if (!user) {
       router.replace("/customer/login");
     }
-  }, [_hasHydrated, accessToken, router]);
+  }, [_hasHydrated, user, router]);
 
   const {
     data: order,
@@ -52,13 +52,13 @@ export default function CustomerPaymentPage() {
   } = useQuery<CustomerOrder>({
     queryKey: ["customer", "orders", orderId],
     queryFn: () => orderService.getOrderById(orderId),
-    enabled: _hasHydrated && !!accessToken && !!orderId,
+    enabled: _hasHydrated && !!user && !!orderId,
   });
 
   const {
     data: payment,
     isLoading: isPaymentLoading,
-  } = usePaymentStatus(orderId, _hasHydrated && !!accessToken);
+  } = usePaymentStatus(orderId, _hasHydrated && !!user);
 
   const createTransaction = useCreatePaymentTransaction();
   const syncStatus = useSyncPaymentStatus();
@@ -90,7 +90,7 @@ export default function CustomerPaymentPage() {
     });
   };
 
-  if (!_hasHydrated || (!accessToken && !user)) {
+  if (!_hasHydrated || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex items-center gap-3 text-on-surface-variant">

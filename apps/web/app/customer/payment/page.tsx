@@ -21,14 +21,14 @@ const formatDateTime = (value: string | Date) =>
 
 export default function CustomerPaymentLandingPage() {
   const router = useRouter();
-  const { accessToken, user, _hasHydrated } = useAuthStore();
+  const { user, _hasHydrated } = useAuthStore();
 
   useEffect(() => {
     if (!_hasHydrated) return;
-    if (!accessToken) {
+    if (!user) {
       router.replace("/customer/login");
     }
-  }, [_hasHydrated, accessToken, router]);
+  }, [_hasHydrated, user, router]);
 
   const {
     data: orders = [],
@@ -37,14 +37,14 @@ export default function CustomerPaymentLandingPage() {
   } = useQuery<CustomerOrder[]>({
     queryKey: ["customer", "orders"],
     queryFn: orderService.listOrders,
-    enabled: _hasHydrated && !!accessToken,
+    enabled: _hasHydrated && !!user,
   });
 
   const unpaidOrders = orders.filter(
     (order) => order.status === "waiting_payment" && order.payment?.status !== "paid",
   );
 
-  if (!_hasHydrated || (!accessToken && !user)) {
+  if (!_hasHydrated || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex items-center gap-3 text-on-surface-variant">
