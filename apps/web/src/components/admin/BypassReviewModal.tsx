@@ -87,15 +87,20 @@ export function BypassReviewModal({
               </div>
             </div>
 
-            <div className="flex items-center gap-4 p-3 bg-error/5 rounded-lg border border-error/20">
-              <AlertTriangle className="w-5 h-5 text-error flex-shrink-0" />
-              <div className="text-sm">
-                <p className="font-bold text-on-surface">Quantity Mismatch</p>
-                <p className="text-on-surface-variant">
-                  Expected: <strong>{request.expected}</strong> → Received:{" "}
-                  <strong>{request.actual}</strong> (diff:{" "}
-                  {request.expected - request.actual})
-                </p>
+            <div className="p-3 bg-error/5 rounded-lg border border-error/20 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-bold text-on-surface">
+                <AlertTriangle className="w-4 h-4 text-error flex-shrink-0" />
+                Quantity Mismatch
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="bg-surface rounded-lg p-2 border border-outline-variant">
+                  <p className="text-xs text-on-surface-variant">Expected Quantity</p>
+                  <p className="font-bold text-on-surface text-base">{request.expected}</p>
+                </div>
+                <div className="bg-error/10 rounded-lg p-2 border border-error/20">
+                  <p className="text-xs text-error/70">Actual Quantity</p>
+                  <p className="font-bold text-error text-base">{request.actual}</p>
+                </div>
               </div>
             </div>
 

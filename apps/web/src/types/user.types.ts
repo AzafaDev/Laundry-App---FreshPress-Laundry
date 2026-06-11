@@ -15,6 +15,7 @@ export interface User {
   avatar_url: string | null;
   role: UserRole;
   outlet_id?: string | null;
+  outlet?: { id: string; name: string } | null;
   is_active?: boolean;
   is_occupied?: boolean;
   /** Present on Customer accounts (not Employee). Optional here for cross-use. */
@@ -44,6 +45,7 @@ export interface UserListQuery {
   limit?: number;
   role?: UserRole;
   search?: string;
+  outlet_id?: string;
   include_deleted?: boolean;
 }
 

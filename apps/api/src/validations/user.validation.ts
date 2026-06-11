@@ -49,6 +49,7 @@ export const listUserQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(10),
   role: employeeRoleSchema.optional(),
   search: z.string().trim().optional(),
+  outlet_id: z.string().uuid().optional(),
   include_deleted: z
     .union([z.literal("true"), z.literal("false")])
     .optional()

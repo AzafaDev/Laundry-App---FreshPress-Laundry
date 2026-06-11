@@ -5,6 +5,9 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminTopBar } from "@/components/admin/AdminTopBar";
+import { useSocket } from "@/hooks/useSocket";
+import { useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 
 const ALLOWED_ROLES = ["super_admin", "outlet_admin"] as const;
 
@@ -17,6 +20,8 @@ export default function AdminDashboardLayout({
   const pathname = usePathname();
   const { user, _hasHydrated } = useEmployeeAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { on } = useSocket();
+  const queryClient = useQueryClient();
 
   // Close drawer on route change
   useEffect(() => {
@@ -33,6 +38,22 @@ export default function AdminDashboardLayout({
       router.replace("/access-denied");
     }
   }, [user, _hasHydrated, router]);
+
+  // Attendance real-time notifications (outlet-scoped)
+  useEffect(() => {
+    if (!user) return;
+    const unsubCheckin = on("attendance:checkin", (data: { employeeName?: string; checkInTime?: string; outletId?: string }) => {
+      if (user.role === "outlet_admin" && data.outletId && data.outletId !== user.outlet_id) return;
+      toast.success(`${data.employeeName ?? "Karyawan"} check-in pukul ${data.checkInTime ?? ""}`);
+      queryClient.invalidateQueries({ queryKey: ["attendance", "report"] });
+    });
+    const unsubCheckout = on("attendance:checkout", (data: { employeeName?: string; outletId?: string }) => {
+      if (user.role === "outlet_admin" && data.outletId && data.outletId !== user.outlet_id) return;
+      toast.success(`${data.employeeName ?? "Karyawan"} telah check-out`);
+      queryClient.invalidateQueries({ queryKey: ["attendance", "report"] });
+    });
+    return () => { unsubCheckin(); unsubCheckout(); };
+  }, [user, on, queryClient]);
 
   return (
     <div className="min-h-screen bg-background text-on-surface">
