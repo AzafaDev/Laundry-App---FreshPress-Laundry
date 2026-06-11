@@ -107,7 +107,6 @@ model Customer {
   addresses       CustomerAddress[]
   orders          Order[]
   complaints      Complaint[]
-  notifications   Notification[]
 
   @@index([email])
   @@index([is_verified])
@@ -195,7 +194,6 @@ model Employee {
   complaints               Complaint[]
   attendances              Attendance[]
   orders_created           Order[]
-  notifications            Notification[]
   password_reset_tokens    PasswordResetToken[]
 
   @@index([email])
@@ -676,8 +674,6 @@ model Notification {
 
   // Note: user_id is polymorphic (customer or employee).
   // Relations below are optional convenience links — use only if user_type is known.
-  customer Customer? @relation(fields: [user_id], references: [id], map: "notifications_customer_fk")
-  employee Employee? @relation(fields: [user_id], references: [id], map: "notifications_employee_fk")
 
   @@index([user_type, user_id])
   @@index([is_read])
