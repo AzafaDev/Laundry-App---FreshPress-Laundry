@@ -5,6 +5,10 @@ import Link from "next/link";
 import { Shirt, Menu, X, User, LogOut, ChevronDown, ShieldAlert } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { notificationService } from "@/services/notification.service";
+import { useCustomerNotificationSocket } from "@/hooks/useCustomerNotificationSocket";
+import { socketToast } from "@/lib/socketToast";
 
 export const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -13,6 +17,16 @@ export const Navbar = () => {
   const router = useRouter();
 
   const isAuthenticated = !!user;
+
+  const { data: notifications = [] } = useQuery({
+    queryKey: ["customer", "notifications"],
+    queryFn: notificationService.list,
+    enabled: isAuthenticated,
+    staleTime: 30_000,
+  });
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
+
+  useCustomerNotificationSocket((data) => socketToast(data.title, data.body));
 
   const handleLogout = () => {
     clearAuth();
@@ -46,7 +60,14 @@ export const Navbar = () => {
               href={link.href}
               className="text-gray-600 hover:text-primary hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors text-sm font-medium"
             >
-              {link.label}
+              {link.label === "Notifikasi" && unreadCount > 0 ? (
+                <span className="relative inline-flex">
+                  {link.label}
+                  <span className="absolute -top-1 -right-3 min-w-[16px] h-4 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center px-1">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                </span>
+              ) : link.label}
             </Link>
           ))}
 
@@ -148,9 +169,14 @@ export const Navbar = () => {
               key={link.label}
               href={link.href}
               onClick={() => setMobileOpen(false)}
-              className="block px-3 py-2.5 text-gray-900 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center justify-between px-3 py-2.5 text-gray-900 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors"
             >
               {link.label}
+              {link.label === "Notifikasi" && unreadCount > 0 && (
+                <span className="min-w-[20px] h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center px-1">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
             </Link>
           ))}
           <div className="pt-2 border-t border-gray-200 space-y-2">

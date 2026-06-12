@@ -94,6 +94,13 @@
   }
 }
 
+@media (min-width: 640px) {
+  .sm\:max-w-xs { max-width: 20rem; }
+  .sm\:max-w-sm { max-width: 24rem; }
+  .sm\:max-w-md { max-width: 28rem; }
+  .sm\:max-w-lg { max-width: 32rem; }
+}
+
 /* Di bagian bawah file globals.css, tambahkan: */
 @layer utilities {
   .hide-scrollbar::-webkit-scrollbar {
@@ -102,6 +109,21 @@
   .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-outline-variant) transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--color-outline-variant);
+    border-radius: 9999px;
   }
 
   /* Restore correct max-w named sizes — overridden by custom --spacing-* tokens */
