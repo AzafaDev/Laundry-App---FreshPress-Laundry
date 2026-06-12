@@ -256,8 +256,8 @@ export default function CustomerProgressPage() {
                     </div>
                     <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
                       <p className="text-sm font-semibold text-on-surface">
-                        {order.total_price !== null && order.total_price !== undefined
-                          ? formatRupiah(Number(order.total_price))
+                        {order.order_items && order.order_items.length > 0
+                          ? formatRupiah(Number(order.total_price ?? 0))
                           : "Harga menyusul"}
                       </p>
                     </div>
@@ -304,7 +304,14 @@ export default function CustomerProgressPage() {
                         onClick={() => toggleDropdown(order.id)}
                         className="w-full flex items-center justify-between rounded-xl border border-primary bg-primary/10 px-4 py-3 text-sm text-primary font-semibold hover:bg-primary/20 transition-colors"
                       >
-                        <span>{ORDER_PROGRESS_STEPS[activeIndex]?.label ?? ORDER_STATUS_LABEL[order.status]}</span>
+                        <span className="flex flex-col items-start text-left">
+                          <span>{ORDER_PROGRESS_STEPS[activeIndex]?.label ?? ORDER_STATUS_LABEL[order.status]}</span>
+                          {order.status_histories && order.status_histories.length > 0 && (
+                            <span className="text-xs font-normal text-primary/70">
+                              {formatDateTime(order.status_histories[0].created_at)}
+                            </span>
+                          )}
+                        </span>
                         <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${openDropdowns.has(order.id) ? "rotate-180" : ""}`} />
                       </button>
 
@@ -314,6 +321,9 @@ export default function CustomerProgressPage() {
                           {ORDER_PROGRESS_STEPS.map((step, idx) => {
                             const isDone = idx < activeIndex;
                             const isCurrent = idx === activeIndex;
+                            const history = order.status_histories?.find(
+                              (entry) => entry.new_status === step.key,
+                            );
                             return (
                               <div
                                 key={step.key}
@@ -330,7 +340,12 @@ export default function CustomerProgressPage() {
                                 ) : (
                                   <Circle className="w-3.5 h-3.5 shrink-0" />
                                 )}
-                                <span>{step.label}</span>
+                                <span className="flex-1">{step.label}</span>
+                                {history && (
+                                  <span className="text-on-surface-variant font-normal">
+                                    {formatDateTime(history.created_at)}
+                                  </span>
+                                )}
                               </div>
                             );
                           })}
@@ -370,17 +385,6 @@ export default function CustomerProgressPage() {
                         </div>
                       )}
 
-                      {/* Latest history */}
-                      {order.status_histories && order.status_histories.length > 0 && (
-                        <div className="rounded-xl bg-surface-container-low px-3 py-3 text-xs text-on-surface-variant space-y-1">
-                          <p className="font-semibold text-on-surface">Update terbaru</p>
-                          <p>
-                            {ORDER_STATUS_LABEL[order.status_histories[0].new_status]}
-                            {" — "}
-                            {formatDateTime(order.status_histories[0].created_at)}
-                          </p>
-                        </div>
-                      )}
                     </div>
                   )}
                 </article>

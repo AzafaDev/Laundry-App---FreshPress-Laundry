@@ -380,7 +380,7 @@ model Order {
   pickup_schedule            DateTime?   @db.Timestamptz
   total_weight_kg            Decimal?    @db.Decimal(6, 2)
   delivery_fee               Decimal     @default(0) @db.Decimal(10, 2)
-  total_price                Decimal?    @db.Decimal(12, 2)
+  total_price                Decimal?    @default(0)@db.Decimal(12, 2)
   notes                      String?
   payment_deadline           DateTime?   @db.Timestamptz
   auto_confirm_at            DateTime?   @db.Timestamptz
