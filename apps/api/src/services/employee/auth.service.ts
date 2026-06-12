@@ -18,6 +18,7 @@ export const loginEmployee = async (
 ) => {
   const employee = await prisma.employee.findFirst({
     where: { email, deleted_at: null },
+    include: { outlet: { select: { id: true, name: true } } },
   });
 
   if (!employee) {
@@ -71,9 +72,14 @@ export const loginEmployee = async (
     maxAge: expiresMs,
   });
 
-  const { password_hash: _, ...employeeWithoutPassword } = employee;
+  const { password_hash: _, outlet, ...employeeWithoutPassword } = employee;
 
-  return { employee: employeeWithoutPassword };
+  return {
+    employee: {
+      ...employeeWithoutPassword,
+      outlet_name: outlet?.name ?? null,
+    },
+  };
 };
 
 export const refreshEmployeeToken = async (req: any, res: Response) => {

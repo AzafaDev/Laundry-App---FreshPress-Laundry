@@ -146,6 +146,11 @@ export function AdminSidebar({ open = false, onClose }: AdminSidebarProps) {
           <span className="text-xs text-on-surface-variant truncate capitalize">
             {role?.replace(/_/g, " ") ?? "—"}
           </span>
+          {role === "outlet_admin" && (
+            <span className={`text-xs truncate font-medium mt-0.5 ${user?.outlet_name ? "text-primary/80" : "text-on-surface-variant italic"}`}>
+              {user?.outlet_name ? `📍 ${user.outlet_name}` : "Outlet belum ditetapkan"}
+            </span>
+          )}
         </div>
       </div>
 
