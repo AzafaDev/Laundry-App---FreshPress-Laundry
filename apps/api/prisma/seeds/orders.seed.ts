@@ -35,19 +35,19 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
       where: { customer_id: customer.id },
     });
 
-    const address = existingAddress ?? await prisma.customerAddress.create({
-      data: {
-        customer_id: customer.id,
-        label: index === 0 ? 'Rumah' : 'Alamat Utama',
-        address: `Jl. Customer ${index + 1} No. ${index + 10}, Jakarta`,
-        province: 'DKI Jakarta',
-        city: 'Jakarta Selatan',
-        district: 'Kebayoran Baru',
-        latitude: -6.2 + index * 0.005,
-        longitude: 106.816666 + index * 0.005,
-        is_primary: true,
-      },
-    });
+    const addressData = {
+      label: index === 0 ? 'Rumah' : 'Alamat Utama',
+      address: `Jl. Customer ${index + 1} No. ${index + 10}, Jakarta`,
+      province: 'DKI Jakarta',
+      city: 'Jakarta Selatan',
+      district: 'Kebayoran Baru',
+      latitude: [-6.255, -6.230, -6.180, -6.210][index % 4],
+      longitude: [106.850, 106.780, 106.830, 106.860][index % 4],
+      is_primary: true,
+    };
+    const address = existingAddress
+      ? await prisma.customerAddress.update({ where: { id: existingAddress.id }, data: addressData })
+      : await prisma.customerAddress.create({ data: { customer_id: customer.id, ...addressData } });
 
     customerAddressMap.set(customer.id, address.id);
   }
@@ -155,24 +155,16 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
     if (withPickupTask) {
       await prisma.driverTask.upsert({
         where: { order_id_task_type: { order_id: order.id, task_type: 'pickup' } },
-        update: {},
-        create: {
-          order_id: order.id,
-          task_type: 'pickup',
-          status: 'available',
-        },
+        update: { status: 'available', driver_id: null, taken_at: null },
+        create: { order_id: order.id, task_type: 'pickup', status: 'available' },
       });
     }
 
     if (withDeliveryTask) {
       await prisma.driverTask.upsert({
         where: { order_id_task_type: { order_id: order.id, task_type: 'delivery' } },
-        update: {},
-        create: {
-          order_id: order.id,
-          task_type: 'delivery',
-          status: 'available',
-        },
+        update: { status: 'available', driver_id: null, taken_at: null },
+        create: { order_id: order.id, task_type: 'delivery', status: 'available' },
       });
     }
 

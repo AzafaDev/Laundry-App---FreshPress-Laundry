@@ -24,9 +24,30 @@ const DRIVER_TASK_DETAIL_SELECT = {
       customer_id: true,
       pickup_address: { select: { address: true, latitude: true, longitude: true } },
       customer: { select: { full_name: true, phone: true } },
+      outlet: { select: { latitude: true, longitude: true } },
     },
   },
 } satisfies Prisma.DriverTaskSelect;
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function calcEtaText(task: { order: { outlet: { latitude: any; longitude: any } | null; pickup_address: { latitude: any; longitude: any } | null } } | null): string | null {
+  const outlet = task?.order.outlet;
+  const addr = task?.order.pickup_address;
+  if (outlet?.latitude && outlet?.longitude && addr?.latitude && addr?.longitude) {
+    const dist = haversineKm(Number(outlet.latitude), Number(outlet.longitude), Number(addr.latitude), Number(addr.longitude));
+    return `${Math.max(1, Math.round((dist / 20) * 60))} menit`;
+  }
+  return null;
+}
 
 type DriverTaskDetail = Prisma.DriverTaskGetPayload<{ select: typeof DRIVER_TASK_DETAIL_SELECT }>;
 
@@ -156,11 +177,13 @@ export const driverService = {
       }
 
       if (claimedTask?.order.customer_id) {
+        const etaText = calcEtaText(claimedTask);
+        const etaSuffix = etaText ? `, estimasi ${etaText}` : "";
         if (claimedTask.task_type === "pickup") {
           await notifyCustomer(
             claimedTask.order.customer_id,
             "Driver dalam perjalanan",
-            `Driver ${driverName} sedang menuju lokasi penjemputan untuk pesanan ${claimedTask.order.invoice_number}.`,
+            `Driver ${driverName} sedang menuju lokasi penjemputan${etaSuffix} untuk pesanan ${claimedTask.order.invoice_number}.`,
             "driver_pickup_started",
             claimedTask.order_id,
           );
@@ -168,7 +191,7 @@ export const driverService = {
           await notifyCustomer(
             claimedTask.order.customer_id,
             "Driver dalam perjalanan",
-            `Driver ${driverName} sedang mengantarkan pesanan ${claimedTask.order.invoice_number} ke lokasi Anda.`,
+            `Driver ${driverName} sedang mengantarkan pesanan ${claimedTask.order.invoice_number} ke lokasi Anda${etaSuffix}.`,
             "driver_delivery_started",
             claimedTask.order_id,
           );
@@ -177,28 +200,6 @@ export const driverService = {
 
       return claimedTask;
     });
-
-    if (claimedTask?.order.customer_id) {
-      const notifContent = claimedTask.task_type === "pickup"
-        ? { title: "Driver menuju lokasi Anda", body: `Driver ${driverName} sedang dalam perjalanan untuk mengambil laundry Anda.` }
-        : { title: "Driver mengantarkan laundry Anda", body: `Driver ${driverName} sedang dalam perjalanan mengantar laundry Anda.` };
-
-      await prisma.notification.create({
-        data: {
-          user_type: "customer",
-          user_id: claimedTask.order.customer_id,
-          title: notifContent.title,
-          body: notifContent.body,
-          type: "driver_update",
-          related_entity_id: claimedTask.order_id,
-        },
-      });
-      emitToUser(claimedTask.order.customer_id, "notification:new", {
-        title: notifContent.title,
-        body: notifContent.body,
-        orderId: claimedTask.order_id,
-      });
-    }
 
     return claimedTask;
   },
@@ -284,25 +285,6 @@ export const driverService = {
           task.order_id,
         );
       }
-      const completeNotifContent = task.task_type === "pickup"
-        ? { title: "Laundry tiba di outlet", body: "Laundry Anda telah tiba di outlet dan siap diproses." }
-        : { title: "Laundry telah diterima", body: "Laundry Anda telah diterima. Terima kasih!" };
-
-      await prisma.notification.create({
-        data: {
-          user_type: "customer",
-          user_id: task.order.customer_id,
-          title: completeNotifContent.title,
-          body: completeNotifContent.body,
-          type: "driver_update",
-          related_entity_id: task.order_id,
-        },
-      });
-      emitToUser(task.order.customer_id, "notification:new", {
-        title: completeNotifContent.title,
-        body: completeNotifContent.body,
-        orderId: task.order_id,
-      });
     }
 
     return updatedTask;

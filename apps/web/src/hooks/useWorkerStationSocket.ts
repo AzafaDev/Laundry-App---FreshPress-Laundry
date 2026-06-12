@@ -44,7 +44,7 @@ export function useWorkerStationSocket({
     });
 
     const unsubRejected = on("bypass:rejected", (data: { orderId: string; admin_notes?: string }) => {
-      socketToast(`Bypass ditolak${data.admin_notes ? `: ${data.admin_notes}` : ""}`, "error");
+      socketToast(`Bypass ditolak${data.admin_notes ? `: ${data.admin_notes}` : ""}`, undefined, "error");
       setBypassState((prev) => {
         if (!prev[data.orderId]) return prev;
         return {

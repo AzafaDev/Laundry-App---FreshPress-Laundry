@@ -1,0 +1,16 @@
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSocket } from "@/hooks/useSocket";
+
+export function useCustomerNotificationSocket(onNew?: (data: { title: string; body: string }) => void) {
+  const { on } = useSocket();
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const unsub = on("notification:new", (data: { title: string; body: string }) => {
+      queryClient.invalidateQueries({ queryKey: ["customer", "notifications"] });
+      onNew?.(data);
+    });
+    return unsub;
+  }, [on, queryClient, onNew]);
+}
