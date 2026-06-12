@@ -249,7 +249,7 @@ export default function CustomerPaymentPage() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-on-surface-variant">Jadwal Pickup</span>
                 <span className="font-medium text-on-surface">
-                  {formatDateTime(order.pickup_schedule)}
+                  {order.pickup_schedule ? formatDateTime(order.pickup_schedule) : "-"}
                 </span>
               </div>
 

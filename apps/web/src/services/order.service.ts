@@ -42,7 +42,7 @@ export interface CustomerOrder {
   id: string;
   invoice_number: string;
   status: CustomerOrderStatus;
-  pickup_schedule: string;
+  pickup_schedule: string | null;
   total_weight_kg: string | number | null;
   total_price: string | number | null;
   created_at: string;
@@ -77,7 +77,6 @@ export interface CreateComplaintPayload {
 export interface CreateCustomerOrderPayload {
   pickup_address_id: string;
   pickup_date: string;
-  pickup_time_slot: string;
   service_type: "wash-and-fold" | "dry-cleaning";
   estimated_weight_kg?: number;
   notes?: string;

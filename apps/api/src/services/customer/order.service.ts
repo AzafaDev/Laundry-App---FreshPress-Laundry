@@ -36,34 +36,6 @@ function generateInvoiceNumber(): string {
   return `INV-${y}${m}${d}-${random}`;
 }
 
-function parsePickupSchedule(pickupDate: string, pickupTimeSlot: string): Date {
-  const [start] = pickupTimeSlot.split(" - ");
-  if (!start) {
-    throw new AppError("Slot waktu pickup tidak valid.", 400);
-  }
-
-  const match = start.match(/^(\d{2}):(\d{2})\s(AM|PM)$/);
-  if (!match) {
-    throw new AppError("Format slot waktu pickup tidak valid.", 400);
-  }
-
-  let hour = Number(match[1]);
-  const minute = Number(match[2]);
-  const meridiem = match[3];
-
-  if (meridiem === "PM" && hour !== 12) hour += 12;
-  if (meridiem === "AM" && hour === 12) hour = 0;
-
-  const schedule = new Date(`${pickupDate}T00:00:00`);
-  schedule.setHours(hour, minute, 0, 0);
-
-  if (Number.isNaN(schedule.getTime())) {
-    throw new AppError("Tanggal pickup tidak valid.", 400);
-  }
-
-  return schedule;
-}
-
 function calculateDeliveryFee(distanceKm: number): number {
   if (distanceKm <= FREE_RADIUS_KM) return 0;
   return FLAT_RATE_ONGKIR;
@@ -79,7 +51,6 @@ function estimateTotalPrice(serviceType: "wash-and-fold" | "dry-cleaning", estim
 export interface CreateCustomerOrderInput {
   pickup_address_id: string;
   pickup_date: string;
-  pickup_time_slot: string;
   service_type: "wash-and-fold" | "dry-cleaning";
   estimated_weight_kg?: number;
   notes?: string;
@@ -112,7 +83,7 @@ export const createCustomerOrder = async (
 
   const outlets = await prisma.outlet.findMany({
     where: { is_active: true, deleted_at: null },
-    select: { id: true, latitude: true, longitude: true, opening_time: true, closing_time: true },
+    select: { id: true, latitude: true, longitude: true },
   });
 
   if (outlets.length === 0) {
@@ -128,8 +99,6 @@ export const createCustomerOrder = async (
         Number(outlet.latitude),
         Number(outlet.longitude),
       ),
-      opening_time: outlet.opening_time,
-      closing_time: outlet.closing_time,
     }))
     .filter((outlet) => outlet.distance <= SERVICE_RADIUS_KM)
     .sort((a, b) => a.distance - b.distance)[0];
@@ -138,30 +107,15 @@ export const createCustomerOrder = async (
     throw new AppError("Alamat berada di luar jangkauan outlet.", 400);
   }
 
-  const pickupSchedule = parsePickupSchedule(
-    input.pickup_date,
-    input.pickup_time_slot,
-  );
+  const pickupDate = new Date(`${input.pickup_date}T00:00:00`);
+  if (Number.isNaN(pickupDate.getTime())) {
+    throw new AppError("Tanggal pickup tidak valid.", 400);
+  }
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
-  if (pickupSchedule < todayStart) {
+  if (pickupDate < todayStart) {
     throw new AppError("Jadwal pickup tidak boleh di masa lalu.", 400);
-  }
-
-  if (nearestOutlet.opening_time && nearestOutlet.closing_time) {
-    const pickupHour = pickupSchedule.getHours();
-    const pickupMinute = pickupSchedule.getMinutes();
-    const openHour = new Date(nearestOutlet.opening_time).getUTCHours();
-    const openMinute = new Date(nearestOutlet.opening_time).getUTCMinutes();
-    const closeHour = new Date(nearestOutlet.closing_time).getUTCHours();
-    const closeMinute = new Date(nearestOutlet.closing_time).getUTCMinutes();
-    const pickupMins = pickupHour * 60 + pickupMinute;
-    const openMins = openHour * 60 + openMinute;
-    const closeMins = closeHour * 60 + closeMinute;
-    if (pickupMins < openMins || pickupMins >= closeMins) {
-      throw new AppError("Jadwal pickup di luar jam operasional outlet.", 400);
-    }
   }
 
   const estimatedWeightKg =
@@ -181,7 +135,6 @@ export const createCustomerOrder = async (
         outlet_id: nearestOutlet.id,
         pickup_address_id: input.pickup_address_id,
         status: "waiting_pickup_driver",
-        pickup_schedule: pickupSchedule,
         total_weight_kg: estimatedWeightKg,
         delivery_fee: calculateDeliveryFee(nearestOutlet.distance),
         total_price: totalPrice,

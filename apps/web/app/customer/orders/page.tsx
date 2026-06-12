@@ -12,7 +12,10 @@ import {
   ClipboardList,
   Loader2,
   RefreshCw,
+  Truck,
 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 import { Navbar } from "@/components/layout/Navbar";
 import { ComplaintModal } from "@/components/customer/ComplaintModal";
 import {
@@ -64,6 +67,34 @@ const formatDateTime = (value: string | Date) =>
 
 const getProgressIndex = (status: CustomerOrderStatus) =>
   ORDER_PROGRESS_STEPS.findIndex((step) => step.key === status);
+
+function PickupStatus({ pickupSchedule }: { pickupSchedule: string | null }) {
+  const [elapsed, setElapsed] = useState("");
+
+  useEffect(() => {
+    if (!pickupSchedule) return;
+    const update = () =>
+      setElapsed(formatDistanceToNow(new Date(pickupSchedule), { addSuffix: true, locale: idLocale }));
+    update();
+    const timer = setInterval(update, 60_000);
+    return () => clearInterval(timer);
+  }, [pickupSchedule]);
+
+  if (!pickupSchedule) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant">
+        Menunggu driver mengonfirmasi jadwal pickup
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant">
+      <Truck className="w-4 h-4 text-primary" />
+      Driver menerima tugas pickup {elapsed}
+    </span>
+  );
+}
 
 export default function CustomerProgressPage() {
   const router = useRouter();
@@ -216,9 +247,9 @@ export default function CustomerProgressPage() {
                       <p className="text-xs text-on-surface-variant font-medium tracking-wide uppercase">
                         {order.invoice_number}
                       </p>
-                      <h3 className="text-base font-bold text-on-surface mt-1">
-                        Pickup: {formatDateTime(order.pickup_schedule)}
-                      </h3>
+                      <div className="mt-1">
+                        <PickupStatus pickupSchedule={order.pickup_schedule} />
+                      </div>
                       <p className="text-sm text-on-surface-variant mt-0.5">
                         Outlet: {order.outlet?.name ?? "-"}
                       </p>

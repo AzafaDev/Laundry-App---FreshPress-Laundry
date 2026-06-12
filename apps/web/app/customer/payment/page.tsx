@@ -123,7 +123,7 @@ export default function CustomerPaymentLandingPage() {
                       Outlet: {order.outlet?.name ?? "-"}
                     </h3>
                     <p className="text-sm text-on-surface-variant mt-0.5">
-                      Pickup: {formatDateTime(order.pickup_schedule)}
+                      Pickup: {order.pickup_schedule ? formatDateTime(order.pickup_schedule) : "-"}
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700 shrink-0">
