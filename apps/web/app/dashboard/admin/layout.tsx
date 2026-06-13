@@ -8,6 +8,7 @@ import { AdminTopBar } from "@/components/admin/AdminTopBar";
 import { useSocket } from "@/hooks/useSocket";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { socketToast } from "@/lib/socketToast";
 
 const ALLOWED_ROLES = ["super_admin", "outlet_admin"] as const;
 
@@ -68,7 +69,31 @@ export default function AdminDashboardLayout({
       toast.success(msg);
       queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
     });
-    return () => { unsubCheckin(); unsubCheckout(); unsubDriverClaimed(); unsubDriverCompleted(); };
+    const unsubNewPickup = on("order:new-pickup-request", (data: { customerName?: string; invoiceNumber?: string }) => {
+      if (user.role !== "outlet_admin") return;
+      socketToast(
+        "Permintaan pickup baru",
+        `${data.customerName ?? "Customer"} memesan pickup (${data.invoiceNumber ?? ""})`,
+      );
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+    });
+    const unsubPaymentCompleted = on("order:payment-completed", (data: { invoiceNumber?: string }) => {
+      if (user.role !== "outlet_admin") return;
+      socketToast(
+        "Pembayaran berhasil",
+        `Pembayaran untuk pesanan ${data.invoiceNumber ?? ""} telah dikonfirmasi.`,
+      );
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+    });
+    const unsubComplaintSubmitted = on("order:complaint-submitted", (data: { customerName?: string; invoiceNumber?: string }) => {
+      if (user.role !== "outlet_admin") return;
+      socketToast(
+        "Komplain baru",
+        `${data.customerName ?? "Customer"} mengajukan komplain untuk pesanan ${data.invoiceNumber ?? ""}`,
+      );
+    });
+
+    return () => { unsubCheckin(); unsubCheckout(); unsubDriverClaimed(); unsubDriverCompleted(); unsubNewPickup(); unsubPaymentCompleted(); unsubComplaintSubmitted(); };
   }, [user, on, queryClient]);
 
   return (
