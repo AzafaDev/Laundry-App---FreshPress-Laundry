@@ -59,6 +59,7 @@ export interface CustomerOrder {
   } | null;
   status_histories?: CustomerOrderHistory[];
   order_items?: CustomerOrderItem[];
+  complaints?: { id: string }[];
 }
 
 export type ComplaintType =
