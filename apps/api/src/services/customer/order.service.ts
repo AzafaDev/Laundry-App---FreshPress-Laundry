@@ -210,6 +210,9 @@ export const listCustomerOrders = async (customerId: string) => {
           },
         },
       },
+      complaints: {
+        select: { id: true },
+      },
     },
   });
 };
@@ -287,6 +290,14 @@ export const createCustomerComplaint = async (
 
   if (order.status !== "received_by_customer") {
     throw new AppError("Komplain hanya bisa diajukan untuk pesanan yang sudah diterima.", 400);
+  }
+
+  const existingComplaint = await prisma.complaint.findFirst({
+    where: { order_id: orderId },
+  });
+
+  if (existingComplaint) {
+    throw new AppError("Komplain untuk pesanan ini sudah pernah diajukan.", 400);
   }
 
   return prisma.complaint.create({

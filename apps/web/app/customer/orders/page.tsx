@@ -375,13 +375,19 @@ export default function CustomerProgressPage() {
                               ? "Memproses..."
                               : "Pesanan Selesai"}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setComplaintOrderId(order.id)}
-                            className="flex-1 text-center rounded-xl border border-error px-4 py-3 text-sm font-bold text-error hover:bg-error/10 transition-colors"
-                          >
-                            Komplain
-                          </button>
+                          {order.complaints && order.complaints.length > 0 ? (
+                            <p className="flex-1 text-center rounded-xl border border-outline-variant px-4 py-3 text-sm font-semibold text-on-surface-variant">
+                              Komplain sudah diajukan
+                            </p>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setComplaintOrderId(order.id)}
+                              className="flex-1 text-center rounded-xl border border-error px-4 py-3 text-sm font-bold text-error hover:bg-error/10 transition-colors"
+                            >
+                              Komplain
+                            </button>
+                          )}
                         </div>
                       )}
 
