@@ -65,14 +65,12 @@ export function useDriverTasks({ checkedIn }: { checkedIn: boolean }) {
 
   const pickups = availablePickupsQuery.data?.tasks ?? [];
   const deliveries = availableDeliveriesQuery.data?.tasks ?? [];
-  const nextPickupReleaseAt = availablePickupsQuery.data?.next_release_at ?? null;
 
   return {
     activeTask: activeTaskQuery.data?.task ?? null,
     hasActiveTask,
     availablePickups: pickups,
     availableDeliveries: deliveries,
-    nextPickupReleaseAt,
     isLoadingActive: activeTaskQuery.isLoading,
     isLoadingPickups: availablePickupsQuery.isLoading,
     isLoadingDeliveries: availableDeliveriesQuery.isLoading,

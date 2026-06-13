@@ -34,7 +34,6 @@ export default function DriverDashboardPage() {
     hasActiveTask,
     availablePickups,
     availableDeliveries,
-    nextPickupReleaseAt,
     isLoadingActive,
     isLoadingPickups,
     isLoadingDeliveries,
@@ -44,7 +43,11 @@ export default function DriverDashboardPage() {
     isCompleting,
   } = useDriverTasks({ checkedIn });
 
-  useDriverTaskSocket();
+  useDriverTaskSocket(() => {
+    if (isModalOpen && !selectedTask) {
+      setIsModalOpen(false);
+    }
+  });
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [thumbTop, setThumbTop] = useState(0);
@@ -185,7 +188,7 @@ export default function DriverDashboardPage() {
                     <TaskSkeleton />
                   </div>
                 ) : currentTasks.length === 0 ? (
-                  <EmptyState type={activeTab} nextReleaseAt={activeTab === "pickup" ? nextPickupReleaseAt : null} />
+                  <EmptyState type={activeTab} />
                 ) : (
                   <div className="relative flex gap-2">
                     <div

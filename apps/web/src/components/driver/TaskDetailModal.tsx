@@ -1,8 +1,10 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Phone, MessageCircle, CheckCircle, Loader2, X } from "lucide-react";
 import type { DriverTask } from "@/services/driverTask.service";
+import { ConfirmCompleteDialog } from "./ConfirmCompleteDialog";
 
 export function TaskDetailModal({
   task,
@@ -23,6 +25,12 @@ export function TaskDetailModal({
   isClaiming: boolean;
   isCompleting: boolean;
 }) {
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) setShowConfirm(false);
+  }, [isOpen]);
+
   const displayTask = task ?? activeTask;
   const isActiveMode = !task && !!activeTask;
 
@@ -37,6 +45,14 @@ export function TaskDetailModal({
   const invoiceNumber = order?.invoice_number ?? "#Unknown";
   const hasNotes = order && "notes" in order && (order as any).notes;
 
+  const handleClose = () => {
+    if (showConfirm) {
+      setShowConfirm(false);
+    } else {
+      onClose();
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -45,14 +61,14 @@ export function TaskDetailModal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onClick={onClose}
+          onClick={handleClose}
         >
           <motion.div
             initial={{ opacity: 0, y: 40, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="w-full max-w-md bg-surface rounded-2xl shadow-2xl overflow-hidden"
+            className="w-full max-w-md bg-surface rounded-2xl shadow-2xl overflow-hidden relative"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-start p-5 pb-3">
@@ -69,7 +85,7 @@ export function TaskDetailModal({
                 </span>
               )}
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="ml-2 p-1.5 rounded-full hover:bg-surface-container-low transition-colors text-on-surface-variant"
               >
                 <X className="w-4 h-4" />
@@ -112,7 +128,7 @@ export function TaskDetailModal({
 
               {isActiveMode ? (
                 <button
-                  onClick={onComplete}
+                  onClick={() => setShowConfirm(true)}
                   disabled={isCompleting}
                   className="w-full py-3.5 bg-primary text-on-primary rounded-xl font-bold text-sm hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
                 >
@@ -136,6 +152,19 @@ export function TaskDetailModal({
                 </button>
               )}
             </div>
+
+            <AnimatePresence>
+              {showConfirm && (
+                <ConfirmCompleteDialog
+                  onConfirm={() => {
+                    onComplete();
+                    setShowConfirm(false);
+                  }}
+                  onCancel={() => setShowConfirm(false)}
+                  isLoading={isCompleting}
+                />
+              )}
+            </AnimatePresence>
           </motion.div>
         </motion.div>
       )}

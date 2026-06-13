@@ -11,25 +11,23 @@ export function useSocket() {
   const isLoggedIn = !!employeeUser || !!customerUser;
 
   useEffect(() => {
-    if (!isLoggedIn) {
-      disconnectSocket();
-      return;
-    }
-    reconnectSocket();
+    if (isLoggedIn) reconnectSocket();
   }, [isLoggedIn]);
 
   const on = useCallback((event: string, handler: EventHandler) => {
+    if (!isLoggedIn) return () => {};
     const socket = getSocket();
     socket.on(event, handler);
     return () => {
       socket.off(event, handler);
     };
-  }, []);
+  }, [isLoggedIn]);
 
   const emit = useCallback((event: string, data?: any) => {
+    if (!isLoggedIn) return;
     const socket = getSocket();
     socket.emit(event, data);
-  }, []);
+  }, [isLoggedIn]);
 
   return { on, emit, disconnect: disconnectSocket };
 }

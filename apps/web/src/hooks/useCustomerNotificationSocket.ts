@@ -11,6 +11,14 @@ export function useCustomerNotificationSocket(onNew?: (data: { title: string; bo
       queryClient.invalidateQueries({ queryKey: ["customer", "notifications"] });
       onNew?.(data);
     });
-    return unsub;
+
+    const unsubOrderStatus = on("order:status-updated", () => {
+      queryClient.invalidateQueries({ queryKey: ["customer", "orders"] });
+    });
+
+    return () => {
+      unsub();
+      unsubOrderStatus();
+    };
   }, [on, queryClient, onNew]);
 }
