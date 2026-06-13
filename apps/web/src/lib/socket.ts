@@ -3,12 +3,12 @@ import { io, Socket } from "socket.io-client";
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:8080";
 
-let socket: Socket | null = null;
+const g = globalThis as typeof globalThis & { __appSocket?: Socket };
 
 export function getSocket(): Socket {
-  if (socket?.connected) return socket;
+  if (g.__appSocket) return g.__appSocket;
 
-  socket = io(SOCKET_URL, {
+  g.__appSocket = io(SOCKET_URL, {
     withCredentials: true,
     transports: ["websocket", "polling"],
     reconnection: true,
@@ -16,30 +16,29 @@ export function getSocket(): Socket {
     reconnectionDelay: 2000,
   });
 
-  socket.on("connect", () => {
-    console.log("[socket] connected:", socket?.id);
+  g.__appSocket.on("connect", () => {
+    console.log("[socket] connected:", g.__appSocket?.id);
   });
 
-  socket.on("disconnect", (reason) => {
+  g.__appSocket.on("disconnect", (reason) => {
     console.log("[socket] disconnected:", reason);
   });
 
-  socket.on("connect_error", (err) => {
+  g.__appSocket.on("connect_error", (err) => {
     console.error("[socket] connection error:", err.message);
   });
 
-  return socket;
+  return g.__appSocket;
 }
 
 export function disconnectSocket() {
-  if (socket) {
-    socket.disconnect();
-    socket = null;
+  if (g.__appSocket) {
+    g.__appSocket.disconnect();
+    g.__appSocket = undefined;
   }
 }
 
 export function reconnectSocket() {
-  if (socket?.connected) return socket;
-  disconnectSocket();
+  if (g.__appSocket) return g.__appSocket;
   return getSocket();
 }

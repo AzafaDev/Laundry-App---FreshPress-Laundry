@@ -20,10 +20,13 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
     ? customers.map(customer => customer.email)
     : [...seededCustomerEmails];
 
-  const existingCustomers = await prisma.customer.findMany({
+  const existingCustomersRaw = await prisma.customer.findMany({
     where: { email: { in: customerEmails } },
-    orderBy: { created_at: 'asc' },
   });
+  // Sort by seed order (customerEmails array), not created_at — upsert doesn't guarantee created_at order
+  const existingCustomers = customerEmails
+    .map(email => existingCustomersRaw.find(c => c.email === email))
+    .filter((c): c is NonNullable<typeof c> => !!c);
 
   if (existingCustomers.length === 0) {
     throw new Error('Customer seed data is empty, run customer seed first');

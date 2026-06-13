@@ -168,38 +168,39 @@ export const driverService = {
         },
       });
 
-      if (claimedTask?.order.outlet_id) {
-        emitToRoom(`outlet:${claimedTask.order.outlet_id}`, "driver:task-claimed", {
-          taskId,
-          driverId: employeeId,
-          order_id: claimedTask.order_id,
-        });
-      }
-
-      if (claimedTask?.order.customer_id) {
-        const etaText = calcEtaText(claimedTask);
-        const etaSuffix = etaText ? `, estimasi ${etaText}` : "";
-        if (claimedTask.task_type === "pickup") {
-          await notifyCustomer(
-            claimedTask.order.customer_id,
-            "Driver dalam perjalanan",
-            `Driver ${driverName} sedang menuju lokasi penjemputan${etaSuffix} untuk pesanan ${claimedTask.order.invoice_number}.`,
-            "driver_pickup_started",
-            claimedTask.order_id,
-          );
-        } else if (claimedTask.task_type === "delivery") {
-          await notifyCustomer(
-            claimedTask.order.customer_id,
-            "Driver dalam perjalanan",
-            `Driver ${driverName} sedang mengantarkan pesanan ${claimedTask.order.invoice_number} ke lokasi Anda${etaSuffix}.`,
-            "driver_delivery_started",
-            claimedTask.order_id,
-          );
-        }
-      }
-
       return claimedTask;
     });
+
+    if (claimedTask?.order.outlet_id) {
+      emitToRoom(`outlet:${claimedTask.order.outlet_id}`, "driver:task-claimed", {
+        taskId,
+        driverId: employeeId,
+        order_id: claimedTask.order_id,
+        task_type: claimedTask.task_type,
+      });
+    }
+
+    if (claimedTask?.order.customer_id) {
+      const etaText = calcEtaText(claimedTask);
+      const etaSuffix = etaText ? `, estimasi ${etaText}` : "";
+      if (claimedTask.task_type === "pickup") {
+        await notifyCustomer(
+          claimedTask.order.customer_id,
+          "Driver dalam perjalanan",
+          `Driver ${driverName} sedang menuju lokasi penjemputan${etaSuffix} untuk pesanan ${claimedTask.order.invoice_number}.`,
+          "driver_pickup_started",
+          claimedTask.order_id,
+        );
+      } else if (claimedTask.task_type === "delivery") {
+        await notifyCustomer(
+          claimedTask.order.customer_id,
+          "Driver dalam perjalanan",
+          `Driver ${driverName} sedang mengantarkan pesanan ${claimedTask.order.invoice_number} ke lokasi Anda${etaSuffix}.`,
+          "driver_delivery_started",
+          claimedTask.order_id,
+        );
+      }
+    }
 
     return claimedTask;
   },
@@ -221,16 +222,11 @@ export const driverService = {
 
     const task = await prisma.driverTask.findUnique({
       where: { id: taskId },
-      include: { order: { select: { id: true, outlet_id: true, customer_id: true } } },
+      include: { order: { select: { id: true, outlet_id: true, customer_id: true, status: true } } },
     });
     if (!task) throw new AppError("Task tidak ditemukan", 404);
     if (task.status !== "in_progress") throw new AppError("Task tidak sedang berlangsung", 400);
     if (task.driver_id !== employeeId) throw new AppError("Anda tidak terassign ke task ini", 403);
-
-    const updatedTask = await prisma.driverTask.update({
-      where: { id: taskId },
-      data: { status: "completed", completed_at: new Date() },
-    });
 
     const orderStatusMap: Record<string, OrderStatus> = {
       pickup: "laundry_arrived_outlet",
@@ -239,18 +235,37 @@ export const driverService = {
     const newOrderStatus = orderStatusMap[task.task_type];
     if (!newOrderStatus) throw new AppError("Invalid task type", 400);
 
-    const oldOrderStatus = task.task_type === "pickup" ? "laundry_to_outlet" : "delivery_to_customer";
+    const oldOrderStatus: OrderStatus = task.task_type === "pickup" ? "laundry_to_outlet" : "delivery_to_customer";
 
-    await prisma.order.update({ where: { id: task.order_id }, data: { status: newOrderStatus } });
-    await prisma.orderStatusHistory.create({
-      data: {
-        order_id: task.order_id,
-        old_status: oldOrderStatus,
-        new_status: newOrderStatus,
-        changed_by_type: "employee",
-        changed_by_id: employeeId,
-        note: `Driver completed ${task.task_type} task`,
-      },
+    if (task.order.status !== oldOrderStatus) {
+      throw new AppError("Status order tidak sesuai untuk diselesaikan", 409);
+    }
+
+    const updatedTask = await prisma.$transaction(async (tx) => {
+      const taskUpdate = await tx.driverTask.updateMany({
+        where: { id: taskId, status: "in_progress", driver_id: employeeId },
+        data: { status: "completed", completed_at: new Date() },
+      });
+      if (taskUpdate.count === 0) throw new AppError("Task sudah diselesaikan atau tidak valid", 409);
+
+      const orderUpdate = await tx.order.updateMany({
+        where: { id: task.order_id, status: oldOrderStatus },
+        data: { status: newOrderStatus },
+      });
+      if (orderUpdate.count === 0) throw new AppError("Status order tidak sesuai untuk diselesaikan", 409);
+
+      await tx.orderStatusHistory.create({
+        data: {
+          order_id: task.order_id,
+          old_status: oldOrderStatus,
+          new_status: newOrderStatus,
+          changed_by_type: "employee",
+          changed_by_id: employeeId,
+          note: `Driver completed ${task.task_type} task`,
+        },
+      });
+
+      return tx.driverTask.findUniqueOrThrow({ where: { id: taskId } });
     });
 
     if (task.order.outlet_id) {
