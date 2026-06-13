@@ -42,6 +42,9 @@ export const statusLabel: Record<string, string> = {
 
 export interface BypassState {
   discrepancies: Discrepancy[];
-  actualItems: Array<{ clothing_type_id: string; actual_quantity: number }>;
+  actualItems: {
+    breakdown: Array<{ clothing_type_id: string; actual_quantity: number }>;
+    satuan: Array<{ laundry_item_id: string; actual_quantity: number }>;
+  };
   submitted: boolean;
 }

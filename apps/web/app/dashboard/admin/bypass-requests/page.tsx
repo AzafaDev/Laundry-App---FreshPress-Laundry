@@ -110,37 +110,12 @@ export default function BypassRequestsPage() {
   const [selected, setSelected] = useState<BypassRequest | null>(null);
   const [newBadge, setNewBadge] = useState(0);
 
-  // Real-time: bypass requests
+  // Real-time: bypass requests (badge counter only — toast handled by layout)
   useEffect(() => {
-    const unsub = on("bypass:new", () => {
+    const unsub = on("bypass:created", () => {
       setNewBadge((n) => n + 1);
-      toast("Ada bypass request baru!", { icon: "🔔" });
     });
     return unsub;
-  }, [on]);
-
-  // Real-time: attendance notifications
-  useEffect(() => {
-    const unsubCheckin = on("attendance:checkin", (data: { employeeName?: string; outletName?: string }) => {
-      toast(`${data.employeeName ?? "Karyawan"} telah check-in`, { icon: "✅" });
-    });
-    const unsubCheckout = on("attendance:checkout", (data: { employeeName?: string; outletName?: string }) => {
-      toast(`${data.employeeName ?? "Karyawan"} telah check-out`, { icon: "🏁" });
-    });
-    return () => { unsubCheckin(); unsubCheckout(); };
-  }, [on]);
-
-  // Real-time: order status changes (outlet-room events)
-  useEffect(() => {
-    const unsubCompleted = on("station:order-completed", (data: { orderId?: string; station?: string }) => {
-      toast(`Order selesai di station ${data.station ?? ""}`, { icon: "📦" });
-    });
-    const unsubDelivered = on("driver:task-completed", (data: { taskType?: string; orderId?: string }) => {
-      if (data.taskType === "delivery") {
-        toast("Pengiriman order selesai", { icon: "🚚" });
-      }
-    });
-    return () => { unsubCompleted(); unsubDelivered(); };
   }, [on]);
 
   const { data, isFetching, isError } = useQuery({

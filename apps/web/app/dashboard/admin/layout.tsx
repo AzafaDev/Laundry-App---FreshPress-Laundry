@@ -68,7 +68,18 @@ export default function AdminDashboardLayout({
       toast.success(msg);
       queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
     });
-    return () => { unsubCheckin(); unsubCheckout(); unsubDriverClaimed(); unsubDriverCompleted(); };
+    const unsubBypassCreated = on("bypass:created", () => {
+      toast("Ada bypass request baru dari worker!", { icon: "🚨" });
+      queryClient.invalidateQueries({ queryKey: ["admin", "bypass-requests"] });
+    });
+    const unsubStationCompleted = on("station:order-completed", (data: { station?: string }) => {
+      toast(`Order selesai di station ${data.station ?? ""}`, { icon: "📦" });
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+    });
+    const unsubNewOrder = on("station:new-order", () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+    });
+    return () => { unsubCheckin(); unsubCheckout(); unsubDriverClaimed(); unsubDriverCompleted(); unsubBypassCreated(); unsubStationCompleted(); unsubNewOrder(); };
   }, [user, on, queryClient]);
 
   return (
