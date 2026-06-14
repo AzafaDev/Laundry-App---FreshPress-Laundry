@@ -12,8 +12,11 @@ export function useCustomerNotificationSocket(onNew?: (data: { title: string; bo
       onNew?.(data);
     });
 
-    const unsubOrderStatus = on("order:status-updated", () => {
+    const unsubOrderStatus = on("order:status-updated", (data?: { orderId?: string }) => {
       queryClient.invalidateQueries({ queryKey: ["customer", "orders"] });
+      if (data?.orderId) {
+        queryClient.invalidateQueries({ queryKey: ["customer", "orders", data.orderId] });
+      }
     });
 
     return () => {
