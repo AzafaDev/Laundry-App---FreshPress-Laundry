@@ -27,7 +27,11 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ReactQueryProvider>{children}</ReactQueryProvider>
-        <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
+        <Toaster
+          position="top-center"
+          toastOptions={{ duration: 3000 }}
+          containerStyle={{ left: 16, right: 16, top: 16 }}
+        />
         <WhatsAppCTA />
       </body>
     </html>

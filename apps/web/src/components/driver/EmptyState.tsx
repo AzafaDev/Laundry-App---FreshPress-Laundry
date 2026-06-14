@@ -2,19 +2,8 @@
 
 import { ShoppingBag, Truck } from "lucide-react";
 
-export function EmptyState({
-  type,
-  nextReleaseAt,
-}: {
-  type: "pickup" | "delivery";
-  nextReleaseAt?: string | null;
-}) {
+export function EmptyState({ type }: { type: "pickup" | "delivery" }) {
   const Icon = type === "pickup" ? ShoppingBag : Truck;
-
-  const subtext =
-    type === "pickup" && nextReleaseAt
-      ? `Task berikutnya tersedia pukul ${new Date(nextReleaseAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}`
-      : "Belum ada task masuk";
 
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -24,7 +13,7 @@ export function EmptyState({
       <p className="text-sm font-medium text-on-surface-variant">
         Tidak ada {type === "pickup" ? "pickup" : "delivery"} tersedia
       </p>
-      <p className="text-xs text-outline mt-1">{subtext}</p>
+      <p className="text-xs text-outline mt-1">Belum ada task masuk</p>
     </div>
   );
 }

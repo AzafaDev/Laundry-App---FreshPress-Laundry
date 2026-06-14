@@ -3,9 +3,9 @@ import { emitToRoom, emitToUser } from "../../lib/socket.js";
 import { notifyCustomer } from "../../lib/notification.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { Prisma, OrderStatus } from "../../../generated/prisma/client.js";
-import { hasActiveDriverTask } from "./attendance.utils.db.js";
+import { hasActiveDriverTask } from "../../repositories/driver-worker/attendance.repository.js";
 import { attendanceService } from "./attendance.service.js";
-import { assertShiftEligibility } from "./shift.guard.js";
+import { assertShiftEligibility } from "../../guards/driver-worker/shift.guard.js";
 
 const DRIVER_TASK_DETAIL_SELECT = {
   id: true,
@@ -24,9 +24,30 @@ const DRIVER_TASK_DETAIL_SELECT = {
       customer_id: true,
       pickup_address: { select: { address: true, latitude: true, longitude: true } },
       customer: { select: { full_name: true, phone: true } },
+      outlet: { select: { latitude: true, longitude: true } },
     },
   },
 } satisfies Prisma.DriverTaskSelect;
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function calcEtaText(task: { order: { outlet: { latitude: any; longitude: any } | null; pickup_address: { latitude: any; longitude: any } | null } } | null): string | null {
+  const outlet = task?.order.outlet;
+  const addr = task?.order.pickup_address;
+  if (outlet?.latitude && outlet?.longitude && addr?.latitude && addr?.longitude) {
+    const dist = haversineKm(Number(outlet.latitude), Number(outlet.longitude), Number(addr.latitude), Number(addr.longitude));
+    return `${Math.max(1, Math.round((dist / 20) * 60))} menit`;
+  }
+  return null;
+}
 
 type DriverTaskDetail = Prisma.DriverTaskGetPayload<{ select: typeof DRIVER_TASK_DETAIL_SELECT }>;
 
@@ -147,57 +168,38 @@ export const driverService = {
         },
       });
 
-      if (claimedTask?.order.outlet_id) {
-        emitToRoom(`outlet:${claimedTask.order.outlet_id}`, "driver:task-claimed", {
-          taskId,
-          driverId: employeeId,
-          order_id: claimedTask.order_id,
-        });
-      }
-
-      if (claimedTask?.order.customer_id) {
-        if (claimedTask.task_type === "pickup") {
-          await notifyCustomer(
-            claimedTask.order.customer_id,
-            "Driver dalam perjalanan",
-            `Driver ${driverName} sedang menuju lokasi penjemputan untuk pesanan ${claimedTask.order.invoice_number}.`,
-            "driver_pickup_started",
-            claimedTask.order_id,
-          );
-        } else if (claimedTask.task_type === "delivery") {
-          await notifyCustomer(
-            claimedTask.order.customer_id,
-            "Driver dalam perjalanan",
-            `Driver ${driverName} sedang mengantarkan pesanan ${claimedTask.order.invoice_number} ke lokasi Anda.`,
-            "driver_delivery_started",
-            claimedTask.order_id,
-          );
-        }
-      }
-
       return claimedTask;
     });
 
-    if (claimedTask?.order.customer_id) {
-      const notifContent = claimedTask.task_type === "pickup"
-        ? { title: "Driver menuju lokasi Anda", body: `Driver ${driverName} sedang dalam perjalanan untuk mengambil laundry Anda.` }
-        : { title: "Driver mengantarkan laundry Anda", body: `Driver ${driverName} sedang dalam perjalanan mengantar laundry Anda.` };
+    if (claimedTask?.order.outlet_id) {
+      emitToRoom(`outlet:${claimedTask.order.outlet_id}`, "driver:task-claimed", {
+        taskId,
+        driverId: employeeId,
+        order_id: claimedTask.order_id,
+        task_type: claimedTask.task_type,
+      });
+    }
 
-      await prisma.notification.create({
-        data: {
-          user_type: "customer",
-          user_id: claimedTask.order.customer_id,
-          title: notifContent.title,
-          body: notifContent.body,
-          type: "driver_update",
-          related_entity_id: claimedTask.order_id,
-        },
-      });
-      emitToUser(claimedTask.order.customer_id, "notification:new", {
-        title: notifContent.title,
-        body: notifContent.body,
-        orderId: claimedTask.order_id,
-      });
+    if (claimedTask?.order.customer_id) {
+      const etaText = calcEtaText(claimedTask);
+      const etaSuffix = etaText ? `, estimasi ${etaText}` : "";
+      if (claimedTask.task_type === "pickup") {
+        await notifyCustomer(
+          claimedTask.order.customer_id,
+          "Driver dalam perjalanan",
+          `Driver ${driverName} sedang menuju lokasi penjemputan${etaSuffix} untuk pesanan ${claimedTask.order.invoice_number}.`,
+          "driver_pickup_started",
+          claimedTask.order_id,
+        );
+      } else if (claimedTask.task_type === "delivery") {
+        await notifyCustomer(
+          claimedTask.order.customer_id,
+          "Driver dalam perjalanan",
+          `Driver ${driverName} sedang mengantarkan pesanan ${claimedTask.order.invoice_number} ke lokasi Anda${etaSuffix}.`,
+          "driver_delivery_started",
+          claimedTask.order_id,
+        );
+      }
     }
 
     return claimedTask;
@@ -220,16 +222,11 @@ export const driverService = {
 
     const task = await prisma.driverTask.findUnique({
       where: { id: taskId },
-      include: { order: { select: { id: true, outlet_id: true, customer_id: true } } },
+      include: { order: { select: { id: true, outlet_id: true, customer_id: true, status: true } } },
     });
     if (!task) throw new AppError("Task tidak ditemukan", 404);
     if (task.status !== "in_progress") throw new AppError("Task tidak sedang berlangsung", 400);
     if (task.driver_id !== employeeId) throw new AppError("Anda tidak terassign ke task ini", 403);
-
-    const updatedTask = await prisma.driverTask.update({
-      where: { id: taskId },
-      data: { status: "completed", completed_at: new Date() },
-    });
 
     const orderStatusMap: Record<string, OrderStatus> = {
       pickup: "laundry_arrived_outlet",
@@ -238,18 +235,37 @@ export const driverService = {
     const newOrderStatus = orderStatusMap[task.task_type];
     if (!newOrderStatus) throw new AppError("Invalid task type", 400);
 
-    const oldOrderStatus = task.task_type === "pickup" ? "laundry_to_outlet" : "delivery_to_customer";
+    const oldOrderStatus: OrderStatus = task.task_type === "pickup" ? "laundry_to_outlet" : "delivery_to_customer";
 
-    await prisma.order.update({ where: { id: task.order_id }, data: { status: newOrderStatus } });
-    await prisma.orderStatusHistory.create({
-      data: {
-        order_id: task.order_id,
-        old_status: oldOrderStatus,
-        new_status: newOrderStatus,
-        changed_by_type: "employee",
-        changed_by_id: employeeId,
-        note: `Driver completed ${task.task_type} task`,
-      },
+    if (task.order.status !== oldOrderStatus) {
+      throw new AppError("Status order tidak sesuai untuk diselesaikan", 409);
+    }
+
+    const updatedTask = await prisma.$transaction(async (tx) => {
+      const taskUpdate = await tx.driverTask.updateMany({
+        where: { id: taskId, status: "in_progress", driver_id: employeeId },
+        data: { status: "completed", completed_at: new Date() },
+      });
+      if (taskUpdate.count === 0) throw new AppError("Task sudah diselesaikan atau tidak valid", 409);
+
+      const orderUpdate = await tx.order.updateMany({
+        where: { id: task.order_id, status: oldOrderStatus },
+        data: { status: newOrderStatus },
+      });
+      if (orderUpdate.count === 0) throw new AppError("Status order tidak sesuai untuk diselesaikan", 409);
+
+      await tx.orderStatusHistory.create({
+        data: {
+          order_id: task.order_id,
+          old_status: oldOrderStatus,
+          new_status: newOrderStatus,
+          changed_by_type: "employee",
+          changed_by_id: employeeId,
+          note: `Driver completed ${task.task_type} task`,
+        },
+      });
+
+      return tx.driverTask.findUniqueOrThrow({ where: { id: taskId } });
     });
 
     if (task.order.outlet_id) {
@@ -284,25 +300,6 @@ export const driverService = {
           task.order_id,
         );
       }
-      const completeNotifContent = task.task_type === "pickup"
-        ? { title: "Laundry tiba di outlet", body: "Laundry Anda telah tiba di outlet dan siap diproses." }
-        : { title: "Laundry telah diterima", body: "Laundry Anda telah diterima. Terima kasih!" };
-
-      await prisma.notification.create({
-        data: {
-          user_type: "customer",
-          user_id: task.order.customer_id,
-          title: completeNotifContent.title,
-          body: completeNotifContent.body,
-          type: "driver_update",
-          related_entity_id: task.order_id,
-        },
-      });
-      emitToUser(task.order.customer_id, "notification:new", {
-        title: completeNotifContent.title,
-        body: completeNotifContent.body,
-        orderId: task.order_id,
-      });
     }
 
     return updatedTask;

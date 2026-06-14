@@ -2,10 +2,6 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { notifyCustomer } from "../../lib/notification.js";
 
-const WASH_AND_FOLD_RATE_PER_KG = 7_000;
-const DRY_CLEANING_START_PRICE = 25_000;
-const SERVICE_FEE = 2_000;
-
 const FREE_RADIUS_KM = Number(process.env.FREE_RADIUS_KM ?? 5);
 const SERVICE_RADIUS_KM = Number(process.env.SERVICE_RADIUS_KM ?? 10);
 const FLAT_RATE_ONGKIR = Number(process.env.FLAT_RATE_ONGKIR ?? 10_000);
@@ -39,13 +35,6 @@ function generateInvoiceNumber(): string {
 function calculateDeliveryFee(distanceKm: number): number {
   if (distanceKm <= FREE_RADIUS_KM) return 0;
   return FLAT_RATE_ONGKIR;
-}
-
-function estimateTotalPrice(serviceType: "wash-and-fold" | "dry-cleaning", estimatedWeightKg: number): number {
-  if (serviceType === "dry-cleaning") {
-    return DRY_CLEANING_START_PRICE + SERVICE_FEE;
-  }
-  return estimatedWeightKg * WASH_AND_FOLD_RATE_PER_KG + SERVICE_FEE;
 }
 
 export interface CreateCustomerOrderInput {
@@ -123,8 +112,6 @@ export const createCustomerOrder = async (
       ? 0
       : Number(input.estimated_weight_kg ?? 0);
 
-  const totalPrice = estimateTotalPrice(input.service_type, estimatedWeightKg);
-
   const invoiceNumber = generateInvoiceNumber();
 
   const order = await prisma.$transaction(async (tx) => {
@@ -137,7 +124,7 @@ export const createCustomerOrder = async (
         status: "waiting_pickup_driver",
         total_weight_kg: estimatedWeightKg,
         delivery_fee: calculateDeliveryFee(nearestOutlet.distance),
-        total_price: totalPrice,
+        total_price: 0,
         notes: input.notes
           ? `[service:${input.service_type}] ${input.notes}`
           : `[service:${input.service_type}]`,
@@ -223,6 +210,9 @@ export const listCustomerOrders = async (customerId: string) => {
           },
         },
       },
+      complaints: {
+        select: { id: true },
+      },
     },
   });
 };
@@ -300,6 +290,14 @@ export const createCustomerComplaint = async (
 
   if (order.status !== "received_by_customer") {
     throw new AppError("Komplain hanya bisa diajukan untuk pesanan yang sudah diterima.", 400);
+  }
+
+  const existingComplaint = await prisma.complaint.findFirst({
+    where: { order_id: orderId },
+  });
+
+  if (existingComplaint) {
+    throw new AppError("Komplain untuk pesanan ini sudah pernah diajukan.", 400);
   }
 
   return prisma.complaint.create({

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Flag, ArrowDown, ArrowUp, Loader2, ImageIcon } from "lucide-react";
+import { X, Flag, Loader2, ImageIcon } from "lucide-react";
 import { workerStationService, type BypassDetail } from "@/services/workerStation.service";
 
 interface BypassViewModalProps {
@@ -88,28 +88,21 @@ export function BypassViewModal({ open, orderId, invoiceNumber, onClose }: Bypas
                     <thead>
                       <tr className="bg-surface-container-low border-b border-outline-variant">
                         <th className="text-left px-3 py-2 text-xs font-semibold text-on-surface-variant">Item</th>
-                        <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Ekspektasi</th>
                         <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Aktual</th>
-                        <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Selisih</th>
+                        <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {bypass.expected_items.map((exp) => {
-                        const act = bypass.actual_items.find((a) => a.clothing_type_id === exp.clothing_type_id);
-                        const actualQty = act?.actual_quantity ?? 0;
-                        const diff = actualQty - exp.quantity;
-                        const isShort = diff < 0;
+                        const act = bypass.actual_items.find((a) => a.item_id === exp.item_id);
+                        const actualQty = act?.quantity ?? 0;
                         return (
-                          <tr key={exp.clothing_type_id} className="border-b border-outline-variant last:border-0 bg-amber-50/60">
+                          <tr key={`${exp.item_type}:${exp.item_id}`} className="border-b border-outline-variant last:border-0 bg-amber-50/60">
                             <td className="px-3 py-2.5 font-medium text-on-surface">{exp.name}</td>
-                            <td className="px-3 py-2.5 text-center text-on-surface-variant">{exp.quantity}</td>
-                            <td className="px-3 py-2.5 text-center font-bold text-error">{actualQty}</td>
+                            <td className="px-3 py-2.5 text-center font-bold text-on-surface">{actualQty}</td>
                             <td className="px-3 py-2.5 text-center">
-                              <span className={`inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded-full ${
-                                isShort ? "bg-error/10 text-error" : diff === 0 ? "bg-surface-container text-on-surface-variant" : "bg-amber-100 text-amber-700"
-                              }`}>
-                                {diff !== 0 && (isShort ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />)}
-                                {Math.abs(diff)}
+                              <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full bg-error/10 text-error">
+                                Tidak Sesuai
                               </span>
                             </td>
                           </tr>

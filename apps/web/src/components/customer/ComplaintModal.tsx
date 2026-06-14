@@ -107,7 +107,9 @@ export const ComplaintModal = ({ open, orderId, onClose }: ComplaintModalProps) 
 
           {mutation.isError && (
             <p className="text-xs text-error">
-              Gagal mengirim komplain. Pastikan deskripsi minimal 10 karakter, lalu coba lagi.
+              {(mutation.error as { response?: { data?: { message?: string } } })?.response?.data
+                ?.message ??
+                "Gagal mengirim komplain. Pastikan deskripsi minimal 10 karakter, lalu coba lagi."}
             </p>
           )}
         </div>

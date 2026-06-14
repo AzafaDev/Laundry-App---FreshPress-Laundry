@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingBag, Truck } from "lucide-react";
 import { DriverSidebar } from "@/components/dashboard/DriverSidebar";
@@ -34,7 +34,6 @@ export default function DriverDashboardPage() {
     hasActiveTask,
     availablePickups,
     availableDeliveries,
-    nextPickupReleaseAt,
     isLoadingActive,
     isLoadingPickups,
     isLoadingDeliveries,
@@ -44,7 +43,34 @@ export default function DriverDashboardPage() {
     isCompleting,
   } = useDriverTasks({ checkedIn });
 
-  useDriverTaskSocket();
+  useDriverTaskSocket(() => {
+    if (isModalOpen && !selectedTask) {
+      setIsModalOpen(false);
+    }
+  });
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [thumbTop, setThumbTop] = useState(0);
+  const [thumbHeight, setThumbHeight] = useState(0);
+  const [isScrollable, setIsScrollable] = useState(false);
+
+  const updateThumb = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const scrollable = el.scrollHeight > el.clientHeight;
+    setIsScrollable(scrollable);
+    if (scrollable) {
+      const ratio = el.clientHeight / el.scrollHeight;
+      setThumbHeight(ratio * el.clientHeight);
+      setThumbTop((el.scrollTop / el.scrollHeight) * el.clientHeight);
+    }
+  }, []);
+
+  useEffect(() => {
+    setIsScrollable(false);
+    const id = requestAnimationFrame(updateThumb);
+    return () => cancelAnimationFrame(id);
+  }, [activeTab, availablePickups, availableDeliveries, updateThumb]);
 
   if (!_hasHydrated) {
     return <div className="min-h-screen flex items-center justify-center text-on-surface-variant text-sm">Memuat...</div>;
@@ -162,17 +188,33 @@ export default function DriverDashboardPage() {
                     <TaskSkeleton />
                   </div>
                 ) : currentTasks.length === 0 ? (
-                  <EmptyState type={activeTab} nextReleaseAt={activeTab === "pickup" ? nextPickupReleaseAt : null} />
+                  <EmptyState type={activeTab} />
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {currentTasks.map((task) => (
-                      <AvailableTaskCard
-                        key={task.id}
-                        task={task}
-                        onSelect={() => handleOpenModal(task)}
-                        disabled={hasActiveTask}
-                      />
-                    ))}
+                  <div className="relative flex gap-2">
+                    <div
+                      ref={scrollRef}
+                      className="flex-1 max-h-[60vh] overflow-y-auto custom-scrollbar"
+                      onScroll={updateThumb}
+                    >
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {currentTasks.map((task) => (
+                          <AvailableTaskCard
+                            key={task.id}
+                            task={task}
+                            onSelect={() => handleOpenModal(task)}
+                            disabled={hasActiveTask}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                    {isScrollable && (
+                      <div className="w-1 relative shrink-0 rounded-full bg-surface-container">
+                        <div
+                          className="absolute w-full rounded-full bg-outline-variant transition-all duration-75"
+                          style={{ top: thumbTop, height: thumbHeight }}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </motion.div>

@@ -1,8 +1,8 @@
 import { AppError } from "../../middlewares/error.middleware.js";
-import { getEmployeeOutlet, getShiftForDateTime } from "./attendance.utils.db.js";
-import { getNow, getTodayLocalStart } from "./attendance.utils.js";
+import { getEmployeeOutlet, getShiftForDateTime } from "../../repositories/driver-worker/attendance.repository.js";
+import { getNow, getTodayLocalStart } from "../../utils/time.util.js";
 import { prisma } from "../../lib/prisma.js";
-import { attendanceService } from "./attendance.service.js";
+import { attendanceService } from "../../services/driver-worker/attendance.service.js";
 
 export async function getActiveShiftForTask(employeeId: string) {
   const now = getNow();

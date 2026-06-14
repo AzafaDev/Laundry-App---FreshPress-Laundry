@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import type { z } from "zod";
 import type { getMyLogsQuerySchema } from "../../validations/attendance.validation.js";
-import { attendanceService } from "../../services/driver-worker/index.js";
+import { attendanceService } from "../../services/driver-worker/attendance.service.js";
 import { requireUserId } from "../../utils/asyncHandler.js";
 
 type MyLogsQuery = z.infer<typeof getMyLogsQuerySchema>;

@@ -51,11 +51,9 @@ export function useDriverTasks({ checkedIn }: { checkedIn: boolean }) {
 
   const completeTaskMutation = useMutation({
     mutationFn: (taskId: string) => driverTaskService.completeTask(taskId),
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success("Task berhasil diselesaikan!");
-      queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "active"] });
-      queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-pickups"] });
-      queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-deliveries"] });
+      queryClient.setQueryData(["driver", "tasks", "active"], data);
     },
     onError: (error: any) => {
       const message = error?.response?.data?.message || "Gagal menyelesaikan task.";
@@ -65,14 +63,12 @@ export function useDriverTasks({ checkedIn }: { checkedIn: boolean }) {
 
   const pickups = availablePickupsQuery.data?.tasks ?? [];
   const deliveries = availableDeliveriesQuery.data?.tasks ?? [];
-  const nextPickupReleaseAt = availablePickupsQuery.data?.next_release_at ?? null;
 
   return {
     activeTask: activeTaskQuery.data?.task ?? null,
     hasActiveTask,
     availablePickups: pickups,
     availableDeliveries: deliveries,
-    nextPickupReleaseAt,
     isLoadingActive: activeTaskQuery.isLoading,
     isLoadingPickups: availablePickupsQuery.isLoading,
     isLoadingDeliveries: availableDeliveriesQuery.isLoading,

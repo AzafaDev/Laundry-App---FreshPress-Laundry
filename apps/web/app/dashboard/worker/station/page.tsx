@@ -13,6 +13,7 @@ import { OrderCard } from "@/components/worker/OrderCard";
 import { StationModal } from "@/components/worker/StationModal";
 import { WorkerBypassModal } from "@/components/worker/WorkerBypassModal";
 import { BypassViewModal } from "@/components/worker/BypassViewModal";
+import { VerificationResultModal } from "@/components/worker/VerificationResultModal";
 import { stationConfig, type BypassState } from "@/components/worker/stationConfig";
 import { Loader2, AlertCircle, Wifi, WifiOff } from "lucide-react";
 import toast from "react-hot-toast";
@@ -28,6 +29,13 @@ export default function WorkerStationPage() {
   const [bypassState, setBypassState] = useState<Record<string, BypassState>>({});
   const [bypassModalOpen, setBypassModalOpen] = useState<string | null>(null);
   const [bypassViewId, setBypassViewId] = useState<string | null>(null);
+  const [verificationResult, setVerificationResult] = useState<{
+    type: "success" | "mismatch";
+    orderId: string;
+    invoiceNumber: string;
+    discrepancies?: Discrepancy[];
+    actualItems?: { breakdown: { clothing_type_id: string; actual_quantity: number }[]; satuan: { laundry_item_id: string; actual_quantity: number }[] };
+  } | null>(null);
 
   let station: "washing" | "ironing" | "packing" | null = null;
   if (user?.role === "washing_worker") station = "washing";
@@ -97,32 +105,39 @@ export default function WorkerStationPage() {
     setModalOpen(true);
   };
 
-  const handleVerify = async (orderId: string, receivedQuantities: Record<string, number>) => {
+  const handleVerify = async (orderId: string, received: { breakdown: Record<string, number>; satuan: Record<string, number> }) => {
     const order = stationOrders.find((o) => o.id === orderId);
     if (!order || !station) return;
 
     const actual_items = order.order_item_breakdowns.map((item) => ({
       clothing_type_id: item.clothing_type_id,
-      actual_quantity: receivedQuantities[item.id] ?? item.quantity,
+      actual_quantity: received.breakdown[item.id] ?? 0,
+    }));
+
+    const satuanOrderItems = order.order_items.filter((i) => i.laundry_item.unit !== "kg");
+    const actual_satuan_items = satuanOrderItems.map((item) => ({
+      laundry_item_id: item.laundry_item_id,
+      actual_quantity: received.satuan[item.laundry_item_id] ?? 0,
     }));
 
     setProcessingId(orderId);
     try {
-      const result = await workerStationService.submitItems(station, orderId, actual_items);
+      const result = await workerStationService.submitItems(station, orderId, actual_items, actual_satuan_items);
+
+      setModalOpen(false);
 
       if ("requiresBypass" in result && result.requiresBypass) {
-        setBypassState((prev) => ({
-          ...prev,
-          [orderId]: { discrepancies: result.discrepancies, actualItems: actual_items, submitted: false },
-        }));
-        setModalOpen(false);
-        setBypassModalOpen(orderId);
+        setVerificationResult({
+          type: "mismatch",
+          orderId,
+          invoiceNumber: order.invoice_number,
+          discrepancies: result.discrepancies,
+          actualItems: { breakdown: actual_items, satuan: actual_satuan_items },
+        });
         return;
       }
 
-      toast.success(`Order #${order.invoice_number} berhasil diverifikasi`);
-      setModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
+      setVerificationResult({ type: "success", orderId, invoiceNumber: order.invoice_number });
       setBypassState((prev) => {
         const next = { ...prev };
         delete next[orderId];
@@ -132,18 +147,39 @@ export default function WorkerStationPage() {
       const error = err as { response?: { data?: { message?: string; requiresBypass?: boolean; discrepancies?: Discrepancy[] } } };
       const resData = error?.response?.data;
       if (resData?.requiresBypass && resData.discrepancies) {
-        setBypassState((prev) => ({
-          ...prev,
-          [orderId]: { discrepancies: resData.discrepancies!, actualItems: actual_items, submitted: false },
-        }));
         setModalOpen(false);
-        setBypassModalOpen(orderId);
+        setVerificationResult({
+          type: "mismatch",
+          orderId,
+          invoiceNumber: order.invoice_number,
+          discrepancies: resData.discrepancies,
+          actualItems: { breakdown: actual_items, satuan: actual_satuan_items },
+        });
       } else {
         toast.error(resData?.message ?? "Gagal memverifikasi items");
       }
     } finally {
       setProcessingId(null);
     }
+  };
+
+  const handleVerificationClose = () => {
+    if (verificationResult?.type === "success" && station) {
+      toast.success(`Order #${verificationResult.invoiceNumber} berhasil diverifikasi`);
+      queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
+    }
+    setVerificationResult(null);
+  };
+
+  const handleProceedToBypass = () => {
+    if (!verificationResult || verificationResult.type !== "mismatch") return;
+    const { orderId, discrepancies, actualItems } = verificationResult;
+    setBypassState((prev) => ({
+      ...prev,
+      [orderId]: { discrepancies: discrepancies!, actualItems: actualItems!, submitted: false },
+    }));
+    setVerificationResult(null);
+    setBypassModalOpen(orderId);
   };
 
   const handleBypassSuccess = (orderId: string) => {
@@ -226,6 +262,15 @@ export default function WorkerStationPage() {
           onClose={() => setModalOpen(false)}
           onConfirm={handleVerify}
           isProcessing={processingId === selectedOrderId}
+        />
+      )}
+
+      {verificationResult && (
+        <VerificationResultModal
+          result={verificationResult.type}
+          invoiceNumber={verificationResult.invoiceNumber}
+          onClose={handleVerificationClose}
+          onBypass={handleProceedToBypass}
         />
       )}
 

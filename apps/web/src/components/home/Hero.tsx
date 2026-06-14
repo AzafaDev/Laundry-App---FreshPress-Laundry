@@ -1,9 +1,12 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import Image from "next/image";
+import { useQuery } from "@tanstack/react-query";
 import { Star, Truck, HeadphonesIcon, MapPin } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
+import { laundryItemService } from "@/services/laundryItem.service";
+import { formatRupiah } from "@/utils/formatPrice";
 
 const usps = [
   { icon: Truck, label: "Gratis jemput & antar" },
@@ -14,6 +17,20 @@ const usps = [
 export const Hero = () => {
   const user = useAuthStore((s) => s.user);
   const ctaHref = user ? "/customer/pickup" : "/register";
+
+  const { data: laundryItems = [] } = useQuery({
+    queryKey: ["customer", "laundry-items"],
+    queryFn: laundryItemService.listForCustomer,
+  });
+
+  const cheapestKgItem = laundryItems
+    .filter((item) => item.unit === "kg")
+    .reduce<typeof laundryItems[number] | null>((cheapest, item) => {
+      if (!cheapest || Number(item.base_price) < Number(cheapest.base_price)) {
+        return item;
+      }
+      return cheapest;
+    }, null);
 
   return (
     <section className="bg-white overflow-hidden">
@@ -76,7 +93,11 @@ export const Hero = () => {
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 font-medium">Mulai dari</p>
-                  <p className="text-gray-900 font-bold text-sm">Rp 10.000 / kg</p>
+                  <p className="text-gray-900 font-bold text-sm">
+                    {cheapestKgItem
+                      ? `${formatRupiah(Number(cheapestKgItem.base_price))} / kg`
+                      : "Rp 7.000 / kg"}
+                  </p>
                 </div>
               </div>
             </div>

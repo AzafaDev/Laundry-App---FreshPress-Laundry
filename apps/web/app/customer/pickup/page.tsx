@@ -12,11 +12,17 @@ import {
   Loader2,
   MapPin,
   Truck,
+  Wallet,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
-import { addressService, type CustomerAddress } from "@/services/address.service";
+import {
+  addressService,
+  type CustomerAddress,
+  type DeliveryEstimate,
+} from "@/services/address.service";
 import { orderService } from "@/services/order.service";
 import { useAuthStore } from "@/stores/authStore";
+import { formatRupiah } from "@/utils/formatPrice";
 
 const getTodayDateKey = () => {
   const now = new Date();
@@ -91,6 +97,16 @@ export default function CustomerOrderPage() {
   });
 
   const selectedAddress = addresses.find((a) => a.id === selectedAddressId) ?? null;
+
+  const {
+    data: deliveryEstimate,
+    isLoading: loadingEstimate,
+    isError: hasEstimateError,
+  } = useQuery<DeliveryEstimate>({
+    queryKey: ["customer", "delivery-estimate", selectedAddressId],
+    queryFn: () => addressService.estimateDeliveryFee(selectedAddressId!),
+    enabled: _hasHydrated && !!user && !!selectedAddressId,
+  });
 
   const canOrder =
     !!selectedAddress &&
@@ -285,6 +301,62 @@ export default function CustomerOrderPage() {
             </div>
           </div>
         </section>
+
+        {/* Delivery fee estimate */}
+        {selectedAddress && (
+          <section className="rounded-3xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl bg-primary/10 p-3 text-primary">
+                <Wallet className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-on-surface">Estimasi Ongkir</h2>
+                <p className="text-sm text-on-surface-variant">
+                  Dihitung dari jarak alamat ke outlet terdekat.
+                </p>
+              </div>
+            </div>
+
+            {loadingEstimate && (
+              <div className="flex items-center gap-3 rounded-2xl border border-outline-variant bg-surface px-4 py-4 text-sm text-on-surface-variant">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                Menghitung ongkir...
+              </div>
+            )}
+
+            {!loadingEstimate && hasEstimateError && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
+                Gagal menghitung estimasi ongkir.
+              </div>
+            )}
+
+            {!loadingEstimate && !hasEstimateError && deliveryEstimate && (
+              <div className="rounded-2xl border border-outline-variant bg-surface px-4 py-4 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-on-surface-variant">
+                    Outlet terdekat: {deliveryEstimate.nearest_outlet.outlet_name}
+                  </span>
+                  <span className="text-xs text-on-surface-variant">
+                    {deliveryEstimate.nearest_outlet.distance_km.toFixed(1)} km
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-on-surface">Biaya Pengiriman</span>
+                  <span className="text-lg font-extrabold text-primary">
+                    {deliveryEstimate.nearest_outlet.delivery_fee > 0
+                      ? formatRupiah(deliveryEstimate.nearest_outlet.delivery_fee)
+                      : "Gratis"}
+                  </span>
+                </div>
+                {!deliveryEstimate.nearest_outlet.within_service_area && (
+                  <p className="text-xs text-red-600 pt-1">
+                    Alamat ini berada di luar area layanan outlet terdekat.
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Feedback */}
         {createOrderError && (

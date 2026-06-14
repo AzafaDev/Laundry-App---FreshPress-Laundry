@@ -52,7 +52,34 @@ export default function AdminDashboardLayout({
       toast.success(`${data.employeeName ?? "Karyawan"} telah check-out`);
       queryClient.invalidateQueries({ queryKey: ["attendance", "report"] });
     });
-    return () => { unsubCheckin(); unsubCheckout(); };
+    const unsubDriverClaimed = on("driver:task-claimed", (data: { task_type: string }) => {
+      if (user.role !== "outlet_admin") return;
+      const msg = data.task_type === "pickup"
+        ? "Driver sedang menuju lokasi pickup"
+        : "Driver sedang menuju lokasi pengantaran";
+      toast.success(msg);
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+    });
+    const unsubDriverCompleted = on("driver:task-completed", (data: { taskType?: string }) => {
+      if (user.role !== "outlet_admin") return;
+      const msg = data.taskType === "pickup"
+        ? "Laundry tiba di outlet"
+        : "Pesanan telah diterima customer";
+      toast.success(msg);
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+    });
+    const unsubBypassCreated = on("bypass:created", () => {
+      toast("Ada bypass request baru dari worker!", { icon: "🚨" });
+      queryClient.invalidateQueries({ queryKey: ["admin", "bypass-requests"] });
+    });
+    const unsubStationCompleted = on("station:order-completed", (data: { station?: string }) => {
+      toast(`Order selesai di station ${data.station ?? ""}`, { icon: "📦" });
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+    });
+    const unsubNewOrder = on("station:new-order", () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+    });
+    return () => { unsubCheckin(); unsubCheckout(); unsubDriverClaimed(); unsubDriverCompleted(); unsubBypassCreated(); unsubStationCompleted(); unsubNewOrder(); };
   }, [user, on, queryClient]);
 
   return (
