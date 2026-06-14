@@ -116,25 +116,48 @@ export const workerService = {
         orderId, status: finalStatus,
         message: `Order Anda telah melewati station ${station}`,
       });
-    }
 
-    if (station === "packing" && order.customer?.id) {
-      if (finalStatus === "waiting_payment") {
+      // Notify customer with DB record (triggers toast via notification:new)
+      const stationLabel: Record<string, string> = {
+        washing: "Pencucian",
+        ironing: "Penyetrikaan",
+        packing: "Pengemasan",
+      };
+
+      if (station === "washing") {
         await notifyCustomer(
           order.customer.id,
-          "Pembayaran Diperlukan",
-          "Cucian Anda sudah selesai diproses. Silakan lakukan pembayaran.",
+          "Pencucian Selesai",
+          `Pesanan ${order.invoice_number} telah selesai dicuci dan lanjut ke proses penyetrikaan.`,
           "order_update",
           orderId,
         );
-      } else if (finalStatus === "ready_for_delivery") {
+      } else if (station === "ironing") {
         await notifyCustomer(
           order.customer.id,
-          "Pesanan Siap Dikirim",
-          "Cucian Anda sudah selesai dan siap untuk dikirim.",
+          "Penyetrikaan Selesai",
+          `Pesanan ${order.invoice_number} telah selesai disetrika dan lanjut ke proses pengemasan.`,
           "order_update",
           orderId,
         );
+      } else if (station === "packing") {
+        if (finalStatus === "waiting_payment") {
+          await notifyCustomer(
+            order.customer.id,
+            "Pembayaran Diperlukan",
+            `Pesanan ${order.invoice_number} sudah selesai diproses. Silakan lakukan pembayaran.`,
+            "order_update",
+            orderId,
+          );
+        } else if (finalStatus === "ready_for_delivery") {
+          await notifyCustomer(
+            order.customer.id,
+            "Pesanan Siap Dikirim",
+            `Pesanan ${order.invoice_number} sudah selesai dan siap untuk dikirim.`,
+            "order_update",
+            orderId,
+          );
+        }
       }
     }
 
