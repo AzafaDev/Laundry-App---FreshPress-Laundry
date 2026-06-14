@@ -1,9 +1,10 @@
 import { prisma } from "../../lib/prisma.js";
 import { emitToRoom, emitToUser } from "../../lib/socket.js";
+import { notifyCustomer } from "../../lib/notification.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { OrderStatus, StationType } from "../../../generated/prisma/client.js";
-import { getEmployeeOutlet } from "./attendance.utils.db.js";
-import { assertShiftEligibility } from "./shift.guard.js";
+import { getEmployeeOutlet } from "../../repositories/driver-worker/attendance.repository.js";
+import { assertShiftEligibility } from "../../guards/driver-worker/shift.guard.js";
 import { driverService } from "./driver.service.js";
 
 export const workerService = {
@@ -73,30 +74,30 @@ export const workerService = {
         data: { status: finalStatus },
       });
       if (updateResult.count === 0) throw new AppError(`Station ${station} sudah diproses`, 409);
+
+      await tx.orderStatusHistory.create({
+        data: {
+          order_id: orderId,
+          old_status: order.status,
+          new_status: finalStatus,
+          changed_by_type: "employee",
+          changed_by_id: employeeId,
+          note: `Station ${station} completed by worker`,
+        },
+      });
+
+      await tx.processLog.create({
+        data: {
+          order_id: orderId,
+          station: station as StationType,
+          employee_id: employeeId,
+          input_items: actualItems ?? [],
+          completed_at: new Date(),
+        },
+      });
     });
 
     const updatedOrder = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
-
-    await prisma.orderStatusHistory.create({
-      data: {
-        order_id: orderId,
-        old_status: order.status,
-        new_status: finalStatus,
-        changed_by_type: "employee",
-        changed_by_id: employeeId,
-        note: `Station ${station} completed by worker`,
-      },
-    });
-
-    await prisma.processLog.create({
-      data: {
-        order_id: orderId,
-        station: station as StationType,
-        employee_id: employeeId,
-        input_items: actualItems ?? [],
-        completed_at: new Date(),
-      },
-    });
 
     if (shouldCreateDeliveryTask) await driverService.createDeliveryTask(orderId);
 
@@ -117,6 +118,26 @@ export const workerService = {
       });
     }
 
+    if (station === "packing" && order.customer?.id) {
+      if (finalStatus === "waiting_payment") {
+        await notifyCustomer(
+          order.customer.id,
+          "Pembayaran Diperlukan",
+          "Cucian Anda sudah selesai diproses. Silakan lakukan pembayaran.",
+          "order_update",
+          orderId,
+        );
+      } else if (finalStatus === "ready_for_delivery") {
+        await notifyCustomer(
+          order.customer.id,
+          "Pesanan Siap Dikirim",
+          "Cucian Anda sudah selesai dan siap untuk dikirim.",
+          "order_update",
+          orderId,
+        );
+      }
+    }
+
     return { order: updatedOrder, createdDeliveryTask: shouldCreateDeliveryTask };
   },
 
@@ -130,7 +151,7 @@ export const workerService = {
     photoUrls: string[],
   ) {
     const [outletId, order] = await Promise.all([
-      getEmployeeOutlet(employeeId),
+      assertShiftEligibility(employeeId),
       prisma.order.findUnique({ where: { id: orderId }, select: { outlet_id: true, status: true } }),
     ]);
 
