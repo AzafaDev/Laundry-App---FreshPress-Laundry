@@ -8,7 +8,8 @@ export type NotificationType =
   | "payment"
   | "driver_delivery_started"
   | "driver_arrived_customer"
-  | "order_completed";
+  | "order_completed"
+  | "order_update";
 
 interface CreateNotificationInput {
   userType: "customer" | "employee";

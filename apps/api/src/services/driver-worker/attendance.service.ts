@@ -1,23 +1,20 @@
 import { prisma } from "../../lib/prisma.js";
 import { emitToRoom, emitToRole } from "../../lib/socket.js";
 import { AppError } from "../../middlewares/error.middleware.js";
+import { getNow, getTodayLocalStart } from "../../utils/time.util.js";
+import { formatLocalDate, formatLocalTime } from "../../utils/format.util.js";
 import {
   canCheckIn,
   canCheckOut,
   isLate,
   calcLateMinutes,
   determineAttendanceStatus,
-  getTodayLocalStart,
-  getNow,
-  formatLocalDate,
-  formatLocalTime,
-  formatShiftHHMM,
-} from "./attendance.utils.js";
+  buildShiftPayload,
+} from "../../helpers/driver-worker/attendance.helpers.js";
 import {
-  getEmployeeOutlet,
   getEmployeeShiftForDate,
   hasActiveDriverTask,
-} from "./attendance.utils.db.js";
+} from "../../repositories/driver-worker/attendance.repository.js";
 
 interface CheckInBody {
   lat?: number;
@@ -34,74 +31,32 @@ interface CheckInData {
   check_in_longitude?: number;
 }
 
-async function buildShiftPayload(
-  employeeId: string,
-  shiftInfo: { shiftName: string; startTime: Date; endTime: Date },
-  now: Date,
-  todayAttendance: { check_in_time: Date | null; check_out_time: Date | null } | null,
-) {
-  const { shiftName, startTime, endTime } = shiftInfo;
-  const outlet = await getEmployeeOutlet(employeeId);
-  const outletData = await prisma.outlet.findUnique({ where: { id: outlet } });
-
-  const isEnded = now > endTime;
-  const isActive = !isEnded && now >= startTime;
-  const isPreShift = now < startTime;
-  const phase: "pre_shift" | "active" | "ended" = isEnded ? "ended" : isActive ? "active" : "pre_shift";
-
-  let progressPercent = 0;
-  let remainingSeconds = 0;
-  if (isActive) {
-    const total = endTime.getTime() - startTime.getTime();
-    const elapsed = now.getTime() - startTime.getTime();
-    progressPercent = Math.min(100, Math.max(0, (elapsed / total) * 100));
-    remainingSeconds = Math.max(0, (endTime.getTime() - now.getTime()) / 1000);
-  } else if (isPreShift) {
-    remainingSeconds = Math.max(0, (startTime.getTime() - now.getTime()) / 1000);
-  } else {
-    progressPercent = 100;
-  }
-
-  const alreadyCheckedIn = !!todayAttendance?.check_in_time;
-  const alreadyCheckedOut = !!todayAttendance?.check_out_time;
-
-  return {
-    shiftName,
-    startTime: formatShiftHHMM(startTime),
-    endTime: formatShiftHHMM(endTime),
-    isActive,
-    phase,
-    progressPercent: Math.round(progressPercent),
-    remainingSeconds,
-    outletName: outletData?.name ?? "",
-    outletId: outlet,
-    canCheckIn: !alreadyCheckedIn && canCheckIn(now, startTime, endTime, 15),
-    canCheckOut: alreadyCheckedIn && !alreadyCheckedOut && now > endTime,
-    serverNow: now.toISOString(),
-  };
-}
-
 export const attendanceService = {
   async checkIn(employeeId: string, body?: CheckInBody) {
     const now = getNow();
     const today = getTodayLocalStart();
 
-    const existing = await prisma.attendance.findUnique({
-      where: { employee_id_date: { employee_id: employeeId, date: today } },
-    });
+    const [existing, shift, employee] = await Promise.all([
+      prisma.attendance.findUnique({
+        where: { employee_id_date: { employee_id: employeeId, date: today } },
+      }),
+      getEmployeeShiftForDate(employeeId, today),
+      prisma.employee.findUnique({
+        where: { id: employeeId },
+        select: { full_name: true, outlet_id: true },
+      }),
+    ]);
 
-    if (existing) {
-      if (existing.check_out_time) throw new AppError("Anda sudah check-out hari ini, tidak dapat check-in lagi.", 400);
-      if (existing.check_in_time) throw new AppError("Anda sudah melakukan check-in hari ini.", 400);
-    }
-
-    const shift = await getEmployeeShiftForDate(employeeId, today);
+    if (existing?.check_out_time) throw new AppError("Anda sudah check-out hari ini, tidak dapat check-in lagi.", 400);
+    if (existing?.check_in_time) throw new AppError("Anda sudah melakukan check-in hari ini.", 400);
     if (!shift) throw new AppError("Anda tidak memiliki shift yang aktif hari ini", 403);
+    if (!employee) throw new AppError("Employee tidak ditemukan", 404);
+    if (!employee.outlet_id) throw new AppError("Employee belum memiliki outlet", 400);
     if (!canCheckIn(now, shift.startTime, shift.endTime, 15)) {
       throw new AppError("Check-in hanya dapat dilakukan maksimal 15 menit sebelum shift dimulai", 403);
     }
 
-    const outletId = await getEmployeeOutlet(employeeId);
+    const outletId = employee.outlet_id;
     const checkInData: CheckInData = {
       check_in_time: now,
       outlet_id: outletId,
@@ -116,12 +71,7 @@ export const attendanceService = {
       data: { employee_id: employeeId, date: today, ...checkInData },
     });
 
-    const employee = await prisma.employee.findUnique({
-      where: { id: employeeId },
-      select: { full_name: true, outlet_id: true },
-    });
-
-    if (employee?.outlet_id) {
+    if (employee.outlet_id) {
       emitToRoom(`outlet:${employee.outlet_id}`, "attendance:checkin", {
         employeeId,
         employeeName: employee.full_name,
@@ -130,13 +80,20 @@ export const attendanceService = {
         attendanceId: attendance.id,
       });
     }
-    emitToRole("super_admin", "attendance:updated", { type: "checkin", attendanceId: attendance.id, outletId: employee?.outlet_id });
+    emitToRole("super_admin", "attendance:updated", { type: "checkin", attendanceId: attendance.id, outletId: employee.outlet_id });
 
     return attendance;
   },
 
   async checkOut(attendanceId: string, employeeId: string) {
-    const attendance = await prisma.attendance.findUnique({ where: { id: attendanceId } });
+    const [attendance, employee] = await Promise.all([
+      prisma.attendance.findUnique({ where: { id: attendanceId } }),
+      prisma.employee.findUnique({
+        where: { id: employeeId },
+        select: { role: true, full_name: true, outlet_id: true },
+      }),
+    ]);
+
     if (!attendance) throw new AppError("Record absensi tidak ditemukan", 404);
     if (attendance.employee_id !== employeeId) throw new AppError("Anda tidak memiliki akses ke absensi ini", 403);
     if (attendance.check_out_time) throw new AppError("Anda sudah check-out hari ini", 403);
@@ -149,10 +106,6 @@ export const attendanceService = {
       throw new AppError("Check-out hanya dapat dilakukan setelah shift selesai", 403);
     }
 
-    const employee = await prisma.employee.findUnique({
-      where: { id: employeeId },
-      select: { role: true, full_name: true, outlet_id: true },
-    });
     if (employee?.role === "driver") {
       const hasActive = await hasActiveDriverTask(employeeId);
       if (hasActive) throw new AppError("Selesaikan task aktif sebelum check-out", 403);
@@ -166,7 +119,7 @@ export const attendanceService = {
     if (employee?.outlet_id) {
       emitToRoom(`outlet:${employee.outlet_id}`, "attendance:checkout", {
         employeeId,
-        employeeName: employee.full_name,
+        employeeName: employee?.full_name,
         outletId: attendance.outlet_id,
         checkOutTime: formatLocalTime(now),
         attendanceId,
@@ -261,15 +214,25 @@ export const attendanceService = {
   async getUpcomingOrActiveShift(employeeId: string) {
     const now = getNow();
     const today = getTodayLocalStart();
-    const [shiftInfo, todayAttendance] = await Promise.all([
+    const [shiftInfo, todayAttendance, employee] = await Promise.all([
       getEmployeeShiftForDate(employeeId, today),
       prisma.attendance.findUnique({
         where: { employee_id_date: { employee_id: employeeId, date: today } },
         select: { check_in_time: true, check_out_time: true },
       }),
+      prisma.employee.findUnique({
+        where: { id: employeeId },
+        select: { outlet_id: true, outlet: { select: { name: true } } },
+      }),
     ]);
     if (!shiftInfo) return null;
-    return buildShiftPayload(employeeId, shiftInfo, now, todayAttendance);
+    return buildShiftPayload(
+      shiftInfo,
+      now,
+      todayAttendance,
+      employee?.outlet_id ?? "",
+      employee?.outlet?.name ?? "",
+    );
   },
 
 };

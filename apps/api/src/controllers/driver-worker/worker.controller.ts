@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
-import { workerService } from "../../services/driver-worker/index.js";
+import { workerService } from "../../services/driver-worker/worker.service.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { requireUserId } from "../../utils/asyncHandler.js";
 import {
