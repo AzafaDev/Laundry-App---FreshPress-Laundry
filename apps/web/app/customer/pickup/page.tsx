@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   CalendarClock,
   CheckCircle2,
-  Clock,
   Loader2,
   MapPin,
   Truck,
@@ -23,13 +22,6 @@ const getTodayDateKey = () => {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 };
-
-const TIME_SLOTS = [
-  "08:00 AM - 10:00 AM",
-  "10:00 AM - 12:00 PM",
-  "01:00 PM - 03:00 PM",
-  "05:00 PM - 07:00 PM",
-];
 
 const PICKUP_DATES = Array.from({ length: 4 }, (_, offset) => {
   const date = new Date();
@@ -53,7 +45,6 @@ export default function CustomerOrderPage() {
 
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(getTodayDateKey());
-  const [selectedTime, setSelectedTime] = useState<string>(TIME_SLOTS[1]);
   const [createOrderError, setCreateOrderError] = useState<string | null>(null);
   const [createOrderSuccess, setCreateOrderSuccess] = useState<string | null>(null);
 
@@ -119,7 +110,6 @@ export default function CustomerOrderPage() {
     await createOrderMutation.mutateAsync({
       pickup_address_id: selectedAddress.id,
       pickup_date: selectedDate,
-      pickup_time_slot: selectedTime,
       service_type: "wash-and-fold",
       notes: "Order pickup dibuat dari halaman customer.",
     });
@@ -268,7 +258,7 @@ export default function CustomerOrderPage() {
             </div>
             <div>
               <h2 className="text-base font-bold text-on-surface">Jadwal Pickup</h2>
-              <p className="text-sm text-on-surface-variant">Pilih tanggal dan jam penjemputan.</p>
+              <p className="text-sm text-on-surface-variant">Pilih tanggal penjemputan.</p>
             </div>
           </div>
 
@@ -290,28 +280,6 @@ export default function CustomerOrderPage() {
                   <span className="block text-xs font-bold uppercase text-on-surface-variant">{d.label}</span>
                   <span className="block text-xl font-bold text-on-surface">{d.day}</span>
                   <span className="block text-xs text-on-surface-variant">{d.month}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Time slot selection */}
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-2">Jam Pickup</p>
-            <div className="flex flex-wrap gap-2">
-              {TIME_SLOTS.map((slot) => (
-                <button
-                  key={slot}
-                  type="button"
-                  onClick={() => setSelectedTime(slot)}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
-                    selectedTime === slot
-                      ? "border-primary bg-primary text-on-primary shadow-sm"
-                      : "border-outline-variant bg-surface text-on-surface hover:border-primary/50"
-                  }`}
-                >
-                  <Clock className="w-3.5 h-3.5" />
-                  {slot}
                 </button>
               ))}
             </div>

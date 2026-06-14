@@ -68,12 +68,6 @@ export const updateAddressSchema = createAddressSchema.partial();
 export const createOrderSchema = z.object({
   pickup_address_id: z.string().uuid("Alamat pickup tidak valid."),
   pickup_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal pickup tidak valid."),
-  pickup_time_slot: z.enum([
-    "08:00 AM - 10:00 AM",
-    "10:00 AM - 12:00 PM",
-    "01:00 PM - 03:00 PM",
-    "05:00 PM - 07:00 PM",
-  ]),
   service_type: z.enum(["wash-and-fold", "dry-cleaning"]),
   estimated_weight_kg: z.number().min(0).max(100).optional(),
   notes: z.string().max(500).optional(),

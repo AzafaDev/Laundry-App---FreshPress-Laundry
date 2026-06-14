@@ -239,7 +239,7 @@ export const processOrder = async (
         where: { id },
         data: {
           total_weight_kg: body.total_weight_kg,
-          total_price: totalPrice,
+          total_price: totalPrice + Number(order.delivery_fee),
           notes: body.notes,
           created_by_outlet_admin_id: adminId,
           status: OrderStatus.washing,

@@ -55,7 +55,7 @@ function ResetPasswordForm() {
     setError(null);
     try {
       const result = await employeeAuthService.resetPassword(token!, data.newPassword);
-      setAuth(result.employee as any);
+      setAuth(result.employee);
       router.replace(getDashboardPath(result.employee.role as EmployeeRole));
     } catch (err: unknown) {
       const status = (err as any)?.response?.status;

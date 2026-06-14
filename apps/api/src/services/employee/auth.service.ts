@@ -240,15 +240,31 @@ export const resetPassword = async (rawToken: string, newPassword: string, res: 
   const expiresAt = new Date(Date.now() + expiresMs);
   await storeRefreshToken(employee.id, refreshToken, expiresAt, "employee");
 
+  const accessExpiresMs = parseDuration(process.env.JWT_EXPIRES_IN || "15m");
+
+  res.cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+    maxAge: accessExpiresMs,
+  });
+
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
     maxAge: expiresMs,
   });
 
+  // Fetch outlet name for store hydration
+  const outlet = employee.outlet_id
+    ? await prisma.outlet.findUnique({ where: { id: employee.outlet_id }, select: { name: true } })
+    : null;
+
   const { password_hash: _, ...employeeWithoutPassword } = employee;
-  return { accessToken, employee: employeeWithoutPassword };
+  return {
+    employee: { ...employeeWithoutPassword, outlet_name: outlet?.name ?? null },
+  };
 };
 
 export const changePassword = async (
