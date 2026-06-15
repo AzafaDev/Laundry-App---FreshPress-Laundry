@@ -3,9 +3,8 @@ import { AppError } from "../../middlewares/error.middleware.js";
 import { notifyCustomer } from "../../lib/notification.js";
 import { emitToRoom } from "../../lib/socket.js";
 
-const FREE_RADIUS_KM = Number(process.env.FREE_RADIUS_KM ?? 5);
-const SERVICE_RADIUS_KM = Number(process.env.SERVICE_RADIUS_KM ?? 10);
-const FLAT_RATE_ONGKIR = Number(process.env.FLAT_RATE_ONGKIR ?? 10_000);
+const FREE_RADIUS_KM = Number(5);
+const FLAT_RATE_ONGKIR = Number(10_000);
 
 function haversineKm(
   lat1: number,
@@ -73,7 +72,7 @@ export const createCustomerOrder = async (
 
   const outlets = await prisma.outlet.findMany({
     where: { is_active: true, deleted_at: null },
-    select: { id: true, latitude: true, longitude: true },
+    select: { id: true, latitude: true, longitude: true, service_radius_km: true },
   });
 
   if (outlets.length === 0) {
@@ -89,8 +88,9 @@ export const createCustomerOrder = async (
         Number(outlet.latitude),
         Number(outlet.longitude),
       ),
+      service_radius_km: Number(outlet.service_radius_km),
     }))
-    .filter((outlet) => outlet.distance <= SERVICE_RADIUS_KM)
+    .filter((outlet) => outlet.distance <= outlet.service_radius_km)
     .sort((a, b) => a.distance - b.distance)[0];
 
   if (!nearestOutlet) {

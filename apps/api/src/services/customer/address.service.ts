@@ -21,9 +21,14 @@ function haversineKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Rp 3.000 / km, min Rp 5.000 base
-const BASE_FEE = 5_000;
-const RATE_PER_KM = 3_000;
+// Flat ongkir: gratis dalam radius bebas, kena flat rate jika lebih
+const FREE_RADIUS_KM = Number(5);
+const FLAT_RATE_ONGKIR = Number(10_000);
+
+function calculateDeliveryFee(distanceKm: number): number {
+  if (distanceKm <= FREE_RADIUS_KM) return 0;
+  return FLAT_RATE_ONGKIR;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface CreateAddressInput {
@@ -203,7 +208,7 @@ export const estimateDeliveryFee = async (
       outlet_city: o.city,
       distance_km: Math.round(distKm * 10) / 10,
       within_service_area: distKm <= Number(o.service_radius_km),
-      delivery_fee: Math.round(BASE_FEE + distKm * RATE_PER_KM),
+      delivery_fee: calculateDeliveryFee(distKm),
     };
   });
 
@@ -221,7 +226,7 @@ export const estimateDeliveryFee = async (
     },
     nearest_outlet: nearest,
     all_outlets: outletDistances,
-    base_fee: BASE_FEE,
-    rate_per_km: RATE_PER_KM,
+    free_radius_km: FREE_RADIUS_KM,
+    flat_rate_ongkir: FLAT_RATE_ONGKIR,
   };
 };

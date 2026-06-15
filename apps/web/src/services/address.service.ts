@@ -61,8 +61,8 @@ export interface DeliveryEstimate {
   };
   nearest_outlet: OutletDistance;
   all_outlets: OutletDistance[];
-  base_fee: number;
-  rate_per_km: number;
+  free_radius_km: number;
+  flat_rate_ongkir: number;
 }
 
 type Envelope<T> = { success: true; data: T; message: string };
