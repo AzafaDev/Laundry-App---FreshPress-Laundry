@@ -94,7 +94,7 @@ export function UserFormModal({ user, onClose }: Props) {
           email: form.email,
           phone: form.phone || undefined,
           role: form.role,
-          outlet_id: form.outlet_id || null,
+          outlet_id: form.outlet_id || undefined,
           is_active: form.is_active,
           ...(form.password ? { password: form.password } : {}),
         };
