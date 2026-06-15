@@ -233,6 +233,38 @@ export const workerService = {
     return bypass;
   },
 
+  // Called by admin bypass controller on approve — skips shift guard
+  async completeStationAfterBypass(
+    station: "washing" | "ironing" | "packing",
+    orderId: string,
+    workerId: string,
+    actualItems: { clothing_type_id: string; actual_quantity: number }[],
+  ) {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { payment: true, customer: { select: { id: true, full_name: true } } },
+    });
+    if (!order) throw new AppError("Order tidak ditemukan", 404);
+    if (order.status !== station) {
+      throw new AppError(`Order tidak sedang di station ${station}`, 400);
+    }
+
+    const isPaid = order.payment?.status === "paid";
+    const finalStatus = resolveNextStatus(station, isPaid);
+    const shouldCreateDeliveryTask = station === "packing" && isPaid;
+
+    // checkPendingBypass = false karena bypass sudah di-approve, tidak perlu cek ulang
+    await runCompleteStationTransaction(orderId, workerId, station, order.status, finalStatus, false, actualItems);
+
+    const updatedOrder = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+
+    if (shouldCreateDeliveryTask) await driverService.createDeliveryTask(orderId);
+
+    await emitStationEvents(order, station, finalStatus, workerId);
+
+    return { order: updatedOrder, createdDeliveryTask: shouldCreateDeliveryTask };
+  },
+
   async getOrderItemsForStation(orderId: string) {
     return prisma.orderItemBreakdown.findMany({
       where: { order_id: orderId },

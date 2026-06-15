@@ -286,6 +286,20 @@ export default function CustomerProgressPage() {
                             </span>
                           </div>
                         ))}
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-on-surface-variant">Ongkos kirim</span>
+                          <span className="font-medium text-on-surface">
+                            {Number(order.delivery_fee ?? 0) > 0
+                              ? formatRupiah(Number(order.delivery_fee))
+                              : "Gratis"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-sm font-semibold border-t border-outline-variant pt-1 mt-1">
+                          <span className="text-on-surface">Total</span>
+                          <span className="text-primary">
+                            {formatRupiah(Number(order.total_price ?? 0))}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   )}

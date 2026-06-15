@@ -301,11 +301,11 @@ export default function BypassRequestsPage() {
                 </tr>
               ) : (
                 filtered.map((req) => {
-                  // Hitung total selisih per item: selisih = expected - actual
+                  // Hitung total selisih per item (sama seperti BypassReviewModal)
                   const diff = req.expected_items.reduce((total, exp) => {
                     const actItem = req.actual_items.find((a) => a.item_id === exp.item_id);
-                    const actual = exp.quantity - (actItem?.quantity ?? 0); // actual = expected - selisih
-                    return total + (exp.quantity - actual);
+                    const selisih = exp.quantity - (actItem?.quantity ?? 0); // expected - actual
+                    return total + selisih;
                   }, 0);
                   return (
                     <tr
