@@ -43,9 +43,15 @@ export default function DriverLayout({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-deliveries"] });
     });
 
+    const unsubNotification = on("notification:new", () => {
+      queryClient.invalidateQueries({ queryKey: ["driver", "notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["driver", "notifications", "unread"] });
+    });
+
     return () => {
       unsubNewPickup();
       unsubPaymentCompleted();
+      unsubNotification();
     };
   }, [user, on, queryClient]);
 

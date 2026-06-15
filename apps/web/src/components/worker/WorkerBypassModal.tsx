@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Flag, Upload, Trash2, Loader2, AlertTriangle, ImagePlus } from "lucide-react";
+import { X, Flag, Upload, Trash2, Loader2, AlertTriangle, ImagePlus, Shirt, Tag } from "lucide-react";
 import { workerStationService } from "@/services/workerStation.service";
 import toast from "react-hot-toast";
 import type { Discrepancy } from "@/services/workerStation.service";
@@ -140,36 +140,60 @@ export function WorkerBypassModal({
 
         <div className="overflow-y-auto flex-1 px-5 py-5 space-y-5 will-change-scroll">
 
-          {/* Diff Table */}
-          <div>
-            <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2.5">
-              Ketidaksesuaian Item
-            </p>
-            <div className="rounded-xl border border-outline-variant overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-surface-container-low border-b border-outline-variant">
-                    <th className="text-left px-3 py-2 text-xs font-semibold text-on-surface-variant">Item</th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Aktual</th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {discrepancies.map((d) => (
-                    <tr key={`${d.item_type}:${d.item_id}`} className="border-b border-outline-variant last:border-0 bg-amber-50/60">
-                      <td className="px-3 py-2.5 font-medium text-on-surface">{d.name}</td>
-                      <td className="px-3 py-2.5 text-center font-bold text-on-surface">{d.actual}</td>
-                      <td className="px-3 py-2.5 text-center">
-                        <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full bg-error/10 text-error">
-                          Tidak Sesuai
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* Diff Tables — grouped by type */}
+          {(() => {
+            const breakdownDisc = discrepancies.filter((d) => d.item_type === "breakdown");
+            const satuanDisc = discrepancies.filter((d) => d.item_type === "satuan");
+
+            const renderGroup = (items: typeof discrepancies, type: "breakdown" | "satuan") => {
+              const isBreakdown = type === "breakdown";
+              return (
+                <div key={type}>
+                  <div className="flex items-center gap-1.5 mb-2 px-1">
+                    {isBreakdown
+                      ? <Shirt className="w-3.5 h-3.5 text-amber-600" />
+                      : <Tag className="w-3.5 h-3.5 text-blue-500" />
+                    }
+                    <span className={`text-xs font-bold uppercase tracking-wide ${isBreakdown ? "text-amber-700" : "text-blue-600"}`}>
+                      {isBreakdown ? "Kiloan — Breakdown" : "Satuan"}
+                    </span>
+                    <span className={`ml-auto text-xs font-semibold px-1.5 py-0.5 rounded-full ${isBreakdown ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-600"}`}>
+                      {items.length} item
+                    </span>
+                  </div>
+
+                  <div className={`rounded-xl overflow-hidden border ${isBreakdown ? "border-amber-200" : "border-blue-200"}`}>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className={`border-b ${isBreakdown ? "bg-amber-50 border-amber-200" : "bg-blue-50 border-blue-200"}`}>
+                          <th className="text-left px-3 py-2 text-xs font-semibold text-on-surface-variant">Item</th>
+                          <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Jumlah Kamu</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((d) => (
+                          <tr key={`${d.item_type}:${d.item_id}`} className={`border-b last:border-0 ${isBreakdown ? "border-amber-100 bg-amber-50/40" : "border-blue-100 bg-blue-50/40"}`}>
+                            <td className="px-3 py-2.5 font-medium text-on-surface">{d.name}</td>
+                            <td className="px-3 py-2.5 text-center font-bold text-on-surface">{d.actual}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            };
+
+            return (
+              <div className="space-y-4">
+                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+                  Ketidaksesuaian Item
+                </p>
+                {breakdownDisc.length > 0 && renderGroup(breakdownDisc, "breakdown")}
+                {satuanDisc.length > 0 && renderGroup(satuanDisc, "satuan")}
+              </div>
+            );
+          })()}
 
           {/* Description */}
           <div>
