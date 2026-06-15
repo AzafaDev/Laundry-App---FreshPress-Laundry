@@ -25,6 +25,7 @@ const DRIVER_TASK_DETAIL_SELECT = {
       pickup_address: { select: { address: true, latitude: true, longitude: true } },
       customer: { select: { full_name: true, phone: true } },
       outlet: { select: { latitude: true, longitude: true } },
+      notes: true,
     },
   },
 } satisfies Prisma.DriverTaskSelect;

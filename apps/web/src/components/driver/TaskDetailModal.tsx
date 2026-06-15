@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Phone, MessageCircle, CheckCircle, Loader2, X } from "lucide-react";
+import { MapPin, Phone, MessageCircle, CheckCircle, Loader2, X, Clock } from "lucide-react";
 import type { DriverTask } from "@/services/driverTask.service";
 import { ConfirmCompleteDialog } from "./ConfirmCompleteDialog";
 
@@ -43,7 +43,14 @@ export function TaskDetailModal({
     : order?.delivery_address?.address || order?.pickup_address?.address;
   const customerName = order?.customer?.full_name ?? "Customer";
   const invoiceNumber = order?.invoice_number ?? "#Unknown";
-  const hasNotes = order && "notes" in order && (order as any).notes;
+  const notes = order?.notes;
+  const requestTime = new Date(displayTask.created_at).toLocaleString("id-ID", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   const handleClose = () => {
     if (showConfirm) {
@@ -116,13 +123,21 @@ export function TaskDetailModal({
                 </div>
               )}
 
-              {hasNotes && (
-                <div className="flex items-start gap-3 p-4 bg-surface-container-low rounded-xl">
-                  <MessageCircle className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-bold text-on-surface">Catatan Khusus</p>
-                    <p className="text-sm text-on-surface-variant italic">&ldquo;{(order as any).notes}&rdquo;</p>
+              <div className="flex items-start gap-3 p-4 bg-surface-container-low rounded-xl">
+                <Clock className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-bold text-on-surface">Waktu Request</p>
+                  <p className="text-sm text-on-surface-variant">{requestTime}</p>
+                </div>
+              </div>
+
+              {notes && (
+                <div className="relative overflow-hidden rounded-xl border-l-[3px] border-tertiary bg-tertiary/5 px-4 py-3.5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MessageCircle className="w-3.5 h-3.5 text-tertiary flex-shrink-0" />
+                    <p className="text-xs font-bold uppercase tracking-widest text-tertiary">Catatan Customer</p>
                   </div>
+                  <p className="text-sm text-on-surface leading-relaxed italic">{notes}</p>
                 </div>
               )}
 
