@@ -6,6 +6,7 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { buildPagination, getSkipTake } from "../../utils/pagination.js";
 import { emitToUser } from "../../lib/socket.js";
+import { workerService } from "../../services/driver-worker/worker.service.js";
 
 // ── Validation schemas ────────────────────────────────────────────────────────
 const listBypassQuerySchema = z.object({
@@ -184,6 +185,26 @@ export const reviewBypassRequest = async (
         reviewer: { select: { id: true, full_name: true } },
       },
     });
+
+    // On approve: auto-complete the station using the saved actual_items
+    if (body.action === "approve") {
+      const bypassWithItems = await prisma.bypassRequest.findUnique({
+        where: { id },
+        select: { station: true, requested_by: true, actual_items: true, order_id: true },
+      });
+      if (bypassWithItems) {
+        const actualItems = (bypassWithItems.actual_items ?? []) as {
+          clothing_type_id: string;
+          actual_quantity: number;
+        }[];
+        await workerService.completeStationAfterBypass(
+          bypassWithItems.station as "washing" | "ironing" | "packing",
+          bypassWithItems.order_id,
+          bypassWithItems.requested_by,
+          actualItems,
+        );
+      }
+    }
 
     // Notify the requesting worker via WebSocket
     emitToUser(bypass.requested_by, body.action === "approve" ? "bypass:approved" : "bypass:rejected", {
