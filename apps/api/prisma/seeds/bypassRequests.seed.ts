@@ -4,6 +4,9 @@ import { prisma } from '../../src/lib/prisma.js';
 //   1. WASHING-2  → pending   (worker baru request, belum di-review)
 //   2. IRONING-2  → approved  (outlet admin sudah setujui)
 //   3. PACKING-2  → rejected  (outlet admin tolak, worker harus isi ulang)
+//
+// Setiap bypass request memiliki expected_items & actual_items yang mencerminkan
+// data order sesungguhnya: breakdown kiloan (order_item_breakdowns) + satuan (order_items pcs).
 
 export async function seedBypassRequests(): Promise<void> {
   const outletAdmin = await prisma.employee.findFirst({
@@ -30,16 +33,6 @@ export async function seedBypassRequests(): Promise<void> {
       invoice: 'INV-SEED-WASHING-2',
       station: 'washing' as const,
       workerId: washingWorker.id,
-      expected: [
-        { name: 'Kaos', quantity: 5 },
-        { name: 'Celana Panjang', quantity: 3 },
-        { name: 'Seprei', quantity: 2 },
-      ],
-      actual: [
-        { name: 'Kaos', quantity: 4 },
-        { name: 'Celana Panjang', quantity: 3 },
-        { name: 'Seprei', quantity: 2 },
-      ],
       discrepancy: '1 kaos tidak ditemukan saat sortir di mesin cuci. Kemungkinan tertinggal di tas pickup.',
       status: 'pending' as const,
       reviewerId: null,
@@ -49,16 +42,6 @@ export async function seedBypassRequests(): Promise<void> {
       invoice: 'INV-SEED-IRONING-2',
       station: 'ironing' as const,
       workerId: ironingWorker.id,
-      expected: [
-        { name: 'Kaos', quantity: 5 },
-        { name: 'Celana Panjang', quantity: 3 },
-        { name: 'Seprei', quantity: 2 },
-      ],
-      actual: [
-        { name: 'Kaos', quantity: 5 },
-        { name: 'Celana Panjang', quantity: 2 },
-        { name: 'Seprei', quantity: 2 },
-      ],
       discrepancy: '1 celana panjang robek saat proses pencucian, tidak dapat disetrika. Sudah difoto dan disimpan.',
       status: 'approved' as const,
       reviewerId: outletAdmin.id,
@@ -68,16 +51,6 @@ export async function seedBypassRequests(): Promise<void> {
       invoice: 'INV-SEED-PACKING-2',
       station: 'packing' as const,
       workerId: packingWorker.id,
-      expected: [
-        { name: 'Kaos', quantity: 5 },
-        { name: 'Celana Panjang', quantity: 3 },
-        { name: 'Seprei', quantity: 2 },
-      ],
-      actual: [
-        { name: 'Kaos', quantity: 3 },
-        { name: 'Celana Panjang', quantity: 3 },
-        { name: 'Seprei', quantity: 2 },
-      ],
       discrepancy: '2 kaos tidak ada di rak packing. Belum diperiksa apakah tertinggal di station setrika.',
       status: 'rejected' as const,
       reviewerId: outletAdmin.id,
@@ -91,6 +64,10 @@ export async function seedBypassRequests(): Promise<void> {
   for (const s of scenarios) {
     const order = await prisma.order.findFirst({
       where: { invoice_number: s.invoice },
+      include: {
+        order_item_breakdowns: { include: { clothing_type: true } },
+        order_items: { include: { laundry_item: true } },
+      },
     });
 
     if (!order) {
@@ -99,7 +76,6 @@ export async function seedBypassRequests(): Promise<void> {
       continue;
     }
 
-    // Cek apakah bypass request untuk order + station ini sudah ada
     const existing = await prisma.bypassRequest.findFirst({
       where: { order_id: order.id, station: s.station },
     });
@@ -110,13 +86,42 @@ export async function seedBypassRequests(): Promise<void> {
       continue;
     }
 
+    // Build expected_items dari data order sesungguhnya
+    const breakdownExpected = order.order_item_breakdowns.map((b) => ({
+      item_type: 'breakdown' as const,
+      item_id: b.clothing_type_id,
+      name: b.clothing_type.name,
+      quantity: Number(b.quantity),
+    }));
+
+    const satuanItems = order.order_items.filter((i) => i.laundry_item.unit !== 'kg');
+    const satuanExpected = satuanItems.map((i) => ({
+      item_type: 'satuan' as const,
+      item_id: i.laundry_item_id,
+      name: i.laundry_item.name,
+      quantity: Number(i.quantity),
+    }));
+
+    const expectedItems = [...breakdownExpected, ...satuanExpected];
+
+    // Actual items: kurangi 1 pada item pertama breakdown & item pertama satuan untuk simulasi discrepancy
+    const actualBreakdown = breakdownExpected.map((item, idx) => ({
+      ...item,
+      quantity: idx === 0 ? Math.max(0, item.quantity - 1) : item.quantity,
+    }));
+    const actualSatuan = satuanExpected.map((item, idx) => ({
+      ...item,
+      quantity: idx === 0 ? Math.max(0, item.quantity - 1) : item.quantity,
+    }));
+    const actualItems = [...actualBreakdown, ...actualSatuan];
+
     await prisma.bypassRequest.create({
       data: {
         order_id: order.id,
         station: s.station,
         requested_by: s.workerId,
-        expected_items: s.expected,
-        actual_items: s.actual,
+        expected_items: expectedItems,
+        actual_items: actualItems,
         discrepancy_description: s.discrepancy,
         photo_evidence: [],
         status: s.status,
@@ -126,7 +131,7 @@ export async function seedBypassRequests(): Promise<void> {
       },
     });
 
-    console.log(`✅ Bypass request ${s.invoice} (${s.station}) [${s.status}] created`);
+    console.log(`✅ Bypass request ${s.invoice} (${s.station}) [${s.status}] created (${expectedItems.length} items: ${breakdownExpected.length} breakdown + ${satuanExpected.length} satuan)`);
     created++;
   }
 

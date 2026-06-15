@@ -12,7 +12,8 @@ export interface StationOrder {
   total_price: number | null;
   notes: string | null;
   created_at: string;
-  hasPendingBypass: boolean;
+  bypassStatus: "pending" | "rejected" | "approved" | null;
+  bypassAdminNotes: string | null;
   customer: {
     id: string;
     full_name: string;

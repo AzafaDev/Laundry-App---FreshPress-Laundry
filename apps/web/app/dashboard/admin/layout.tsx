@@ -93,19 +93,25 @@ export default function AdminDashboardLayout({
       );
     });
 
-    return () => { unsubCheckin(); unsubCheckout(); unsubDriverClaimed(); unsubDriverCompleted(); unsubNewPickup(); unsubPaymentCompleted(); unsubComplaintSubmitted(); };
-    const unsubBypassCreated = on("bypass:created", () => {
+    const unsubBypassCreated = on("bypass:created", (data: { outletId?: string }) => {
+      if (user.role === "outlet_admin" && data.outletId && data.outletId !== user.outlet_id) return;
       toast("Ada bypass request baru dari worker!", { icon: "🚨" });
       queryClient.invalidateQueries({ queryKey: ["admin", "bypass-requests"] });
     });
-    const unsubStationCompleted = on("station:order-completed", (data: { station?: string }) => {
-      toast(`Order selesai di station ${data.station ?? ""}`, { icon: "📦" });
+    const unsubStationCompleted = on("station:order-completed", (data: { station?: string; newStatus?: string }) => {
+      let msg = `Order selesai di station ${data.station ?? ""}`;
+      if (data.station === "packing") {
+        msg = data.newStatus === "waiting_payment"
+          ? "Pengemasan selesai — menunggu pembayaran customer"
+          : "Pengemasan selesai — pesanan siap dikirim";
+      }
+      toast(msg, { icon: "📦" });
       queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
     });
     const unsubNewOrder = on("station:new-order", () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
     });
-    return () => { unsubCheckin(); unsubCheckout(); unsubDriverClaimed(); unsubDriverCompleted(); unsubBypassCreated(); unsubStationCompleted(); unsubNewOrder(); };
+    return () => { unsubCheckin(); unsubCheckout(); unsubDriverClaimed(); unsubDriverCompleted(); unsubNewPickup(); unsubPaymentCompleted(); unsubComplaintSubmitted(); unsubBypassCreated(); unsubStationCompleted(); unsubNewOrder(); };
   }, [user, on, queryClient]);
 
   return (

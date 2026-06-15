@@ -15,6 +15,7 @@ import {
   getCurrentShift,
 } from "../../controllers/driver-worker/attendance.controller.js";
 import { getAvailablePickups, getAvailableDeliveries, getActiveTask, claimTask, completeTask } from "../../controllers/driver-worker/driver.controller.js";
+import * as NotifCtrl from "../../controllers/admin/notification.controller.js";
 import { getStationOrders, completeStation, submitItems, createBypassRequest, uploadBypassPhotosMiddleware, getBypassForOrder } from "../../controllers/driver-worker/worker.controller.js";
 
 const router = Router();
@@ -105,5 +106,10 @@ router.post(
   uploadBypassPhotosMiddleware,
   createBypassRequest,
 );
+
+router.get("/driver/notifications", requireRole("driver"), NotifCtrl.listNotifications);
+router.get("/driver/notifications/unread-count", requireRole("driver"), NotifCtrl.getUnreadCount);
+router.patch("/driver/notifications/read-all", requireRole("driver"), NotifCtrl.markAllAsRead);
+router.patch("/driver/notifications/:id/read", requireRole("driver"), NotifCtrl.markAsRead);
 
 export default router;

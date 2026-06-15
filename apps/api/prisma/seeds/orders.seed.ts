@@ -65,24 +65,23 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
     prisma.clothingType.upsert({ where: { name: 'Seprei' }, update: {}, create: { name: 'Seprei' } }),
   ]);
 
-  // Buat laundry items dummy jika belum ada
-  const laundryItems = await Promise.all([
-    prisma.laundryItem.upsert({
-      where: { name: 'Kaos' },
-      update: {},
-      create: { name: 'Kaos', unit: 'pcs', base_price: 5000 },
-    }),
-    prisma.laundryItem.upsert({
-      where: { name: 'Celana Panjang' },
-      update: {},
-      create: { name: 'Celana Panjang', unit: 'pcs', base_price: 8000 },
-    }),
-    prisma.laundryItem.upsert({
-      where: { name: 'Seprei' },
-      update: {},
-      create: { name: 'Seprei', unit: 'pcs', base_price: 15000 },
-    }),
-  ]);
+  // Ambil laundry items dari DB (sudah di-seed oleh seedLaundryItems)
+  const laundryItemNames = ['Laundry Kiloan', 'Kaos', 'Kemeja', 'Celana Panjang', 'Jaket Biasa'];
+  const laundryItemsRaw = await prisma.laundryItem.findMany({
+    where: { name: { in: laundryItemNames } },
+  });
+  const laundryItemMap = new Map(laundryItemsRaw.map((i) => [i.name, i]));
+
+  const kiloanItem = laundryItemMap.get('Laundry Kiloan');
+  const satuanItems = [
+    laundryItemMap.get('Kaos'),
+    laundryItemMap.get('Kemeja'),
+    laundryItemMap.get('Celana Panjang'),
+    laundryItemMap.get('Jaket Biasa'),
+  ].filter((i): i is NonNullable<typeof i> => !!i);
+
+  if (!kiloanItem) throw new Error('Laundry item "Laundry Kiloan" tidak ditemukan — jalankan seedLaundryItems dulu.');
+  if (satuanItems.length === 0) throw new Error('Satuan laundry items tidak ditemukan — jalankan seedLaundryItems dulu.');
 
   // Helper buat order
   async function createOrder(
@@ -98,8 +97,13 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
       throw new Error(`Primary address for customer ${customerId} not found`);
     }
 
-    const itemsTotalPrice = laundryItems.reduce(
-      (sum, item, i) => sum + Number(item.base_price) * (i + 2),
+    // order_items: 1 kiloan service + 4 satuan pcs items
+    const orderItemsData = [
+      { item: kiloanItem, quantity: 3.5 },
+      ...satuanItems.map((item, i) => ({ item, quantity: [3, 2, 2, 1][i] ?? 1 })),
+    ];
+    const itemsTotalPrice = orderItemsData.reduce(
+      (sum, { item, quantity }) => sum + Number(item.base_price) * quantity,
       0,
     );
 
@@ -109,19 +113,17 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
     });
     if (existing) {
       console.log(`⏭️  Order ${invoiceNumber} sudah ada, skip`);
-      // Tambahkan items jika belum ada (untuk order yang sudah di-seed sebelumnya)
       if (existing.order_items.length === 0) {
         await prisma.orderItem.createMany({
-          data: laundryItems.map((item, i) => ({
+          data: orderItemsData.map(({ item, quantity }) => ({
             order_id: existing.id,
             laundry_item_id: item.id,
-            quantity: i + 2,
+            quantity,
             price_at_order: item.base_price,
           })),
         });
         console.log(`✅ Order items ditambahkan ke ${invoiceNumber}`);
       }
-      // Selaraskan total_price dengan total order_items (perbaikan data lama)
       if (Number(existing.total_price) !== itemsTotalPrice) {
         await prisma.order.update({
           where: { id: existing.id },
@@ -147,10 +149,10 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
     });
 
     await prisma.orderItem.createMany({
-      data: laundryItems.map((item, i) => ({
+      data: orderItemsData.map(({ item, quantity }) => ({
         order_id: order.id,
         laundry_item_id: item.id,
-        quantity: i + 2,
+        quantity,
         price_at_order: item.base_price,
       })),
     });

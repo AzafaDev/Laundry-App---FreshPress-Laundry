@@ -9,6 +9,7 @@ import { seedOrders } from './orders.seed.js';
 import { seedWaitingPaymentOrders } from './waitingPayment.seed.js';
 import { seedLaundryItems } from './laundryItems.seed.js';
 import { seedBypassRequests } from './bypassRequests.seed.js';
+import { seedDriverNotifications } from './driverNotifications.seed.js';
 
 export async function runAllSeeds() {
   console.log('🌱 Starting database seeding...\n');
@@ -58,6 +59,8 @@ export async function runAllSeeds() {
   await seedOrders(mainOutlet, employees, customers);
 
   await seedBypassRequests();
+
+  await seedDriverNotifications();
 
   console.log('\n✅ All seeds completed successfully');
 }
@@ -127,6 +130,9 @@ export async function runModuleSeed(moduleName: string) {
       break;
     case 'bypass-requests':
       await seedBypassRequests();
+      break;
+    case 'driver-notifications':
+      await seedDriverNotifications();
       break;
     default:
       console.log(`Module ${moduleName} not recognized`);

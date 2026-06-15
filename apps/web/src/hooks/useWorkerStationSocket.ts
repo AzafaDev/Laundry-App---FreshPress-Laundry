@@ -1,9 +1,7 @@
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSocket } from "@/hooks/useSocket";
-import { socketToast } from "@/lib/socketToast";
-import { stationConfig, type BypassState } from "@/components/worker/stationConfig";
-import type { Discrepancy } from "@/services/workerStation.service";
+import type { BypassState } from "@/components/worker/stationConfig";
 
 interface UseWorkerStationSocketParams {
   station: "washing" | "ironing" | "packing" | null;
@@ -24,7 +22,6 @@ export function useWorkerStationSocket({
 
     const unsubNewOrder = on("station:new-order", (data: { station: string }) => {
       if (data.station === station) {
-        socketToast(`Order baru masuk ke ${stationConfig[station].title}`);
         queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
       }
     });
@@ -34,7 +31,6 @@ export function useWorkerStationSocket({
     });
 
     const unsubApproved = on("bypass:approved", (data: { orderId: string }) => {
-      socketToast("Bypass disetujui! Order akan dilanjutkan.");
       setBypassState((prev) => {
         const next = { ...prev };
         delete next[data.orderId];
@@ -44,7 +40,6 @@ export function useWorkerStationSocket({
     });
 
     const unsubRejected = on("bypass:rejected", (data: { orderId: string; admin_notes?: string }) => {
-      socketToast(`Bypass ditolak${data.admin_notes ? `: ${data.admin_notes}` : ""}`, undefined, "error");
       setBypassState((prev) => {
         if (!prev[data.orderId]) return prev;
         return {
@@ -52,6 +47,7 @@ export function useWorkerStationSocket({
           [data.orderId]: { ...prev[data.orderId], submitted: false },
         };
       });
+      queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     });
 
     const unsubConnect = on("connect", () => setIsConnected(true));
