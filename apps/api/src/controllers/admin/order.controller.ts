@@ -261,10 +261,15 @@ export const processOrder = async (
       return updatedOrder;
     });
 
+    const deliveryFee = Number(order.delivery_fee ?? 0);
+    const grandTotal = totalPrice + deliveryFee;
+    const fmt = (n: number) =>
+      new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
+
     await notifyCustomer(
       updated.customer_id,
       "Detail pesanan telah diinput",
-      `Outlet admin telah menginput detail item untuk pesanan ${updated.invoice_number}.`,
+      `Pesanan ${updated.invoice_number}: laundry ${fmt(totalPrice)} + ongkir ${fmt(deliveryFee)} = total ${fmt(grandTotal)}.`,
       "order_details",
       updated.id,
     );
