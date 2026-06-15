@@ -31,6 +31,7 @@ export interface DriverTask {
       full_name: string;
       phone: string;
     };
+    notes?: string | null;
   };
 }
 
