@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
-import { workerService } from "../../services/driver-worker/index.js";
+import { workerService } from "../../services/driver-worker/worker.service.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { requireUserId } from "../../utils/asyncHandler.js";
 import {
@@ -63,12 +63,13 @@ export const submitItems = async (req: Request, res: Response, next: NextFunctio
     const orderId = req.params.orderId as string;
     assertStationAccess(req.user!.role, station);
 
-    const { actual_items } = req.body as {
+    const { actual_items, actual_satuan_items } = req.body as {
       actual_items: { clothing_type_id: string; actual_quantity: number }[];
+      actual_satuan_items?: { laundry_item_id: string; actual_quantity: number }[];
     };
     if (!Array.isArray(actual_items)) throw new AppError("actual_items harus berupa array", 400);
 
-    const result = await workerService.submitItems(employeeId, station, orderId, actual_items);
+    const result = await workerService.submitItems(employeeId, station, orderId, actual_items, actual_satuan_items ?? []);
 
     if ("requiresBypass" in result) {
       return res.status(409).json(result);
@@ -85,10 +86,11 @@ export const createBypassRequest = async (req: Request, res: Response, next: Nex
     const station = ROLE_TO_STATION[req.user!.role];
     if (!station) throw new AppError("Role Anda tidak memiliki akses bypass", 403);
 
-    const { order_id, discrepancy_description, actual_items } = req.body as {
+    const { order_id, discrepancy_description, actual_items, actual_satuan_items } = req.body as {
       order_id: string;
       discrepancy_description: string;
       actual_items: string;
+      actual_satuan_items?: string;
     };
 
     if (!order_id) throw new AppError("order_id wajib diisi", 400);
@@ -102,6 +104,16 @@ export const createBypassRequest = async (req: Request, res: Response, next: Nex
       throw new AppError("actual_items harus berupa JSON string yang valid", 400);
     }
     if (!Array.isArray(parsedActualItems)) throw new AppError("actual_items harus berupa array", 400);
+
+    let parsedSatuanItems: { laundry_item_id: string; actual_quantity: number }[] = [];
+    if (actual_satuan_items) {
+      try {
+        parsedSatuanItems = JSON.parse(actual_satuan_items);
+      } catch {
+        throw new AppError("actual_satuan_items harus berupa JSON string yang valid", 400);
+      }
+      if (!Array.isArray(parsedSatuanItems)) throw new AppError("actual_satuan_items harus berupa array", 400);
+    }
 
     const files = (req.files as Express.Multer.File[]) ?? [];
 
@@ -123,6 +135,7 @@ export const createBypassRequest = async (req: Request, res: Response, next: Nex
       order_id,
       discrepancy_description,
       parsedActualItems,
+      parsedSatuanItems,
       photoUrls,
     );
 

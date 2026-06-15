@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, UserPlus, Mail } from "lucide-react";
 import { useCreateUser, useUpdateUser } from "@/hooks/useUsers";
+import { useOutlets } from "@/hooks/useOutlets";
 import type {
   CreateUserPayload,
   UpdateUserPayload,
@@ -19,6 +20,15 @@ const ROLES: Array<{ value: UserRole; label: string }> = [
   { value: "driver", label: "Driver" },
 ];
 
+// Roles that must be assigned to an outlet
+const OUTLET_REQUIRED_ROLES: UserRole[] = [
+  "outlet_admin",
+  "washing_worker",
+  "ironing_worker",
+  "packing_worker",
+  "driver",
+];
+
 interface Props {
   user: User | null;
   onClose: () => void;
@@ -29,11 +39,16 @@ export function UserFormModal({ user, onClose }: Props) {
   const create = useCreateUser();
   const update = useUpdateUser();
 
+  // Fetch all active outlets for the dropdown
+  const { data: outletsData } = useOutlets({ limit: 100, is_active: true });
+  const outlets = outletsData?.items ?? [];
+
   const [form, setForm] = useState({
     full_name: "",
     email: "",
     phone: "",
     role: "outlet_admin" as UserRole,
+    outlet_id: "",
     password: "",
     is_active: true,
   });
@@ -46,17 +61,32 @@ export function UserFormModal({ user, onClose }: Props) {
         email: user.email,
         phone: user.phone ?? "",
         role: user.role,
+        outlet_id: user.outlet_id ?? "",
         password: "",
         is_active: user.is_active ?? true,
       });
     }
   }, [user]);
 
+  // Reset outlet_id when switching to super_admin
+  useEffect(() => {
+    if (form.role === "super_admin") {
+      setForm((prev) => ({ ...prev, outlet_id: "" }));
+    }
+  }, [form.role]);
+
+  const needsOutlet = OUTLET_REQUIRED_ROLES.includes(form.role);
   const pending = create.isPending || update.isPending;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (needsOutlet && !form.outlet_id) {
+      setError("Pilih outlet untuk role ini.");
+      return;
+    }
+
     try {
       if (isEdit && user) {
         const payload: UpdateUserPayload = {
@@ -64,6 +94,7 @@ export function UserFormModal({ user, onClose }: Props) {
           email: form.email,
           phone: form.phone || undefined,
           role: form.role,
+          outlet_id: form.outlet_id || undefined,
           is_active: form.is_active,
           ...(form.password ? { password: form.password } : {}),
         };
@@ -75,6 +106,7 @@ export function UserFormModal({ user, onClose }: Props) {
           email: form.email,
           phone: form.phone || undefined,
           role: form.role,
+          outlet_id: form.outlet_id || undefined,
           is_active: form.is_active,
           // no password — backend will send invite email
         };
@@ -117,7 +149,7 @@ export function UserFormModal({ user, onClose }: Props) {
             <div className="flex items-start gap-3 bg-primary/8 border border-primary/20 rounded-xl px-4 py-3">
               <Mail className="w-4 h-4 text-primary mt-0.5 shrink-0" />
               <p className="text-sm text-primary/90 leading-snug">
-                Email undangan akan dikirim ke karyawan untuk membuat password mereka sendiri.
+                Email undangan akan dikirim ke karyawan untuk membuat password. Setelah password dibuat, mereka langsung diarahkan ke dashboard masing-masing.
               </p>
             </div>
           )}
@@ -168,6 +200,29 @@ export function UserFormModal({ user, onClose }: Props) {
             </select>
           </Field>
 
+          {/* Outlet assignment — shown for all roles except super_admin */}
+          {needsOutlet && (
+            <Field label={`Outlet${isEdit ? "" : " *"}`}>
+              <select
+                value={form.outlet_id}
+                onChange={(e) => setForm({ ...form, outlet_id: e.target.value })}
+                required
+                className={inputClass}
+              >
+                <option value="">— Pilih outlet —</option>
+                {outlets.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+              {outlets.length === 0 && (
+                <p className="text-xs text-on-surface-variant mt-1 ml-1">
+                  Belum ada outlet aktif. Buat outlet terlebih dahulu.
+                </p>
+              )}
+            </Field>
+          )}
 
           <label className="flex items-center gap-2 text-sm text-on-surface-variant">
             <input

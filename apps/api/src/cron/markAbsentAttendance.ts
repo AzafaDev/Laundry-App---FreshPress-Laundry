@@ -1,10 +1,8 @@
 import cron from 'node-cron';
 import { prisma } from '../lib/prisma.js';
 import { subDays } from 'date-fns';
-import { getNow, getTodayLocalStart } from '../services/driver-worker/attendance.utils.js';
-import { getEmployeeShiftForDate } from '../services/driver-worker/attendance.utils.db.js';
-
-const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+import { getNow, getTodayLocalStart, WIB_OFFSET_MS } from '../utils/time.util.js';
+import { getEmployeeShiftForDate } from '../repositories/driver-worker/attendance.repository.js';
 
 async function processEndOfDay(targetDate: Date) {
   // targetDate is a WIB midnight timestamp — use UTC fields for WIB date math

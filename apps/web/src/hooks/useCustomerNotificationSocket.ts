@@ -12,9 +12,19 @@ export function useCustomerNotificationSocket(onNew?: (data: { title: string; bo
       onNew?.(data);
     });
 
-    const unsubOrderStatus = on("order:status-updated", () => {
-      queryClient.invalidateQueries({ queryKey: ["customer", "orders"] });
-    });
+    const unsubOrderStatus = on(
+      "order:status-updated",
+      (data?: { orderId?: string; status?: string; message?: string }) => {
+        queryClient.invalidateQueries({ queryKey: ["customer", "orders"] });
+        if (data?.orderId) {
+          queryClient.invalidateQueries({ queryKey: ["customer", "orders", data.orderId] });
+        }
+        // Show toast for status update if message is provided
+        if (data?.message) {
+          onNew?.({ title: "Update Pesanan", body: data.message });
+        }
+      },
+    );
 
     return () => {
       unsub();
