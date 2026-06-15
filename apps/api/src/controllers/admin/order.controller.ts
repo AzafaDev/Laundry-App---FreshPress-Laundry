@@ -5,6 +5,7 @@ import { OrderStatus } from "../../../generated/prisma/client.js";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { notifyCustomer } from "../../lib/notification.js";
+import { emitToUser } from "../../lib/socket.js";
 import { buildPagination, getSkipTake } from "../../utils/pagination.js";
 
 const ORDER_STATUSES = Object.values(OrderStatus);
@@ -239,7 +240,7 @@ export const processOrder = async (
         where: { id },
         data: {
           total_weight_kg: body.total_weight_kg,
-          total_price: totalPrice,
+          total_price: totalPrice + Number(order.delivery_fee),
           notes: body.notes,
           created_by_outlet_admin_id: adminId,
           status: OrderStatus.washing,
@@ -267,6 +268,13 @@ export const processOrder = async (
       "order_details",
       updated.id,
     );
+
+    emitToUser(updated.customer_id, "order:status-updated", {
+      orderId: updated.id,
+      status: updated.status,
+      total_price: Number(updated.total_price),
+      delivery_fee: Number(updated.delivery_fee),
+    });
 
     res.json({ success: true, data: updated });
   } catch (err) {

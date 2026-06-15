@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Flag, Upload, Trash2, Loader2, AlertTriangle, ImagePlus, ArrowDown, ArrowUp } from "lucide-react";
+import { X, Flag, Upload, Trash2, Loader2, AlertTriangle, ImagePlus } from "lucide-react";
 import { workerStationService } from "@/services/workerStation.service";
 import toast from "react-hot-toast";
 import type { Discrepancy } from "@/services/workerStation.service";
@@ -11,7 +11,10 @@ interface WorkerBypassModalProps {
   orderId: string;
   invoiceNumber: string;
   discrepancies: Discrepancy[];
-  actualItems: Array<{ clothing_type_id: string; actual_quantity: number }>;
+  actualItems: {
+    breakdown: Array<{ clothing_type_id: string; actual_quantity: number }>;
+    satuan: Array<{ laundry_item_id: string; actual_quantity: number }>;
+  };
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -93,7 +96,8 @@ export function WorkerBypassModal({
       const formData = new FormData();
       formData.append("order_id", orderId);
       formData.append("discrepancy_description", description.trim());
-      formData.append("actual_items", JSON.stringify(actualItems));
+      formData.append("actual_items", JSON.stringify(actualItems.breakdown));
+      formData.append("actual_satuan_items", JSON.stringify(actualItems.satuan));
       photos.forEach((p) => formData.append("photo_evidence", p.file));
 
       await workerStationService.createBypassRequest(formData);
@@ -146,31 +150,22 @@ export function WorkerBypassModal({
                 <thead>
                   <tr className="bg-surface-container-low border-b border-outline-variant">
                     <th className="text-left px-3 py-2 text-xs font-semibold text-on-surface-variant">Item</th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Ekspektasi</th>
                     <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Aktual</th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Selisih</th>
+                    <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {discrepancies.map((d) => {
-                    const diff = d.actual - d.expected;
-                    const isShort = diff < 0;
-                    return (
-                      <tr key={d.clothing_type_id} className="border-b border-outline-variant last:border-0 bg-amber-50/60">
-                        <td className="px-3 py-2.5 font-medium text-on-surface">{d.name}</td>
-                        <td className="px-3 py-2.5 text-center text-on-surface-variant">{d.expected}</td>
-                        <td className="px-3 py-2.5 text-center font-bold text-error">{d.actual}</td>
-                        <td className="px-3 py-2.5 text-center">
-                          <span className={`inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded-full ${
-                            isShort ? "bg-error/10 text-error" : "bg-amber-100 text-amber-700"
-                          }`}>
-                            {isShort ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />}
-                            {Math.abs(diff)}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {discrepancies.map((d) => (
+                    <tr key={`${d.item_type}:${d.item_id}`} className="border-b border-outline-variant last:border-0 bg-amber-50/60">
+                      <td className="px-3 py-2.5 font-medium text-on-surface">{d.name}</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-on-surface">{d.actual}</td>
+                      <td className="px-3 py-2.5 text-center">
+                        <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full bg-error/10 text-error">
+                          Tidak Sesuai
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

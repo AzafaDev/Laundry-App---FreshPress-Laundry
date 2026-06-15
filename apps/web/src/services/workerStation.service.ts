@@ -28,6 +28,7 @@ export interface StationOrder {
   }>;
   order_items: Array<{
     id: string;
+    laundry_item_id: string;
     quantity: number;
     laundry_item: {
       name: string;
@@ -40,8 +41,8 @@ export interface BypassDetail {
   id: string;
   status: "pending" | "approved" | "rejected";
   station: string;
-  expected_items: Array<{ clothing_type_id: string; name: string; quantity: number }>;
-  actual_items: Array<{ clothing_type_id: string; name: string; actual_quantity: number }>;
+  expected_items: Array<{ item_type: "breakdown" | "satuan"; item_id: string; name: string; quantity: number }>;
+  actual_items: Array<{ item_type: "breakdown" | "satuan"; item_id: string; name: string; quantity: number }>;
   discrepancy_description: string;
   photo_evidence: string[];
   attempt_number: number;
@@ -49,7 +50,8 @@ export interface BypassDetail {
 }
 
 export interface Discrepancy {
-  clothing_type_id: string;
+  item_type: "breakdown" | "satuan";
+  item_id: string;
   name: string;
   expected: number;
   actual: number;
@@ -66,11 +68,12 @@ export const workerStationService = {
   submitItems: async (
     station: StationType,
     orderId: string,
-    actual_items: { clothing_type_id: string; actual_quantity: number }[]
+    actual_items: { clothing_type_id: string; actual_quantity: number }[],
+    actual_satuan_items: { laundry_item_id: string; actual_quantity: number }[] = [],
   ): Promise<{ success: true; data: StationOrder } | { success: false; requiresBypass: true; discrepancies: Discrepancy[] }> => {
     const { data } = await axiosInstance.post(
       `/v1/worker/station/${station}/orders/${orderId}/submit-items`,
-      { actual_items }
+      { actual_items, actual_satuan_items }
     );
     return data;
   },

@@ -2,7 +2,7 @@
 import { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import { attendanceReportQuerySchema } from "../../validations/attendance.validation.js";
-import { attendanceService } from "../../services/driver-worker/index.js";
+import { attendanceService } from "../../services/driver-worker/attendance.service.js";
 import { Parser } from "json2csv";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { prisma } from "../../lib/prisma.js";

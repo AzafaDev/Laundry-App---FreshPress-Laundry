@@ -186,12 +186,11 @@ export const reviewBypassRequest = async (
     });
 
     // Notify the requesting worker via WebSocket
-    emitToUser(bypass.requested_by, "bypass:reviewed", {
+    emitToUser(bypass.requested_by, body.action === "approve" ? "bypass:approved" : "bypass:rejected", {
       bypassId: id,
-      status: newStatus,
-      admin_notes: body.admin_notes ?? null,
       orderId: updated.order.id,
       invoiceNumber: updated.order.invoice_number,
+      admin_notes: body.admin_notes ?? null,
     });
 
     const action = body.action === "approve" ? "disetujui" : "ditolak";

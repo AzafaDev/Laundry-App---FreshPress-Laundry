@@ -31,6 +31,7 @@ export interface DriverTask {
       full_name: string;
       phone: string;
     };
+    notes?: string | null;
   };
 }
 
@@ -73,8 +74,8 @@ export const driverTaskService = {
     return data.data;
   },
 
-  completeTask: async (taskId: string): Promise<DriverTask> => {
-    const { data } = await axiosInstance.patch<{ success: true; data: DriverTask }>(
+  completeTask: async (taskId: string): Promise<ActiveTaskResponse> => {
+    const { data } = await axiosInstance.patch<{ success: true; data: ActiveTaskResponse }>(
       `/v1/driver/tasks/${taskId}/complete`
     );
     return data.data;

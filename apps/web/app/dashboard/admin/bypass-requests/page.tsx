@@ -24,15 +24,23 @@ import { BypassReviewModal } from "@/components/admin/BypassReviewModal";
 import { useSocket } from "@/hooks/useSocket";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+interface BypassItem {
+  item_type: string;
+  item_id: string;
+  name: string;
+  quantity: number;
+}
+
 interface BypassRequest {
   id: string;
   order_id: string;
   station: string;
   status: "pending" | "approved" | "rejected";
   discrepancy_description: string;
-  expected_items: unknown;
-  actual_items: unknown;
+  expected_items: BypassItem[];
+  actual_items: BypassItem[];
   admin_notes: string | null;
+  photo_evidence: string[];
   created_at: string;
   order: { id: string; invoice_number: string; outlet: { name: string } };
   requester: { id: string; full_name: string; role: string };
@@ -110,37 +118,12 @@ export default function BypassRequestsPage() {
   const [selected, setSelected] = useState<BypassRequest | null>(null);
   const [newBadge, setNewBadge] = useState(0);
 
-  // Real-time: bypass requests
+  // Real-time: bypass requests (badge counter only — toast handled by layout)
   useEffect(() => {
-    const unsub = on("bypass:new", () => {
+    const unsub = on("bypass:created", () => {
       setNewBadge((n) => n + 1);
-      toast("Ada bypass request baru!", { icon: "🔔" });
     });
     return unsub;
-  }, [on]);
-
-  // Real-time: attendance notifications
-  useEffect(() => {
-    const unsubCheckin = on("attendance:checkin", (data: { employeeName?: string; outletName?: string }) => {
-      toast(`${data.employeeName ?? "Karyawan"} telah check-in`, { icon: "✅" });
-    });
-    const unsubCheckout = on("attendance:checkout", (data: { employeeName?: string; outletName?: string }) => {
-      toast(`${data.employeeName ?? "Karyawan"} telah check-out`, { icon: "🏁" });
-    });
-    return () => { unsubCheckin(); unsubCheckout(); };
-  }, [on]);
-
-  // Real-time: order status changes (outlet-room events)
-  useEffect(() => {
-    const unsubCompleted = on("station:order-completed", (data: { orderId?: string; station?: string }) => {
-      toast(`Order selesai di station ${data.station ?? ""}`, { icon: "📦" });
-    });
-    const unsubDelivered = on("driver:task-completed", (data: { taskType?: string; orderId?: string }) => {
-      if (data.taskType === "delivery") {
-        toast("Pengiriman order selesai", { icon: "🚚" });
-      }
-    });
-    return () => { unsubCompleted(); unsubDelivered(); };
   }, [on]);
 
   const { data, isFetching, isError } = useQuery({
@@ -210,20 +193,12 @@ export default function BypassRequestsPage() {
         orderId: selected.order.invoice_number,
         worker: selected.requester.full_name,
         station: STATION_LABEL[selected.station] ?? selected.station,
-        expected: Array.isArray(selected.expected_items)
-          ? (selected.expected_items as { quantity: number }[]).reduce(
-              (s, i) => s + (i.quantity ?? 0),
-              0,
-            )
-          : 0,
-        actual: Array.isArray(selected.actual_items)
-          ? (selected.actual_items as { quantity: number }[]).reduce(
-              (s, i) => s + (i.quantity ?? 0),
-              0,
-            )
-          : 0,
+        expected_items: Array.isArray(selected.expected_items) ? selected.expected_items : [],
+        actual_items: Array.isArray(selected.actual_items) ? selected.actual_items : [],
         reason: selected.discrepancy_description,
         status: selected.status,
+        admin_notes: selected.admin_notes,
+        photo_evidence: Array.isArray(selected.photo_evidence) ? selected.photo_evidence : [],
       }
     : null;
 
@@ -326,22 +301,12 @@ export default function BypassRequestsPage() {
                 </tr>
               ) : (
                 filtered.map((req) => {
-                  const expected = Array.isArray(req.expected_items)
-                    ? (req.expected_items as { quantity: number }[]).reduce(
-                        (s, i) => s + (i.quantity ?? 0),
-                        0,
-                      )
-                    : "—";
-                  const actual = Array.isArray(req.actual_items)
-                    ? (req.actual_items as { quantity: number }[]).reduce(
-                        (s, i) => s + (i.quantity ?? 0),
-                        0,
-                      )
-                    : "—";
-                  const diff =
-                    typeof expected === "number" && typeof actual === "number"
-                      ? expected - actual
-                      : 0;
+                  // Hitung total selisih per item: selisih = expected - actual
+                  const diff = req.expected_items.reduce((total, exp) => {
+                    const actItem = req.actual_items.find((a) => a.item_id === exp.item_id);
+                    const actual = exp.quantity - (actItem?.quantity ?? 0); // actual = expected - selisih
+                    return total + (exp.quantity - actual);
+                  }, 0);
                   return (
                     <tr
                       key={req.id}
