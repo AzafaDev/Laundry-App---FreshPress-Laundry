@@ -122,14 +122,14 @@ export function BypassReviewModal({
                       </td>
                     </tr>
                   ) : (
-                    request.expected_items.map((exp) => {
+                    request.expected_items.map((exp, idx) => {
                       const actItem = request.actual_items.find((a) => a.item_id === exp.item_id);
                       // actual = expected - selisih
                       const selisih = exp.quantity - (actItem?.quantity ?? 0);
                       const actual = exp.quantity - selisih;
                       return (
                         <tr
-                          key={`${exp.item_type}:${exp.item_id}`}
+                          key={exp.item_id && exp.item_type ? `${exp.item_type}:${exp.item_id}` : `row-${idx}`}
                           className="border-b border-outline-variant last:border-0 bg-amber-50/60"
                         >
                           <td className="px-3 py-2.5 font-medium text-on-surface">{exp.name}</td>
