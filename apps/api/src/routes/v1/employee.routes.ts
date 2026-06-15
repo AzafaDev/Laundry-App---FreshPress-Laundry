@@ -22,6 +22,7 @@ import {
   uploadAvatarHandler,
   uploadAvatarMiddleware,
 } from "../../controllers/employee/profile.controller.js";
+import * as NotificationCtrl from "../../controllers/employee/notification.controller.js";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 
 const router = Router();
@@ -36,5 +37,10 @@ router.post("/auth/change-password", authenticate, validate(changePasswordSchema
 router.get("/profile", authenticate, getProfileHandler);
 router.patch("/profile", authenticate, validate(updateProfileSchema), updateProfileHandler);
 router.patch("/profile/avatar", authenticate, uploadAvatarMiddleware, uploadAvatarHandler);
+
+router.get("/notifications", authenticate, NotificationCtrl.listNotifications);
+router.get("/notifications/unread-count", authenticate, NotificationCtrl.getUnreadCount);
+router.patch("/notifications/read-all", authenticate, NotificationCtrl.markAllAsRead);
+router.patch("/notifications/:id/read", authenticate, NotificationCtrl.markAsRead);
 
 export default router;

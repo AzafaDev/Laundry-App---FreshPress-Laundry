@@ -1,7 +1,8 @@
 "use client";
 
-import { Bell, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 
 export function AdminTopBar({ onToggleSidebar }: { onToggleSidebar?: () => void }) {
   const user = useEmployeeAuthStore((s) => s.user);
@@ -19,12 +20,7 @@ export function AdminTopBar({ onToggleSidebar }: { onToggleSidebar?: () => void 
         <h1 className="text-xl font-bold text-primary">FreshPress Admin</h1>
       </div>
       <div className="flex items-center gap-4">
-        <button
-          className="p-2 hover:bg-surface-container-low transition-colors rounded-full text-on-surface-variant"
-          aria-label="Notifications"
-        >
-          <Bell className="w-6 h-6" />
-        </button>
+        <NotificationBell />
         <div className="hidden md:flex flex-col items-end leading-tight">
           <span className="text-sm font-semibold text-on-surface truncate max-w-[160px]">
             {user?.full_name ?? "Admin"}

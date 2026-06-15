@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
-import { notifyCustomer } from "../../lib/notification.js";
+import { notifyCustomer, notifyOutletEmployees } from "../../lib/notification.js";
 import { emitToRoom } from "../../lib/socket.js";
 
 const FREE_RADIUS_KM = Number(5);
@@ -193,6 +193,15 @@ export const createCustomerOrder = async (
       pickupAddress: order.pickup_address?.address,
       timestamp: new Date(),
     });
+
+    await notifyOutletEmployees(
+      nearestOutlet.id,
+      ["outlet_admin", "driver"],
+      "Permintaan pickup baru",
+      `${order.customer?.full_name ?? "Customer"} memesan pickup (${order.invoice_number})`,
+      "new_pickup_request",
+      order.id,
+    );
   }
 
   return order;
@@ -334,6 +343,15 @@ export const createCustomerComplaint = async (
       complaintType: complaint.complaint_type,
       timestamp: new Date(),
     });
+
+    await notifyOutletEmployees(
+      order.outlet_id,
+      ["outlet_admin"],
+      "Komplain baru",
+      `${order.customer?.full_name ?? "Customer"} mengajukan komplain untuk pesanan ${order.invoice_number}`,
+      "complaint_submitted",
+      order.id,
+    );
   }
 
   return complaint;
