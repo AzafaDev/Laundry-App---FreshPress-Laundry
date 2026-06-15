@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { notifyCustomer } from "../../lib/notification.js";
+import { emitToRoom } from "../../lib/socket.js";
 
 const FREE_RADIUS_KM = Number(process.env.FREE_RADIUS_KM ?? 5);
 const SERVICE_RADIUS_KM = Number(process.env.SERVICE_RADIUS_KM ?? 10);
@@ -177,9 +178,22 @@ export const createCustomerOrder = async (
             created_at: true,
           },
         },
+        customer: {
+          select: { full_name: true },
+        },
       },
     });
   });
+
+  if (order) {
+    emitToRoom(`outlet:${nearestOutlet.id}`, "order:new-pickup-request", {
+      orderId: order.id,
+      invoiceNumber: order.invoice_number,
+      customerName: order.customer?.full_name,
+      pickupAddress: order.pickup_address?.address,
+      timestamp: new Date(),
+    });
+  }
 
   return order;
 };
@@ -282,6 +296,9 @@ export const createCustomerComplaint = async (
 ) => {
   const order = await prisma.order.findFirst({
     where: { id: orderId, customer_id: customerId, deleted_at: null },
+    include: {
+      customer: { select: { full_name: true } },
+    },
   });
 
   if (!order) {
@@ -300,7 +317,7 @@ export const createCustomerComplaint = async (
     throw new AppError("Komplain untuk pesanan ini sudah pernah diajukan.", 400);
   }
 
-  return prisma.complaint.create({
+  const complaint = await prisma.complaint.create({
     data: {
       order_id: order.id,
       customer_id: customerId,
@@ -308,6 +325,18 @@ export const createCustomerComplaint = async (
       description: input.description,
     },
   });
+
+  if (order.outlet_id) {
+    emitToRoom(`outlet:${order.outlet_id}`, "order:complaint-submitted", {
+      orderId: order.id,
+      invoiceNumber: order.invoice_number,
+      customerName: order.customer?.full_name,
+      complaintType: complaint.complaint_type,
+      timestamp: new Date(),
+    });
+  }
+
+  return complaint;
 };
 
 export const getCustomerOrderById = async (customerId: string, orderId: string) => {

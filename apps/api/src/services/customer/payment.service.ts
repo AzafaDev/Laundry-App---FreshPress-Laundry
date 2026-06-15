@@ -151,6 +151,14 @@ async function applyPaymentStatus(payment: Payment, newStatus: PaymentStatus, pa
           data: { order_id: order.id, task_type: "delivery", status: "available" },
         }),
       ]);
+
+      if (order.outlet_id) {
+        emitToRoom(`outlet:${order.outlet_id}`, "order:payment-completed", {
+          orderId: order.id,
+          invoiceNumber: order.invoice_number,
+          timestamp: new Date(),
+        });
+      }
     }
 
     if (order) {
