@@ -227,7 +227,7 @@ export function ComplaintDetailModal({ complaint, onClose }: Props) {
                 <p className="font-semibold text-on-surface">{fmt(complaint.created_at)}</p>
               </div>
             </div>
-            {complaint.outlet && (
+            {complaint.order.outlet && (
               <div className="col-span-2">
                 <p className="text-xs text-on-surface-variant mb-0.5">Outlet</p>
                 <p className="font-semibold text-on-surface">{complaint.order.outlet?.name ?? "—"}</p>
