@@ -95,6 +95,25 @@ export interface OrderDetail extends OrderSummary {
   payment: { id: string; status: string; amount: string | number } | null;
 }
 
+export interface Complaint {
+  id: string;
+  order_id: string;
+  customer_id: string;
+  complaint_type: string;
+  description: string;
+  photo_urls: string[];
+  status: "open" | "in_progress" | "resolved" | "rejected";
+  expected_resolution_date: string | null;
+  resolved_by: string | null;
+  resolution_notes: string | null;
+  resolved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  order: { id: string; invoice_number: string; outlet_id: string | null; outlet: { name: string } | null };
+  customer: { id: string; full_name: string; email: string; phone: string | null };
+  resolver: { id: string; full_name: string } | null;
+}
+
 export interface OrderListQuery {
   page?: number;
   limit?: number;

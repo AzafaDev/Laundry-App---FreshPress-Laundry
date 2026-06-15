@@ -15,7 +15,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { axiosInstance } from "@/lib/axios";
 import toast from "react-hot-toast";
-import type { Complaint } from "@/app/dashboard/admin/complaints/page";
+import type { Complaint } from "@/types/order.types";
 
 interface Props {
   complaint: Complaint;
