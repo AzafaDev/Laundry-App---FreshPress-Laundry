@@ -11,9 +11,11 @@ import {
 } from "lucide-react";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { axiosInstance } from "@/lib/axios";
+import { useOutlets } from "@/hooks/useOutlets";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { ComplaintDetailModal } from "@/components/admin/ComplaintDetailModal";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------------
 export interface Complaint {
   id: string;
   order_id: string;
@@ -52,7 +54,7 @@ interface ListResponse {
 
 type FilterStatus = "all" | "open" | "in_progress" | "resolved" | "rejected";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 const COMPLAINT_TYPE_LABELS: Record<string, string> = {
   missing_item: "Item Hilang",
   damaged_item: "Item Rusak",
@@ -77,20 +79,32 @@ function StatusBadge({ status }: { status: Complaint["status"] }) {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+// -- Page ---------------------------------------------------------------------
 export default function ComplaintsPage() {
   const queryClient = useQueryClient();
+  const user = useEmployeeAuthStore((s) => s.user);
+  const isSuper = user?.role === "super_admin";
+
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [outletId, setOutletId] = useState("");
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [page, setPage] = useState(1);
   const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
 
+  // Outlets for super_admin filter
+  const { data: outletsData } = useOutlets(
+    isSuper ? { limit: 100, is_active: true } : undefined,
+  );
+  const outlets = outletsData?.items ?? [];
+
   // Stats
   const { data: statsData } = useQuery<{ data: ComplaintStats }>({
-    queryKey: ["admin", "complaints", "stats"],
+    queryKey: ["admin", "complaints", "stats", outletId],
     queryFn: async () => {
-      const { data } = await axiosInstance.get("/v1/admin/complaints/stats");
+      const params = new URLSearchParams();
+      if (outletId) params.set("outlet_id", outletId);
+      const { data } = await axiosInstance.get(`/v1/admin/complaints/stats?${params}`);
       return data;
     },
     staleTime: 30_000,
@@ -99,11 +113,12 @@ export default function ComplaintsPage() {
 
   // List
   const { data, isFetching } = useQuery<ListResponse>({
-    queryKey: ["admin", "complaints", filterStatus, search, page],
+    queryKey: ["admin", "complaints", filterStatus, search, page, outletId],
     queryFn: async () => {
       const params = new URLSearchParams({ page: String(page), limit: "20" });
       if (filterStatus !== "all") params.set("status", filterStatus);
       if (search) params.set("search", search);
+      if (outletId) params.set("outlet_id", outletId);
       const { data } = await axiosInstance.get(`/v1/admin/complaints?${params}`);
       return data;
     },
@@ -122,6 +137,11 @@ export default function ComplaintsPage() {
 
   function handleFilterStatus(s: FilterStatus) {
     setFilterStatus(s);
+    setPage(1);
+  }
+
+  function handleOutletChange(id: string) {
+    setOutletId(id);
     setPage(1);
   }
 
@@ -171,6 +191,23 @@ export default function ComplaintsPage() {
         </button>
       </div>
 
+      {/* Outlet filter (super_admin only) */}
+      {isSuper && (
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-medium text-on-surface-variant shrink-0">Filter Outlet:</label>
+          <select
+            value={outletId}
+            onChange={(e) => handleOutletChange(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-outline-variant bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 min-w-[200px]"
+          >
+            <option value="">Semua Outlet</option>
+            {outlets.map((o) => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {STAT_CARDS.map((card) => (
@@ -181,7 +218,7 @@ export default function ComplaintsPage() {
               filterStatus === card.key ? "ring-2 ring-primary shadow-md" : ""
             }`}
           >
-            <p className={`text-3xl font-bold ${card.text}`}>{stats?.[card.key] ?? "—"}</p>
+            <p className={`text-3xl font-bold ${card.text}`}>{stats?.[card.key] ?? "\u2014"}</p>
             <p className={`text-sm font-medium mt-1 ${card.text}`}>{card.label}</p>
           </button>
         ))}
@@ -233,6 +270,9 @@ export default function ComplaintsPage() {
               <tr className="bg-surface-container-low border-b border-outline-variant">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Invoice</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Customer</th>
+                {isSuper && (
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Outlet</th>
+                )}
                 <th className="text-left px-4 py-3 text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Tipe</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Tanggal Masuk</th>
@@ -242,7 +282,7 @@ export default function ComplaintsPage() {
             <tbody>
               {complaints.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-16 text-center text-on-surface-variant">
+                  <td colSpan={isSuper ? 7 : 6} className="py-16 text-center text-on-surface-variant">
                     <MessageSquareWarning className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">Tidak ada komplain ditemukan</p>
                   </td>
@@ -257,6 +297,11 @@ export default function ComplaintsPage() {
                       <p className="font-medium text-on-surface">{c.customer.full_name}</p>
                       <p className="text-xs text-on-surface-variant">{c.customer.email}</p>
                     </td>
+                    {isSuper && (
+                      <td className="px-4 py-3 text-on-surface-variant text-xs">
+                        {c.order.outlet?.name ?? "\u2014"}
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-on-surface">
                       {COMPLAINT_TYPE_LABELS[c.complaint_type] ?? c.complaint_type}
                     </td>

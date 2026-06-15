@@ -6,7 +6,7 @@ export type ComplaintStatusUpdate = "in_progress" | "resolved" | "rejected";
 
 export interface ListComplaintsOptions {
   status?: string;
-  outletId?: string; // if provided, scope to this outlet only
+  outletId?: string;
   search?: string;
   page?: number;
   limit?: number;
@@ -16,7 +16,8 @@ export const listComplaints = async (options: ListComplaintsOptions) => {
   const { status, outletId, search, page = 1, limit = 20 } = options;
   const skip = (page - 1) * limit;
 
-  const where: Parameters<typeof prisma.complaint.findMany>[0]["where"] = {};
+  type ComplaintWhere = NonNullable<Parameters<typeof prisma.complaint.findMany>[0]>["where"];
+  const where: ComplaintWhere = {};
 
   if (status) where.status = status as never;
 
@@ -75,7 +76,6 @@ export const getComplaint = async (complaintId: string, outletId?: string) => {
 
   if (!complaint) throw new AppError("Complaint tidak ditemukan.", 404);
 
-  // outlet_admin scope check
   if (outletId && complaint.order.outlet_id !== outletId) {
     throw new AppError("Complaint ini bukan dari outlet Anda.", 403);
   }
@@ -93,7 +93,6 @@ export const updateComplaintStatus = async (
 ) => {
   const complaint = await getComplaint(complaintId, outletId);
 
-  // Validate state transitions
   const validTransitions: Record<string, ComplaintStatusUpdate[]> = {
     open: ["in_progress", "rejected"],
     in_progress: ["resolved", "rejected"],
@@ -107,7 +106,8 @@ export const updateComplaintStatus = async (
     );
   }
 
-  const updateData: Parameters<typeof prisma.complaint.update>[0]["data"] = {
+  type ComplaintUpdateData = Parameters<typeof prisma.complaint.update>[0]["data"];
+  const updateData: ComplaintUpdateData = {
     status: newStatus,
     updated_at: new Date(),
   };
@@ -130,7 +130,6 @@ export const updateComplaintStatus = async (
     data: updateData,
   });
 
-  // Notify customer
   const invoiceNumber = complaint.order.invoice_number;
   const customerId = complaint.customer_id;
 
@@ -146,7 +145,7 @@ export const updateComplaintStatus = async (
     await notifyCustomer(
       customerId,
       "Komplain Diselesaikan",
-      `Komplain Anda untuk pesanan ${invoiceNumber} telah diselesaikan. ${resolutionNotes ? `Catatan: ${resolutionNotes}` : ""}`.trim(),
+      `Komplain Anda untuk pesanan ${invoiceNumber} telah diselesaikan.${resolutionNotes ? " Catatan: " + resolutionNotes : ""}`,
       "order_update",
       complaintId,
     );
@@ -154,7 +153,7 @@ export const updateComplaintStatus = async (
     await notifyCustomer(
       customerId,
       "Komplain Ditolak",
-      `Komplain Anda untuk pesanan ${invoiceNumber} tidak dapat diproses. ${resolutionNotes ? `Alasan: ${resolutionNotes}` : ""}`.trim(),
+      `Komplain Anda untuk pesanan ${invoiceNumber} tidak dapat diproses.${resolutionNotes ? " Alasan: " + resolutionNotes : ""}`,
       "order_update",
       complaintId,
     );

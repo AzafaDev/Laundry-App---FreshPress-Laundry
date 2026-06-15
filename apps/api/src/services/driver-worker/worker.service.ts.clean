@@ -82,7 +82,23 @@ async function emitStationEvents(
       message: `Order Anda telah melewati station ${station}`,
     });
 
-    if (station === "packing") {
+    if (station === "washing") {
+      await notifyCustomer(
+        order.customer.id,
+        "Pencucian Selesai",
+        `Pesanan ${order.invoice_number} telah selesai dicuci dan lanjut ke proses penyetrikaan.`,
+        "order_update",
+        order.id,
+      );
+    } else if (station === "ironing") {
+      await notifyCustomer(
+        order.customer.id,
+        "Penyetrikaan Selesai",
+        `Pesanan ${order.invoice_number} telah selesai disetrika dan lanjut ke proses pengemasan.`,
+        "order_update",
+        order.id,
+      );
+    } else if (station === "packing") {
       if (finalStatus === "waiting_payment") {
         await notifyCustomer(
           order.customer.id,
