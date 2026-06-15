@@ -15,6 +15,7 @@ import {
   PlayCircle,
   ShieldAlert,
   CalendarCheck,
+  MessageSquareWarning,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -81,6 +82,12 @@ const NAV: NavItem[] = [
     label: "Bypass Requests",
     icon: ShieldAlert,
     roles: ["outlet_admin"],
+  },
+  {
+    href: "/dashboard/admin/complaints",
+    label: "Komplain",
+    icon: MessageSquareWarning,
+    roles: ["super_admin", "outlet_admin"],
   },
   {
     href: "/dashboard/admin/reports",
