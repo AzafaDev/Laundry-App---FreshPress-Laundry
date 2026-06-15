@@ -1,4 +1,5 @@
 import { prisma } from "./prisma.js";
+import type { EmployeeRole } from "../../generated/prisma/client.js";
 import { emitToUser, emitToRoom } from "./socket.js";
 
 export type NotificationType =
@@ -10,6 +11,9 @@ export type NotificationType =
   | "driver_delivery_started"
   | "driver_arrived_customer"
   | "order_completed"
+  | "new_pickup_request"
+  | "payment_completed"
+  | "complaint_submitted"
   | "order_update";
 
 interface CreateNotificationInput {
@@ -115,4 +119,41 @@ export async function notifyCustomer(
     type,
     relatedEntityId,
   });
+}
+
+export async function notifyEmployee(
+  employeeId: string,
+  title: string,
+  body: string,
+  type: NotificationType,
+  relatedEntityId?: string,
+) {
+  return createNotification({
+    userType: "employee",
+    userId: employeeId,
+    title,
+    body,
+    type,
+    relatedEntityId,
+  });
+}
+
+export async function notifyOutletEmployees(
+  outletId: string,
+  roles: EmployeeRole[],
+  title: string,
+  body: string,
+  type: NotificationType,
+  relatedEntityId?: string,
+) {
+  const employees = await prisma.employee.findMany({
+    where: { outlet_id: outletId, role: { in: roles }, is_active: true, deleted_at: null },
+    select: { id: true },
+  });
+
+  await Promise.all(
+    employees.map((employee) =>
+      notifyEmployee(employee.id, title, body, type, relatedEntityId),
+    ),
+  );
 }

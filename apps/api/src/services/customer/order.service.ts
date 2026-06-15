@@ -1,10 +1,10 @@
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
-import { notifyCustomer } from "../../lib/notification.js";
+import { notifyCustomer, notifyOutletEmployees } from "../../lib/notification.js";
+import { emitToRoom } from "../../lib/socket.js";
 
-const FREE_RADIUS_KM = Number(process.env.FREE_RADIUS_KM ?? 5);
-const SERVICE_RADIUS_KM = Number(process.env.SERVICE_RADIUS_KM ?? 10);
-const FLAT_RATE_ONGKIR = Number(process.env.FLAT_RATE_ONGKIR ?? 10_000);
+const FREE_RADIUS_KM = Number(5);
+const FLAT_RATE_ONGKIR = Number(10_000);
 
 function haversineKm(
   lat1: number,
@@ -72,7 +72,7 @@ export const createCustomerOrder = async (
 
   const outlets = await prisma.outlet.findMany({
     where: { is_active: true, deleted_at: null },
-    select: { id: true, latitude: true, longitude: true },
+    select: { id: true, latitude: true, longitude: true, service_radius_km: true },
   });
 
   if (outlets.length === 0) {
@@ -88,8 +88,9 @@ export const createCustomerOrder = async (
         Number(outlet.latitude),
         Number(outlet.longitude),
       ),
+      service_radius_km: Number(outlet.service_radius_km),
     }))
-    .filter((outlet) => outlet.distance <= SERVICE_RADIUS_KM)
+    .filter((outlet) => outlet.distance <= outlet.service_radius_km)
     .sort((a, b) => a.distance - b.distance)[0];
 
   if (!nearestOutlet) {
@@ -177,9 +178,31 @@ export const createCustomerOrder = async (
             created_at: true,
           },
         },
+        customer: {
+          select: { full_name: true },
+        },
       },
     });
   });
+
+  if (order) {
+    emitToRoom(`outlet:${nearestOutlet.id}`, "order:new-pickup-request", {
+      orderId: order.id,
+      invoiceNumber: order.invoice_number,
+      customerName: order.customer?.full_name,
+      pickupAddress: order.pickup_address?.address,
+      timestamp: new Date(),
+    });
+
+    await notifyOutletEmployees(
+      nearestOutlet.id,
+      ["outlet_admin", "driver"],
+      "Permintaan pickup baru",
+      `${order.customer?.full_name ?? "Customer"} memesan pickup (${order.invoice_number})`,
+      "new_pickup_request",
+      order.id,
+    );
+  }
 
   return order;
 };
@@ -282,6 +305,9 @@ export const createCustomerComplaint = async (
 ) => {
   const order = await prisma.order.findFirst({
     where: { id: orderId, customer_id: customerId, deleted_at: null },
+    include: {
+      customer: { select: { full_name: true } },
+    },
   });
 
   if (!order) {
@@ -300,7 +326,7 @@ export const createCustomerComplaint = async (
     throw new AppError("Komplain untuk pesanan ini sudah pernah diajukan.", 400);
   }
 
-  return prisma.complaint.create({
+  const complaint = await prisma.complaint.create({
     data: {
       order_id: order.id,
       customer_id: customerId,
@@ -308,6 +334,27 @@ export const createCustomerComplaint = async (
       description: input.description,
     },
   });
+
+  if (order.outlet_id) {
+    emitToRoom(`outlet:${order.outlet_id}`, "order:complaint-submitted", {
+      orderId: order.id,
+      invoiceNumber: order.invoice_number,
+      customerName: order.customer?.full_name,
+      complaintType: complaint.complaint_type,
+      timestamp: new Date(),
+    });
+
+    await notifyOutletEmployees(
+      order.outlet_id,
+      ["outlet_admin"],
+      "Komplain baru",
+      `${order.customer?.full_name ?? "Customer"} mengajukan komplain untuk pesanan ${order.invoice_number}`,
+      "complaint_submitted",
+      order.id,
+    );
+  }
+
+  return complaint;
 };
 
 export const getCustomerOrderById = async (customerId: string, orderId: string) => {
