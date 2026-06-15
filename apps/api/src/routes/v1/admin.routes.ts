@@ -12,6 +12,7 @@ import * as LaundryItemCtrl from "../../controllers/admin/laundryItem.controller
 import * as OrderCtrl from "../../controllers/admin/order.controller.js";
 import * as BypassCtrl from "../../controllers/admin/bypass.controller.js";
 import * as ClothingCtrl from "../../controllers/admin/clothingType.controller.js";
+import * as NotifCtrl from "../../controllers/admin/notification.controller.js";
 import { getSalesReport, getEmployeePerformanceReport } from "../../controllers/admin/report.controller.js";
 import {
   createUserSchema,
@@ -270,6 +271,28 @@ router.get(
   "/reports/employees",
   requireRole("super_admin", "outlet_admin"),
   getEmployeePerformanceReport,
+);
+
+// ── Admin Notifications ───────────────────────────────────────────────────────
+router.get(
+  "/admin/notifications",
+  requireRole("super_admin", "outlet_admin"),
+  NotifCtrl.listNotifications,
+);
+router.get(
+  "/admin/notifications/unread-count",
+  requireRole("super_admin", "outlet_admin"),
+  NotifCtrl.getUnreadCount,
+);
+router.patch(
+  "/admin/notifications/read-all",
+  requireRole("super_admin", "outlet_admin"),
+  NotifCtrl.markAllAsRead,
+);
+router.patch(
+  "/admin/notifications/:id/read",
+  requireRole("super_admin", "outlet_admin"),
+  NotifCtrl.markAsRead,
 );
 
 export default router;
