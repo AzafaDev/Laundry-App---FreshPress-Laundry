@@ -34,7 +34,19 @@ export default function DriverLayout({ children }: { children: ReactNode }) {
       );
       queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-pickups"] });
     });
-    return () => unsubNewPickup();
+
+    const unsubPaymentCompleted = on("order:payment-completed", (data: { invoiceNumber?: string }) => {
+      socketToast(
+        "Pembayaran berhasil",
+        `Pesanan ${data.invoiceNumber ?? ""} siap untuk diantar.`,
+      );
+      queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-deliveries"] });
+    });
+
+    return () => {
+      unsubNewPickup();
+      unsubPaymentCompleted();
+    };
   }, [user, on, queryClient]);
 
   return <>{children}</>;

@@ -1,5 +1,8 @@
 "use client";
 
+import { Menu } from "lucide-react";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { useEffect, useRef, useState } from "react";
 import { Bell, Menu, Check, CheckCheck } from "lucide-react";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
@@ -118,6 +121,7 @@ export function AdminTopBar({ onToggleSidebar }: { onToggleSidebar?: () => void 
       </div>
 
       <div className="flex items-center gap-4">
+        <NotificationBell />
         {/* Bell with badge + dropdown */}
         <div className="relative" ref={panelRef}>
           <button

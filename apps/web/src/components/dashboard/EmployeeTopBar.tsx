@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Menu, User, LogOut, ChevronDown, ShieldAlert } from "lucide-react";
+import { Menu, User, LogOut, ChevronDown, ShieldAlert } from "lucide-react";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 
 export function EmployeeTopBar({ onToggleSidebar }: { onToggleSidebar?: () => void }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -44,9 +45,7 @@ export function EmployeeTopBar({ onToggleSidebar }: { onToggleSidebar?: () => vo
       )}
 
       <div className="flex items-center gap-4 ml-auto">
-        <button className="p-2 hover:bg-surface-container-low transition-colors rounded-full text-on-surface-variant" aria-label="Notifications">
-          <Bell className="w-6 h-6" />
-        </button>
+        <NotificationBell />
 
         <div className="relative" ref={dropdownRef}>
           <button
