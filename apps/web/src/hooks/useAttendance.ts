@@ -1,5 +1,3 @@
-// apps/web/src/hooks/useAttendance.ts
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { attendanceService } from "@/services/attendance.service";
 import { formatTime } from "@/utils/formatDate";
@@ -9,7 +7,6 @@ import toast from "react-hot-toast";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import type { AttendanceReportParams } from "@/types/attendance.type";
 
-// --- Hook untuk employee (check-in/out, my logs, current shift) ---
 export function useAttendance() {
   const [optimisticCheckedIn, setOptimisticCheckedIn] = useState(false);
   const queryClient = useQueryClient();
@@ -165,7 +162,6 @@ export function useAttendance() {
   };
 }
 
-// --- Hook untuk admin report (status filter, employeeId, outletId) ---
 export function useAttendanceReport(params: AttendanceReportParams) {
   const { user: adminUser } = useEmployeeAuthStore();
   const isAdmin = !!adminUser;
@@ -173,7 +169,7 @@ export function useAttendanceReport(params: AttendanceReportParams) {
   return useQuery({
     queryKey: ["attendance", "report", params],
     queryFn: () => attendanceService.getReport(params),
-    enabled: isAdmin && !!params.outletId, // minimal outletId atau employeeId? sesuaikan kebutuhan
-    staleTime: 1000 * 60 * 5, // 5 menit
+    enabled: isAdmin && !!params.outletId, 
+    staleTime: 1000 * 60 * 5, 
   });
 }

@@ -1,5 +1,5 @@
 import { AppError } from "../../middlewares/error.middleware.js";
-import { getEmployeeOutlet, getShiftForDateTime } from "../../repositories/driver-worker/attendance.repository.js";
+import { getEmployeeOutlet, getShiftForDateTime, hasActiveDriverTask } from "../../repositories/driver-worker/attendance.repository.js";
 import { getNow, getTodayLocalStart } from "../../utils/time.util.js";
 import { prisma } from "../../lib/prisma.js";
 import { attendanceService } from "../../services/driver-worker/attendance.service.js";
@@ -34,4 +34,13 @@ export async function assertShiftEligibility(employeeId: string): Promise<string
   if (todayAttendance.check_out_time) throw new AppError("Anda sudah check-out hari ini", 403);
 
   return outletId;
+}
+
+export async function assertDriverEligibility(employeeId: string) {
+  const [outletId, hasActive] = await Promise.all([
+    assertShiftEligibility(employeeId),
+    hasActiveDriverTask(employeeId),
+  ]);
+  if (hasActive) throw new AppError("Anda sudah memiliki task aktif", 403);
+  return { employeeOutletId: outletId };
 }

@@ -6,6 +6,125 @@ import { OrderStatus, StationType } from "../../../generated/prisma/client.js";
 import { getEmployeeOutlet } from "../../repositories/driver-worker/attendance.repository.js";
 import { assertShiftEligibility } from "../../guards/driver-worker/shift.guard.js";
 import { driverService } from "./driver.service.js";
+import {
+  resolveNextStatus,
+  buildExpectedItems,
+  buildActualItems,
+  compareItems,
+} from "../../helpers/driver-worker/worker.helpers.js";
+
+async function runCompleteStationTransaction(
+  orderId: string,
+  employeeId: string,
+  station: "washing" | "ironing" | "packing",
+  currentStatus: OrderStatus,
+  finalStatus: OrderStatus,
+  checkPendingBypass: boolean,
+  actualItems?: { clothing_type_id: string; actual_quantity: number }[],
+) {
+  await prisma.$transaction(async (tx) => {
+    if (checkPendingBypass) {
+      const pendingBypass = await tx.bypassRequest.findFirst({
+        where: { order_id: orderId, station: station as StationType, status: "pending" },
+      });
+      if (pendingBypass) throw new AppError("Terdapat BypassRequest pending untuk order ini, tunggu review admin", 409);
+    }
+
+    const updateResult = await tx.order.updateMany({
+      where: { id: orderId, status: currentStatus },
+      data: { status: finalStatus },
+    });
+    if (updateResult.count === 0) throw new AppError(`Station ${station} sudah diproses`, 409);
+
+    await tx.orderStatusHistory.create({
+      data: {
+        order_id: orderId,
+        old_status: currentStatus,
+        new_status: finalStatus,
+        changed_by_type: "employee",
+        changed_by_id: employeeId,
+        note: `Station ${station} completed by worker`,
+      },
+    });
+
+    await tx.processLog.create({
+      data: {
+        order_id: orderId,
+        station: station as StationType,
+        employee_id: employeeId,
+        input_items: actualItems ?? [],
+        completed_at: new Date(),
+      },
+    });
+  });
+}
+
+async function emitStationEvents(
+  order: { id: string; outlet_id: string | null; customer: { id: string } | null },
+  station: "washing" | "ironing" | "packing",
+  finalStatus: OrderStatus,
+  employeeId: string,
+) {
+  if (order.outlet_id) {
+    emitToRoom(`outlet:${order.outlet_id}`, "station:order-completed", {
+      orderId: order.id, station, newStatus: finalStatus, workerId: employeeId,
+      outletId: order.outlet_id, timestamp: new Date(),
+    });
+    const nextStation = ({ washing: "ironing", ironing: "packing" } as Record<string, string>)[station];
+    if (nextStation) {
+      emitToRoom(`outlet:${order.outlet_id}`, "station:new-order", { station: nextStation, orderId: order.id });
+    }
+  }
+
+  if (order.customer?.id) {
+    emitToUser(order.customer.id, "order:status-updated", {
+      orderId: order.id, status: finalStatus,
+      message: `Order Anda telah melewati station ${station}`,
+    });
+  }
+
+  if (station === "packing" && order.customer?.id) {
+    if (finalStatus === "waiting_payment") {
+      await notifyCustomer(
+        order.customer.id,
+        "Pembayaran Diperlukan",
+        "Cucian Anda sudah selesai diproses. Silakan lakukan pembayaran.",
+        "order_update",
+        order.id,
+      );
+    } else if (finalStatus === "ready_for_delivery") {
+      await notifyCustomer(
+        order.customer.id,
+        "Pesanan Siap Dikirim",
+        "Cucian Anda sudah selesai dan siap untuk dikirim.",
+        "order_update",
+        order.id,
+      );
+    }
+  }
+}
+
+async function buildBypassData(
+  orderId: string,
+  actualItemsRaw: { clothing_type_id: string; actual_quantity: number }[],
+  actualSatuanItemsRaw: { laundry_item_id: string; actual_quantity: number }[],
+) {
+  const [breakdownItems, satuanOrderItems] = await Promise.all([
+    prisma.orderItemBreakdown.findMany({ where: { order_id: orderId }, include: { clothing_type: true } }),
+    prisma.orderItem.findMany({
+      where: { order_id: orderId, laundry_item: { unit: { not: "kg" } } },
+      include: { laundry_item: { select: { id: true, name: true } } },
+    }),
+  ]);
+
+  const clothingTypeMap = new Map(breakdownItems.map((i) => [i.clothing_type_id, i.clothing_type]));
+  const satuanMap = new Map(satuanOrderItems.map((i) => [i.laundry_item_id, i.laundry_item]));
+
+  return {
+    expectedItems: buildExpectedItems(breakdownItems, satuanOrderItems),
+    actualItems: buildActualItems(actualItemsRaw, actualSatuanItemsRaw, clothingTypeMap, satuanMap),
+  };
+}
 
 export const workerService = {
   async getStationOrders(employeeId: string, stationType: "washing" | "ironing" | "packing") {
@@ -50,93 +169,17 @@ export const workerService = {
       throw new AppError(`Order sedang dalam status ${order.status}, tidak dapat diproses di station ${station}`, 400);
     }
 
-    let finalStatus: OrderStatus;
-    let shouldCreateDeliveryTask = false;
+    const isPaid = order.payment?.status === "paid";
+    const finalStatus = resolveNextStatus(station, isPaid);
+    const shouldCreateDeliveryTask = station === "packing" && isPaid;
 
-    if (station === "packing") {
-      const isPaid = order.payment?.status === "paid";
-      finalStatus = isPaid ? "ready_for_delivery" : "waiting_payment";
-      shouldCreateDeliveryTask = isPaid;
-    } else {
-      const nextStatus: Record<string, OrderStatus> = { washing: "ironing", ironing: "packing" };
-      finalStatus = nextStatus[station];
-    }
-
-    await prisma.$transaction(async (tx) => {
-      if (checkPendingBypass) {
-        const pendingBypass = await tx.bypassRequest.findFirst({
-          where: { order_id: orderId, station: station as StationType, status: "pending" },
-        });
-        if (pendingBypass) throw new AppError("Terdapat BypassRequest pending untuk order ini, tunggu review admin", 409);
-      }
-      const updateResult = await tx.order.updateMany({
-        where: { id: orderId, status: order.status },
-        data: { status: finalStatus },
-      });
-      if (updateResult.count === 0) throw new AppError(`Station ${station} sudah diproses`, 409);
-
-      await tx.orderStatusHistory.create({
-        data: {
-          order_id: orderId,
-          old_status: order.status,
-          new_status: finalStatus,
-          changed_by_type: "employee",
-          changed_by_id: employeeId,
-          note: `Station ${station} completed by worker`,
-        },
-      });
-
-      await tx.processLog.create({
-        data: {
-          order_id: orderId,
-          station: station as StationType,
-          employee_id: employeeId,
-          input_items: actualItems ?? [],
-          completed_at: new Date(),
-        },
-      });
-    });
+    await runCompleteStationTransaction(orderId, employeeId, station, order.status, finalStatus, checkPendingBypass, actualItems);
 
     const updatedOrder = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
 
     if (shouldCreateDeliveryTask) await driverService.createDeliveryTask(orderId);
 
-    if (order.outlet_id) {
-      emitToRoom(`outlet:${order.outlet_id}`, "station:order-completed", {
-        orderId, station, newStatus: finalStatus, workerId: employeeId,
-        outletId: order.outlet_id, timestamp: new Date(),
-      });
-      const nextStation = ({ washing: "ironing", ironing: "packing" } as Record<string, string>)[station];
-      if (nextStation) {
-        emitToRoom(`outlet:${order.outlet_id}`, "station:new-order", { station: nextStation, orderId });
-      }
-    }
-    if (order.customer?.id) {
-      emitToUser(order.customer.id, "order:status-updated", {
-        orderId, status: finalStatus,
-        message: `Order Anda telah melewati station ${station}`,
-      });
-    }
-
-    if (station === "packing" && order.customer?.id) {
-      if (finalStatus === "waiting_payment") {
-        await notifyCustomer(
-          order.customer.id,
-          "Pembayaran Diperlukan",
-          "Cucian Anda sudah selesai diproses. Silakan lakukan pembayaran.",
-          "order_update",
-          orderId,
-        );
-      } else if (finalStatus === "ready_for_delivery") {
-        await notifyCustomer(
-          order.customer.id,
-          "Pesanan Siap Dikirim",
-          "Cucian Anda sudah selesai dan siap untuk dikirim.",
-          "order_update",
-          orderId,
-        );
-      }
-    }
+    await emitStationEvents(order, station, finalStatus, employeeId);
 
     return { order: updatedOrder, createdDeliveryTask: shouldCreateDeliveryTask };
   },
@@ -169,46 +212,7 @@ export const workerService = {
     });
     if (previousCount >= 2) throw new AppError("Bypass request sudah mencapai batas maksimal (2x) untuk station ini", 400);
 
-    const [breakdownItems, satuanOrderItems] = await Promise.all([
-      prisma.orderItemBreakdown.findMany({ where: { order_id: orderId }, include: { clothing_type: true } }),
-      prisma.orderItem.findMany({
-        where: { order_id: orderId, laundry_item: { unit: { not: "kg" } } },
-        include: { laundry_item: { select: { id: true, name: true } } },
-      }),
-    ]);
-
-    const clothingTypeMap = new Map(breakdownItems.map((i) => [i.clothing_type_id, i.clothing_type]));
-    const satuanMap = new Map(satuanOrderItems.map((i) => [i.laundry_item_id, i.laundry_item]));
-
-    const expectedItems = [
-      ...breakdownItems.map((item) => ({
-        item_type: "breakdown" as const,
-        item_id: item.clothing_type_id,
-        name: item.clothing_type.name,
-        quantity: item.quantity,
-      })),
-      ...satuanOrderItems.map((item) => ({
-        item_type: "satuan" as const,
-        item_id: item.laundry_item_id,
-        name: item.laundry_item.name,
-        quantity: Number(item.quantity),
-      })),
-    ];
-
-    const actualItems = [
-      ...actualItemsRaw.map((a) => ({
-        item_type: "breakdown" as const,
-        item_id: a.clothing_type_id,
-        name: clothingTypeMap.get(a.clothing_type_id)?.name ?? "",
-        quantity: a.actual_quantity,
-      })),
-      ...actualSatuanItemsRaw.map((a) => ({
-        item_type: "satuan" as const,
-        item_id: a.laundry_item_id,
-        name: satuanMap.get(a.laundry_item_id)?.name ?? "",
-        quantity: a.actual_quantity,
-      })),
-    ];
+    const { expectedItems, actualItems } = await buildBypassData(orderId, actualItemsRaw, actualSatuanItemsRaw);
 
     const bypass = await prisma.bypassRequest.create({
       data: {
@@ -241,31 +245,15 @@ export const workerService = {
     actualItems: { clothing_type_id: string; actual_quantity: number }[],
     actualSatuanItems: { laundry_item_id: string; actual_quantity: number }[] = [],
   ) {
-    const breakdown = await this.getOrderItemsForStation(orderId);
-    const discrepancies: { item_type: "breakdown" | "satuan"; item_id: string; name: string; expected: number; actual: number }[] = [];
+    const [breakdownItems, satuanOrderItems] = await Promise.all([
+      this.getOrderItemsForStation(orderId),
+      prisma.orderItem.findMany({
+        where: { order_id: orderId, laundry_item: { unit: { not: "kg" } } },
+        include: { laundry_item: { select: { id: true, name: true } } },
+      }),
+    ]);
 
-    for (const item of breakdown) {
-      const submitted = actualItems.find((a) => a.clothing_type_id === item.clothing_type_id);
-      const actual = submitted?.actual_quantity ?? 0;
-      if (actual !== Number(item.quantity)) {
-        discrepancies.push({ item_type: "breakdown", item_id: item.clothing_type_id, name: item.clothing_type.name, expected: Number(item.quantity), actual });
-      }
-    }
-
-    const satuanOrderItems = await prisma.orderItem.findMany({
-      where: { order_id: orderId, laundry_item: { unit: { not: "kg" } } },
-      include: { laundry_item: { select: { id: true, name: true } } },
-    });
-
-    for (const item of satuanOrderItems) {
-      const submitted = actualSatuanItems.find((a) => a.laundry_item_id === item.laundry_item_id);
-      const actual = submitted?.actual_quantity ?? 0;
-      if (actual !== Number(item.quantity)) {
-        discrepancies.push({ item_type: "satuan", item_id: item.laundry_item_id, name: item.laundry_item.name, expected: Number(item.quantity), actual });
-      }
-    }
-
-    return { isMatch: discrepancies.length === 0, discrepancies };
+    return compareItems(breakdownItems, satuanOrderItems, actualItems, actualSatuanItems);
   },
 
   async getBypassForOrder(employeeId: string, orderId: string) {

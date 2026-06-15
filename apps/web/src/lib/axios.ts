@@ -52,7 +52,6 @@ const PUBLIC_ENDPOINTS = [
   "/v1/employee/auth/refresh",
 ];
 
-// No headers need to be injected — both customer and employee use httpOnly cookies
 axiosInstance.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => config,
   (error) => Promise.reject(error),

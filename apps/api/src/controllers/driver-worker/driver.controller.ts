@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { driverService, mapDriverTaskToActivePayload } from "../../services/driver-worker/driver.service.js";
+import { driverService } from "../../services/driver-worker/driver.service.js";
+import { mapDriverTaskToActivePayload } from "../../helpers/driver-worker/driver.helpers.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { requireUserId } from "../../utils/asyncHandler.js";
 
