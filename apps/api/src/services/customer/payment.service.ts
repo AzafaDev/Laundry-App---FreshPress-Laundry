@@ -2,9 +2,8 @@ import crypto from "crypto";
 import { prisma } from "../../lib/prisma.js";
 import { snap, coreApi } from "../../lib/payment.js";
 import { AppError } from "../../middlewares/error.middleware.js";
-import { notifyCustomer, notifyOutletEmployees } from "../../lib/notification.js";
+import { notifyCustomer, notifyOutletEmployees, notifyOutletAdmins } from "../../lib/notification.js";
 import { emitToRoom } from "../../lib/socket.js";
-import { notifyCustomer, notifyOutletAdmins } from "../../lib/notification.js";
 import type { Payment, PaymentStatus } from "../../../generated/prisma/client.js";
 
 export const createPaymentTransaction = async (customerId: string, orderId: string) => {
