@@ -1,5 +1,4 @@
 import { prisma } from "./prisma.js";
-import { emitToUser } from "./socket.js";
 import type { EmployeeRole } from "../../generated/prisma/client.js";
 import { emitToUser, emitToRoom } from "./socket.js";
 
@@ -14,7 +13,7 @@ export type NotificationType =
   | "order_completed"
   | "new_pickup_request"
   | "payment_completed"
-  | "complaint_submitted";
+  | "complaint_submitted"
   | "order_update";
 
 interface CreateNotificationInput {
