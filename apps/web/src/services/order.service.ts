@@ -45,6 +45,7 @@ export interface CustomerOrder {
   pickup_schedule: string | null;
   total_weight_kg: string | number | null;
   total_price: string | number | null;
+  delivery_fee: string | number | null;
   created_at: string;
   updated_at: string;
   outlet?: {
