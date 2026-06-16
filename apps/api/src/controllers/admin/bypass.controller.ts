@@ -202,6 +202,7 @@ export const reviewBypassRequest = async (
           bypassWithItems.order_id,
           bypassWithItems.requested_by,
           actualItems,
+          id,
         );
       }
     }

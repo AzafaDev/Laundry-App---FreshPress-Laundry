@@ -1,3 +1,32 @@
+export function mapTaskHistoryItem(task: {
+  id: string;
+  task_type: string;
+  status: string;
+  taken_at: Date | null;
+  completed_at: Date | null;
+  order: {
+    id: string;
+    invoice_number: string;
+    customer: { full_name: string; phone: string | null } | null;
+    pickup_address: { address: string } | null;
+  };
+}) {
+  return {
+    id: task.id,
+    task_type: task.task_type,
+    status: task.status,
+    taken_at: task.taken_at,
+    completed_at: task.completed_at,
+    order: {
+      id: task.order.id,
+      invoice_number: task.order.invoice_number,
+      customer_name: task.order.customer?.full_name ?? null,
+      customer_phone: task.order.customer?.phone ?? null,
+      address: task.order.pickup_address?.address ?? null,
+    },
+  };
+}
+
 export function mapDriverTaskToActivePayload(task: {
   id: string;
   order_id: string;

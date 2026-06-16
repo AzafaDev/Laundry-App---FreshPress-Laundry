@@ -20,6 +20,7 @@ async function runCompleteStationTransaction(
   finalStatus: OrderStatus,
   checkPendingBypass: boolean,
   actualItems?: { clothing_type_id: string; actual_quantity: number }[],
+  bypassRequestId?: string,
 ) {
   await prisma.$transaction(async (tx) => {
     if (checkPendingBypass) {
@@ -53,6 +54,8 @@ async function runCompleteStationTransaction(
         employee_id: employeeId,
         input_items: actualItems ?? [],
         completed_at: new Date(),
+        is_bypassed: !!bypassRequestId,
+        bypass_request_id: bypassRequestId ?? null,
       },
     });
   });
@@ -258,6 +261,7 @@ export const workerService = {
     orderId: string,
     workerId: string,
     actualItems: { clothing_type_id: string; actual_quantity: number }[],
+    bypassRequestId: string,
   ) {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -271,7 +275,7 @@ export const workerService = {
     const finalStatus = resolveNextStatus(station);
 
     // checkPendingBypass = false karena bypass sudah di-approve, tidak perlu cek ulang
-    await runCompleteStationTransaction(orderId, workerId, station, order.status, finalStatus, false, actualItems);
+    await runCompleteStationTransaction(orderId, workerId, station, order.status, finalStatus, false, actualItems, bypassRequestId);
 
     const updatedOrder = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
 
@@ -339,5 +343,46 @@ export const workerService = {
     const { isMatch, discrepancies } = await this.validateActualItems(orderId, actualItems, actualSatuanItems);
     if (!isMatch) return { success: false as const, requiresBypass: true, discrepancies };
     return this.completeStation(employeeId, station, orderId, actualItems, true);
+  },
+
+  async getTaskHistory(
+    employeeId: string,
+    station: "washing" | "ironing" | "packing",
+    outletId: string,
+    page: number,
+    limit: number,
+  ) {
+    const skip = (page - 1) * limit;
+    const where = {
+      employee_id: employeeId,
+      station: station as StationType,
+      completed_at: { not: null as null },
+      order: { outlet_id: outletId },
+    };
+    const [tasks, total] = await Promise.all([
+      prisma.processLog.findMany({
+        where,
+        select: {
+          id: true,
+          station: true,
+          is_bypassed: true,
+          started_at: true,
+          completed_at: true,
+          notes: true,
+          order: {
+            select: {
+              id: true,
+              invoice_number: true,
+              customer: { select: { full_name: true } },
+            },
+          },
+        },
+        orderBy: { completed_at: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.processLog.count({ where }),
+    ]);
+    return { tasks, pagination: { page, limit, total, total_pages: Math.ceil(total / limit) } };
   },
 };

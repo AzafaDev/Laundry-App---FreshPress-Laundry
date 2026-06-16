@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import { workerService } from "../../services/driver-worker/worker.service.js";
+import { getEmployeeOutlet } from "../../repositories/driver-worker/attendance.repository.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { requireUserId } from "../../utils/asyncHandler.js";
 import {
@@ -161,6 +162,19 @@ export const completeStation = async (
   } catch (err) {
     next(err);
   }
+};
+
+export const getTaskHistory = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const employeeId = requireUserId(req);
+    const station = ROLE_TO_STATION[req.user!.role];
+    if (!station) throw new AppError("Role Anda tidak memiliki akses ke task history", 403);
+    const outletId = await getEmployeeOutlet(employeeId);
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 10));
+    const result = await workerService.getTaskHistory(employeeId, station, outletId, page, limit);
+    res.json({ success: true, data: result });
+  } catch (err) { next(err); }
 };
 
 export const getBypassForOrder = async (req: Request, res: Response, next: NextFunction) => {
