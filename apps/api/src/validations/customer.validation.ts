@@ -73,6 +73,40 @@ export const createOrderSchema = z.object({
   notes: z.string().max(500).optional(),
 });
 
+export const listNotificationsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+});
+
+export const listOrdersQuerySchema = z.object({
+  status: z
+    .enum([
+      "waiting_pickup_driver",
+      "laundry_to_outlet",
+      "laundry_arrived_outlet",
+      "washing",
+      "ironing",
+      "packing",
+      "waiting_payment",
+      "ready_for_delivery",
+      "delivery_to_customer",
+      "received_by_customer",
+      "completed",
+    ])
+    .optional(),
+  search: z.string().max(100).optional(),
+  date_from: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal tidak valid.")
+    .optional(),
+  date_to: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal tidak valid.")
+    .optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+});
+
 export const createComplaintSchema = z.object({
   complaint_type: z.enum([
     "missing_item",

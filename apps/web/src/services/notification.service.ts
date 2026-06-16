@@ -21,12 +21,20 @@ export interface CustomerNotification {
   created_at: string;
 }
 
+export interface ListNotificationsResponse {
+  notifications: CustomerNotification[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 type Envelope<T> = { success: true; message: string; data: T };
 
 export const notificationService = {
-  list: async (): Promise<CustomerNotification[]> => {
-    const { data } = await axiosInstance.get<Envelope<CustomerNotification[]>>(
-      "/v1/customer/notifications",
+  list: async (page = 1, limit = 20): Promise<ListNotificationsResponse> => {
+    const { data } = await axiosInstance.get<Envelope<ListNotificationsResponse>>(
+      `/v1/customer/notifications?page=${page}&limit=${limit}`,
     );
     return data.data;
   },

@@ -29,7 +29,7 @@ const getTodayDateKey = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 };
 
-const PICKUP_DATES = Array.from({ length: 4 }, (_, offset) => {
+const PICKUP_DATES = Array.from({ length: 7 }, (_, offset) => {
   const date = new Date();
   date.setDate(date.getDate() + offset);
   const year = date.getFullYear();

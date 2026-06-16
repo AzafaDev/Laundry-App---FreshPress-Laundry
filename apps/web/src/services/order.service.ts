@@ -41,6 +41,7 @@ export interface CustomerOrder {
   id: string;
   invoice_number: string;
   status: CustomerOrderStatus;
+  pickup_date?: string | null;
   pickup_schedule: string | null;
   total_weight_kg: string | number | null;
   total_price: string | number | null;
@@ -82,6 +83,23 @@ export interface CreateCustomerOrderPayload {
   service_type: "wash-and-fold" | "dry-cleaning";
   estimated_weight_kg?: number;
   notes?: string;
+}
+
+export interface ListCustomerOrdersQuery {
+  status?: CustomerOrderStatus | "";
+  search?: string;
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface ListCustomerOrdersResponse {
+  orders: CustomerOrder[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 type Envelope<T> = { success: true; message: string; data: T };
@@ -129,9 +147,16 @@ export const orderService = {
     return data.data;
   },
 
-  listOrders: async (): Promise<CustomerOrder[]> => {
-    const { data } = await axiosInstance.get<Envelope<CustomerOrder[]>>(
-      "/v1/customer/orders",
+  listOrders: async (query: ListCustomerOrdersQuery = {}): Promise<ListCustomerOrdersResponse> => {
+    const params = new URLSearchParams();
+    if (query.status) params.set("status", query.status);
+    if (query.search) params.set("search", query.search);
+    if (query.date_from) params.set("date_from", query.date_from);
+    if (query.date_to) params.set("date_to", query.date_to);
+    if (query.page) params.set("page", String(query.page));
+    if (query.limit) params.set("limit", String(query.limit));
+    const { data } = await axiosInstance.get<Envelope<ListCustomerOrdersResponse>>(
+      `/v1/customer/orders?${params.toString()}`,
     );
     return data.data;
   },

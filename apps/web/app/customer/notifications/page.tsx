@@ -1,11 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   CheckCheck,
+  ChevronLeft,
+  ChevronRight,
   CreditCard,
   Loader2,
   PackageCheck,
@@ -39,29 +41,42 @@ const formatDateTime = (value: string) =>
     minute: "2-digit",
   }).format(new Date(value));
 
+const LIMIT = 10;
+
 export default function CustomerNotificationsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, _hasHydrated } = useAuthStore();
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     if (!_hasHydrated) return;
-    if (!user) {
-      router.replace("/customer/login");
-    }
+    if (!user) router.replace("/customer/login");
   }, [_hasHydrated, user, router]);
 
   const {
-    data: notifications = [],
+    data,
     isLoading,
     isError,
     refetch,
-  } = useQuery<CustomerNotification[]>({
-    queryKey: ["customer", "notifications"],
-    queryFn: notificationService.list,
+  } = useQuery({
+    queryKey: ["customer", "notifications", page],
+    queryFn: () => notificationService.list(page, LIMIT),
+    enabled: _hasHydrated && !!user,
+    refetchInterval: page === 1 ? 20_000 : false,
+  });
+
+  // Separate query so the header unread count stays accurate across pages
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ["customer", "notifications", "unread-count"],
+    queryFn: notificationService.getUnreadCount,
     enabled: _hasHydrated && !!user,
     refetchInterval: 20_000,
   });
+
+  const notifications: CustomerNotification[] = data?.notifications ?? [];
+  const totalPages = data?.totalPages ?? 1;
+  const total = data?.total ?? 0;
 
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => notificationService.markAsRead(id),
@@ -88,8 +103,6 @@ export default function CustomerNotificationsPage() {
     );
   }
 
-  const unreadCount = notifications.filter((n) => !n.is_read).length;
-
   return (
     <div className="min-h-screen bg-background text-on-surface">
       <Navbar />
@@ -101,9 +114,7 @@ export default function CustomerNotificationsPage() {
             <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary mb-2">
               Notifikasi
             </span>
-            <h1 className="text-3xl font-bold text-on-surface">
-              Update pesanan kamu.
-            </h1>
+            <h1 className="text-3xl font-bold text-on-surface">Update pesanan kamu.</h1>
             {unreadCount > 0 && (
               <p className="text-sm text-on-surface-variant mt-1">
                 {unreadCount} notifikasi belum dibaca
@@ -157,11 +168,20 @@ export default function CustomerNotificationsPage() {
           </div>
         )}
 
+        {/* Result count */}
+        {!isLoading && !isError && total > 0 && (
+          <p className="text-xs text-on-surface-variant">
+            Menampilkan {notifications.length} dari {total} notifikasi
+          </p>
+        )}
+
         {/* Notification list */}
         {!isLoading && !isError && notifications.length > 0 && (
           <div className="space-y-3">
             {notifications.map((notification) => {
-              const Icon = notification.type ? NOTIFICATION_ICONS[notification.type] ?? Bell : Bell;
+              const Icon = notification.type
+                ? (NOTIFICATION_ICONS[notification.type] ?? Bell)
+                : Bell;
               return (
                 <button
                   key={notification.id}
@@ -205,6 +225,33 @@ export default function CustomerNotificationsPage() {
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {!isLoading && !isError && totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="inline-flex items-center gap-1 rounded-xl border border-outline-variant px-3 py-2 text-sm font-medium text-on-surface disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Sebelumnya
+            </button>
+
+            <span className="text-sm text-on-surface-variant px-2">
+              {page} / {totalPages}
+            </span>
+
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="inline-flex items-center gap-1 rounded-xl border border-outline-variant px-3 py-2 text-sm font-medium text-on-surface disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"
+            >
+              Berikutnya
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
         )}
       </main>

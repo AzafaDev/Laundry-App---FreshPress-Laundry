@@ -45,8 +45,16 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
 
 export const listOrders = asyncHandler(async (req: Request, res: Response) => {
   const customerId = req.user!.userId;
-  const orders = await OrderService.listCustomerOrders(customerId);
-  ok(res, orders, "Daftar order berhasil diambil.");
+  const { status, search, date_from, date_to, page, limit } = req.query as Record<string, string | undefined>;
+  const result = await OrderService.listCustomerOrders(customerId, {
+    status: status || undefined,
+    search: search || undefined,
+    date_from: date_from || undefined,
+    date_to: date_to || undefined,
+    page: page ? Number(page) : undefined,
+    limit: limit ? Number(limit) : undefined,
+  });
+  ok(res, result, "Daftar order berhasil diambil.");
 });
 
 export const getOrderById = asyncHandler(async (req: Request, res: Response) => {

@@ -97,7 +97,7 @@ export const createCustomerOrder = async (
     throw new AppError("Alamat berada di luar jangkauan outlet.", 400);
   }
 
-  const pickupDate = new Date(`${input.pickup_date}T00:00:00`);
+  const pickupDate = new Date(`${input.pickup_date}T00:00:00.000Z`);
   if (Number.isNaN(pickupDate.getTime())) {
     throw new AppError("Tanggal pickup tidak valid.", 400);
   }
@@ -106,6 +106,13 @@ export const createCustomerOrder = async (
   todayStart.setHours(0, 0, 0, 0);
   if (pickupDate < todayStart) {
     throw new AppError("Jadwal pickup tidak boleh di masa lalu.", 400);
+  }
+
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + 7);
+  maxDate.setHours(23, 59, 59, 999);
+  if (pickupDate > maxDate) {
+    throw new AppError("Jadwal pickup maksimal 7 hari ke depan.", 400);
   }
 
   const estimatedWeightKg =
@@ -123,6 +130,7 @@ export const createCustomerOrder = async (
         outlet_id: nearestOutlet.id,
         pickup_address_id: input.pickup_address_id,
         status: "waiting_pickup_driver",
+        pickup_date: pickupDate,
         total_weight_kg: estimatedWeightKg,
         delivery_fee: calculateDeliveryFee(nearestOutlet.distance),
         total_price: 0,
@@ -207,37 +215,54 @@ export const createCustomerOrder = async (
   return order;
 };
 
-export const listCustomerOrders = async (customerId: string) => {
-  return prisma.order.findMany({
-    where: { customer_id: customerId, deleted_at: null },
-    orderBy: { created_at: "desc" },
-    include: {
-      outlet: {
-        select: { id: true, name: true, city: true, phone: true },
-      },
-      status_histories: {
-        orderBy: { created_at: "desc" },
-        take: 20,
-      },
-      payment: {
-        select: {
-          status: true,
-          amount: true,
-          paid_at: true,
-        },
-      },
-      order_items: {
-        include: {
-          laundry_item: {
-            select: { id: true, name: true, unit: true },
-          },
-        },
-      },
-      complaints: {
-        select: { id: true, status: true, resolution_notes: true },
-      },
+export interface ListCustomerOrdersOptions {
+  status?: string;
+  search?: string;
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  limit?: number;
+}
+
+export const listCustomerOrders = async (
+  customerId: string,
+  options: ListCustomerOrdersOptions = {},
+) => {
+  const { status, search, date_from, date_to, page = 1, limit = 10 } = options;
+  const skip = (page - 1) * limit;
+
+  type OrderWhere = NonNullable<Parameters<typeof prisma.order.findMany>[0]>["where"];
+  const where: OrderWhere = { customer_id: customerId, deleted_at: null };
+
+  if (status) where.status = status as never;
+
+  if (search) {
+    where.invoice_number = { contains: search, mode: "insensitive" };
+  }
+
+  if (date_from || date_to) {
+    const range: Record<string, Date> = {};
+    if (date_from) range.gte = new Date(`${date_from}T00:00:00`);
+    if (date_to) range.lte = new Date(`${date_to}T23:59:59`);
+    where.created_at = range as never;
+  }
+
+  const include = {
+    outlet: { select: { id: true, name: true, city: true, phone: true } },
+    status_histories: { orderBy: { created_at: "desc" as const }, take: 20 },
+    payment: { select: { status: true, amount: true, paid_at: true } },
+    order_items: {
+      include: { laundry_item: { select: { id: true, name: true, unit: true } } },
     },
-  });
+    complaints: { select: { id: true, status: true, resolution_notes: true } },
+  };
+
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({ where, skip, take: limit, orderBy: { created_at: "desc" }, include }),
+    prisma.order.count({ where }),
+  ]);
+
+  return { orders, total, page, limit, totalPages: Math.ceil(total / limit) };
 };
 
 export const completeCustomerOrder = async (customerId: string, orderId: string) => {
