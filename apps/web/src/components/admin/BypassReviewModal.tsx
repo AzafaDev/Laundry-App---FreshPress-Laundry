@@ -110,6 +110,7 @@ interface BypassRequest {
   status: "pending" | "approved" | "rejected";
   admin_notes?: string | null;
   photo_evidence?: string[];
+  attempt_number?: number;
 }
 
 interface BypassReviewModalProps {
@@ -126,6 +127,7 @@ export function BypassReviewModal({
   onReject,
 }: BypassReviewModalProps) {
   const [adminNote, setAdminNote] = useState(request.admin_notes ?? "");
+  const isFinalAttempt = (request.attempt_number ?? 1) >= 2;
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -280,17 +282,19 @@ export function BypassReviewModal({
         <div className="px-5 py-4 border-t border-outline-variant shrink-0">
           {request.status === "pending" ? (
             <div className="flex gap-3">
-              <button
-                onClick={() => onReject("", adminNote)}
-                className="flex-1 py-2.5 border-2 border-error text-error rounded-xl text-sm font-semibold hover:bg-error/5 transition-colors"
-              >
-                Tolak
-              </button>
+              {!isFinalAttempt && (
+                <button
+                  onClick={() => onReject("", adminNote)}
+                  className="flex-1 py-2.5 border-2 border-error text-error rounded-xl text-sm font-semibold hover:bg-error/5 transition-colors"
+                >
+                  Reject
+                </button>
+              )}
               <button
                 onClick={() => onApprove("", adminNote)}
                 className="flex-1 py-2.5 bg-primary text-on-primary rounded-xl text-sm font-semibold hover:opacity-90 transition-all shadow-md shadow-primary/20"
               >
-                Setujui
+                {isFinalAttempt ? "Approve (Final)" : "Approve"}
               </button>
             </div>
           ) : (
