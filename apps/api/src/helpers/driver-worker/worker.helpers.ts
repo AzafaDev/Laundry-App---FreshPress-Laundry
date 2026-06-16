@@ -15,12 +15,8 @@ export type Discrepancy = {
   actual: number;
 };
 
-export function resolveNextStatus(
-  station: "washing" | "ironing" | "packing",
-  isPaid?: boolean,
-): OrderStatus {
-  if (station === "packing") return isPaid ? "ready_for_delivery" : "waiting_payment";
-  const map: Record<string, OrderStatus> = { washing: "ironing", ironing: "packing" };
+export function resolveNextStatus(station: "washing" | "ironing" | "packing"): OrderStatus {
+  const map: Record<string, OrderStatus> = { washing: "ironing", ironing: "packing", packing: "waiting_payment" };
   return map[station];
 }
 

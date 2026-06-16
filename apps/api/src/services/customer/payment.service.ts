@@ -18,10 +18,7 @@ export const createPaymentTransaction = async (customerId: string, orderId: stri
   if (!order) {
     throw new AppError("Order tidak ditemukan.", 404);
   }
-  if (order.status === "cancelled") {
-    throw new AppError("Order sudah dibatalkan.", 400);
-  }
-  if (!order.total_price) {
+if (!order.total_price) {
     throw new AppError("Total harga order belum tersedia.", 400);
   }
   if (order.payment?.status === "paid") {

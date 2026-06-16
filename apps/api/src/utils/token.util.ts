@@ -1,4 +1,9 @@
+import crypto from "crypto";
 import { prisma } from "../lib/prisma.js";
+
+export function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
 
 export function parseDuration(duration: string): number {
   const match = duration.match(/^(\d+)([dhm])$/);
@@ -20,13 +25,13 @@ export function storeRefreshToken(
   userType: string,
 ) {
   return prisma.refreshToken.create({
-    data: { user_type: userType, user_id: userId, token, expires_at: expiresAt },
+    data: { user_type: userType, user_id: userId, token: hashToken(token), expires_at: expiresAt },
   });
 }
 
 export function revokeRefreshToken(token: string) {
   return prisma.refreshToken.updateMany({
-    where: { token, revoked_at: null },
+    where: { token: hashToken(token), revoked_at: null },
     data: { revoked_at: new Date() },
   });
 }

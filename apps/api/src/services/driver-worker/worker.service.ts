@@ -5,7 +5,6 @@ import { AppError } from "../../middlewares/error.middleware.js";
 import { OrderStatus, StationType } from "../../../generated/prisma/client.js";
 import { getEmployeeOutlet } from "../../repositories/driver-worker/attendance.repository.js";
 import { assertShiftEligibility } from "../../guards/driver-worker/shift.guard.js";
-import { driverService } from "./driver.service.js";
 import {
   resolveNextStatus,
   buildExpectedItems,
@@ -185,15 +184,11 @@ export const workerService = {
       throw new AppError(`Order sedang dalam status ${order.status}, tidak dapat diproses di station ${station}`, 400);
     }
 
-    const isPaid = order.payment?.status === "paid";
-    const finalStatus = resolveNextStatus(station, isPaid);
-    const shouldCreateDeliveryTask = station === "packing" && isPaid;
+    const finalStatus = resolveNextStatus(station);
 
     await runCompleteStationTransaction(orderId, employeeId, station, order.status, finalStatus, checkPendingBypass, actualItems);
 
     const updatedOrder = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
-
-    if (shouldCreateDeliveryTask) await driverService.createDeliveryTask(orderId);
 
     await emitStationEvents(order, station, finalStatus, employeeId);
 
@@ -273,20 +268,16 @@ export const workerService = {
       throw new AppError(`Order tidak sedang di station ${station}`, 400);
     }
 
-    const isPaid = order.payment?.status === "paid";
-    const finalStatus = resolveNextStatus(station, isPaid);
-    const shouldCreateDeliveryTask = station === "packing" && isPaid;
+    const finalStatus = resolveNextStatus(station);
 
     // checkPendingBypass = false karena bypass sudah di-approve, tidak perlu cek ulang
     await runCompleteStationTransaction(orderId, workerId, station, order.status, finalStatus, false, actualItems);
 
     const updatedOrder = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
 
-    if (shouldCreateDeliveryTask) await driverService.createDeliveryTask(orderId);
-
     await emitStationEvents(order, station, finalStatus, workerId);
 
-    return { order: updatedOrder, createdDeliveryTask: shouldCreateDeliveryTask };
+    return { order: updatedOrder };
   },
 
   async getOrderItemsForStation(orderId: string) {
