@@ -36,7 +36,6 @@ enum OrderStatus {
   delivery_to_customer
   received_by_customer
   completed
-  cancelled
 }
 
 enum PaymentStatus {
@@ -57,11 +56,9 @@ enum DriverTaskType {
 }
 
 enum DriverTaskStatus {
-  pending
   available
   in_progress
   completed
-  cancelled
 }
 
 enum BypassStatus {
@@ -682,24 +679,3 @@ model Notification {
 }
 
 // ─────────────────────────────────────────
-// ACTIVITY LOGS
-// ─────────────────────────────────────────
-
-model ActivityLog {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_type   String   @db.VarChar(20)
-  user_id     String   @db.Uuid
-  action      String   @db.VarChar(100)
-  entity_type String?  @db.VarChar(50)
-  entity_id   String?  @db.Uuid
-  old_values  Json?
-  new_values  Json?
-  ip_address  String?  @db.Inet
-  user_agent  String?
-  created_at  DateTime @default(now()) @db.Timestamptz
-
-  @@index([user_type, user_id])
-  @@index([entity_type])
-  @@index([created_at])
-  @@map("activity_logs")
-}

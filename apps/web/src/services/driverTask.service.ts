@@ -1,7 +1,7 @@
 import { axiosInstance } from "@/lib/axios";
 
 export type DriverTaskType = "pickup" | "delivery";
-export type DriverTaskStatus = "available" | "in_progress" | "completed" | "cancelled";
+export type DriverTaskStatus = "available" | "in_progress" | "completed";
 
 export interface DriverTask {
   id: string;

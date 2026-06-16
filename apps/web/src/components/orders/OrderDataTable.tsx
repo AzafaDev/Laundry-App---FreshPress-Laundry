@@ -20,7 +20,6 @@ const STATUS_STYLE: Partial<Record<OrderStatus, string>> = {
   delivery_to_customer: "bg-secondary-container text-on-secondary-container",
   received_by_customer: "bg-secondary-container text-on-secondary-container",
   completed: "bg-surface-container-highest text-on-surface-variant",
-  cancelled: "bg-error-container text-on-error-container",
 };
 
 const fmtPrice = (v: string | number | null) =>

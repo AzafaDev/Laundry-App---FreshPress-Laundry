@@ -32,8 +32,7 @@ export async function runAllSeeds() {
   await prisma.workShift.deleteMany({});
   await prisma.laundryItem.deleteMany({});
   await prisma.outlet.deleteMany({});
-  await prisma.activityLog.deleteMany({});
-  await prisma.complaint.deleteMany({});
+await prisma.complaint.deleteMany({});
   await prisma.payment.deleteMany({});
   await prisma.bypassRequest.deleteMany({});
   await prisma.refreshToken.deleteMany({});

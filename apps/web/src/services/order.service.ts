@@ -16,8 +16,7 @@ export type CustomerOrderStatus =
   | "ready_for_delivery"
   | "delivery_to_customer"
   | "received_by_customer"
-  | "completed"
-  | "cancelled";
+  | "completed";
 
 export interface CustomerOrderHistory {
   id: string;

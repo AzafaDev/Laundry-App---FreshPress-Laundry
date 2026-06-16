@@ -230,8 +230,6 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
     { suffix: 'COMPLETED-1', status: 'completed' },
     { suffix: 'COMPLETED-2', status: 'completed' },
 
-    // --- cancelled ---
-    { suffix: 'CANCELLED-1', status: 'cancelled' },
   ];
 
   for (const [index, scenario] of orderScenarios.entries()) {

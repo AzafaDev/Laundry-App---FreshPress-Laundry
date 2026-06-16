@@ -9,8 +9,7 @@ export type OrderStatus =
   | "ready_for_delivery"
   | "delivery_to_customer"
   | "received_by_customer"
-  | "completed"
-  | "cancelled";
+  | "completed";
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   waiting_pickup_driver: "Menunggu Penjemputan Driver",
@@ -24,7 +23,6 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   delivery_to_customer: "Sedang Dikirim",
   received_by_customer: "Diterima Customer",
   completed: "Selesai",
-  cancelled: "Dibatalkan",
 };
 
 export const ORDER_STATUS_LIST = Object.keys(ORDER_STATUS_LABELS) as OrderStatus[];
