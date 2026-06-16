@@ -7,7 +7,7 @@ import {
   signRefreshToken,
   verifyRefreshToken,
 } from "../../utils/jwt.util.js";
-import { parseDuration, storeRefreshToken, revokeRefreshToken } from "../../utils/token.util.js";
+import { parseDuration, storeRefreshToken, revokeRefreshToken, hashToken } from "../../utils/token.util.js";
 import { sendEmployeeResetPasswordEmail } from "../../lib/email.js";
 import { Response } from "express";
 
@@ -97,7 +97,7 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
 
   const storedToken = await prisma.refreshToken.findFirst({
     where: {
-      token: refreshToken,
+      token: hashToken(refreshToken),
       user_type: "employee",
       user_id: payload.userId,
       revoked_at: null,
@@ -235,6 +235,11 @@ export const resetPassword = async (rawToken: string, newPassword: string, res: 
     tokenVersion: newTokenVersion,
   });
 
+  await prisma.refreshToken.updateMany({
+    where: { user_id: employee.id, user_type: "employee", revoked_at: null },
+    data: { revoked_at: new Date() },
+  });
+
   const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
   const expiresMs = parseDuration(expiresIn);
   const expiresAt = new Date(Date.now() + expiresMs);
@@ -312,7 +317,7 @@ export const changePassword = async (
 
   await prisma.refreshToken.create({
     data: {
-      token: newRefreshToken,
+      token: hashToken(newRefreshToken),
       user_id: updated.id,
       user_type: "employee",
       expires_at: new Date(Date.now() + expiresMs),

@@ -1,11 +1,10 @@
 import { prisma } from "../../lib/prisma.js";
 import { emitToRoom, emitToUser } from "../../lib/socket.js";
-import { notifyCustomer } from "../../lib/notification.js";
+import { notifyCustomer, notifyOutletAdmins } from "../../lib/notification.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { OrderStatus, StationType } from "../../../generated/prisma/client.js";
 import { getEmployeeOutlet } from "../../repositories/driver-worker/attendance.repository.js";
 import { assertShiftEligibility } from "../../guards/driver-worker/shift.guard.js";
-import { driverService } from "./driver.service.js";
 import {
   resolveNextStatus,
   buildExpectedItems,
@@ -21,6 +20,7 @@ async function runCompleteStationTransaction(
   finalStatus: OrderStatus,
   checkPendingBypass: boolean,
   actualItems?: { clothing_type_id: string; actual_quantity: number }[],
+  bypassRequestId?: string,
 ) {
   await prisma.$transaction(async (tx) => {
     if (checkPendingBypass) {
@@ -54,6 +54,8 @@ async function runCompleteStationTransaction(
         employee_id: employeeId,
         input_items: actualItems ?? [],
         completed_at: new Date(),
+        is_bypassed: !!bypassRequestId,
+        bypass_request_id: bypassRequestId ?? null,
       },
     });
   });
@@ -74,12 +76,25 @@ async function emitStationEvents(
     if (nextStation) {
       emitToRoom(`outlet:${order.outlet_id}`, "station:new-order", { station: nextStation, orderId: order.id });
     }
+    if (station === "packing") {
+      const statusMsg = finalStatus === "waiting_payment"
+        ? "Pesanan menunggu pembayaran dari customer."
+        : "Pesanan siap untuk dikirim.";
+      await notifyOutletAdmins(
+        order.outlet_id,
+        "Pengemasan Selesai",
+        `Pesanan ${order.invoice_number} telah selesai dikemas. ${statusMsg}`,
+        "order_update",
+        order.id,
+      );
+    }
   }
 
   if (order.customer?.id) {
     emitToUser(order.customer.id, "order:status-updated", {
-      orderId: order.id, status: finalStatus,
-      message: `Order Anda telah melewati station ${station}`,
+      orderId: order.id,
+      status: finalStatus,
+      ...(station === "packing" && { message: `Pesanan Anda telah selesai diproses` }),
     });
 
     if (station === "packing") {
@@ -137,15 +152,18 @@ export const workerService = {
         order_items: { include: { laundry_item: true } },
         order_item_breakdowns: { include: { clothing_type: true } },
         bypass_requests: {
-          where: { station: stationType as StationType, status: "pending" },
-          select: { id: true },
+          where: { station: stationType as StationType },
+          select: { status: true, admin_notes: true },
+          orderBy: { created_at: "desc" as const },
+          take: 1,
         },
       },
       orderBy: { created_at: "asc" },
     });
     return orders.map((o) => ({
       ...o,
-      hasPendingBypass: o.bypass_requests.length > 0,
+      bypassStatus: o.bypass_requests[0]?.status ?? null,
+      bypassAdminNotes: o.bypass_requests[0]?.admin_notes ?? null,
       bypass_requests: undefined,
     }));
   },
@@ -169,19 +187,15 @@ export const workerService = {
       throw new AppError(`Order sedang dalam status ${order.status}, tidak dapat diproses di station ${station}`, 400);
     }
 
-    const isPaid = order.payment?.status === "paid";
-    const finalStatus = resolveNextStatus(station, isPaid);
-    const shouldCreateDeliveryTask = station === "packing" && isPaid;
+    const finalStatus = resolveNextStatus(station);
 
     await runCompleteStationTransaction(orderId, employeeId, station, order.status, finalStatus, checkPendingBypass, actualItems);
 
     const updatedOrder = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
 
-    if (shouldCreateDeliveryTask) await driverService.createDeliveryTask(orderId);
-
     await emitStationEvents(order, station, finalStatus, employeeId);
 
-    return { order: updatedOrder, createdDeliveryTask: shouldCreateDeliveryTask };
+    return { order: updatedOrder };
   },
 
   async createBypassRequest(
@@ -195,7 +209,7 @@ export const workerService = {
   ) {
     const [outletId, order] = await Promise.all([
       assertShiftEligibility(employeeId),
-      prisma.order.findUnique({ where: { id: orderId }, select: { outlet_id: true, status: true } }),
+      prisma.order.findUnique({ where: { id: orderId }, select: { outlet_id: true, status: true, invoice_number: true } }),
     ]);
 
     if (!order) throw new AppError("Order tidak ditemukan", 404);
@@ -227,6 +241,14 @@ export const workerService = {
       },
     });
 
+    await notifyOutletAdmins(
+      outletId,
+      "Bypass Request Baru",
+      `Worker mengajukan bypass di station ${station} untuk order #${order.invoice_number}`,
+      "bypass_request",
+      bypass.id,
+    );
+
     emitToRoom(`outlet:${outletId}`, "bypass:created", { bypassId: bypass.id, orderId, station, workerId: employeeId });
     emitToUser(employeeId, "bypass:created", { bypassId: bypass.id, status: "pending" });
 
@@ -239,6 +261,7 @@ export const workerService = {
     orderId: string,
     workerId: string,
     actualItems: { clothing_type_id: string; actual_quantity: number }[],
+    bypassRequestId: string,
   ) {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -249,20 +272,16 @@ export const workerService = {
       throw new AppError(`Order tidak sedang di station ${station}`, 400);
     }
 
-    const isPaid = order.payment?.status === "paid";
-    const finalStatus = resolveNextStatus(station, isPaid);
-    const shouldCreateDeliveryTask = station === "packing" && isPaid;
+    const finalStatus = resolveNextStatus(station);
 
     // checkPendingBypass = false karena bypass sudah di-approve, tidak perlu cek ulang
-    await runCompleteStationTransaction(orderId, workerId, station, order.status, finalStatus, false, actualItems);
+    await runCompleteStationTransaction(orderId, workerId, station, order.status, finalStatus, false, actualItems, bypassRequestId);
 
     const updatedOrder = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
 
-    if (shouldCreateDeliveryTask) await driverService.createDeliveryTask(orderId);
-
     await emitStationEvents(order, station, finalStatus, workerId);
 
-    return { order: updatedOrder, createdDeliveryTask: shouldCreateDeliveryTask };
+    return { order: updatedOrder };
   },
 
   async getOrderItemsForStation(orderId: string) {
@@ -324,5 +343,46 @@ export const workerService = {
     const { isMatch, discrepancies } = await this.validateActualItems(orderId, actualItems, actualSatuanItems);
     if (!isMatch) return { success: false as const, requiresBypass: true, discrepancies };
     return this.completeStation(employeeId, station, orderId, actualItems, true);
+  },
+
+  async getTaskHistory(
+    employeeId: string,
+    station: "washing" | "ironing" | "packing",
+    outletId: string,
+    page: number,
+    limit: number,
+  ) {
+    const skip = (page - 1) * limit;
+    const where = {
+      employee_id: employeeId,
+      station: station as StationType,
+      completed_at: { not: null as null },
+      order: { outlet_id: outletId },
+    };
+    const [tasks, total] = await Promise.all([
+      prisma.processLog.findMany({
+        where,
+        select: {
+          id: true,
+          station: true,
+          is_bypassed: true,
+          started_at: true,
+          completed_at: true,
+          notes: true,
+          order: {
+            select: {
+              id: true,
+              invoice_number: true,
+              customer: { select: { full_name: true } },
+            },
+          },
+        },
+        orderBy: { completed_at: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.processLog.count({ where }),
+    ]);
+    return { tasks, pagination: { page, limit, total, total_pages: Math.ceil(total / limit) } };
   },
 };

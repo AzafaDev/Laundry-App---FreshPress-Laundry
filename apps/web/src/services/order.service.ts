@@ -16,8 +16,7 @@ export type CustomerOrderStatus =
   | "ready_for_delivery"
   | "delivery_to_customer"
   | "received_by_customer"
-  | "completed"
-  | "cancelled";
+  | "completed";
 
 export interface CustomerOrderHistory {
   id: string;
@@ -52,6 +51,7 @@ export interface CustomerOrder {
     id: string;
     name: string;
     city?: string;
+    phone?: string | null;
   };
   payment?: {
     status: string;
@@ -60,7 +60,7 @@ export interface CustomerOrder {
   } | null;
   status_histories?: CustomerOrderHistory[];
   order_items?: CustomerOrderItem[];
-  complaints?: { id: string }[];
+  complaints?: { id: string; status: string; resolution_notes: string | null }[];
 }
 
 export type ComplaintType =
@@ -153,10 +153,15 @@ export const orderService = {
   createComplaint: async (
     orderId: string,
     payload: CreateComplaintPayload,
+    photos?: File[],
   ): Promise<{ id: string }> => {
+    const formData = new FormData();
+    formData.append("complaint_type", payload.complaint_type);
+    formData.append("description", payload.description);
+    photos?.forEach((photo) => formData.append("photos", photo));
     const { data } = await axiosInstance.post<Envelope<{ id: string }>>(
       `/v1/customer/orders/${orderId}/complaints`,
-      payload,
+      formData,
     );
     return data.data;
   },

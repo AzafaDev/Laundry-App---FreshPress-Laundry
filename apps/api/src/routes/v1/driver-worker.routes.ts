@@ -14,8 +14,9 @@ import {
   getMyLogs,
   getCurrentShift,
 } from "../../controllers/driver-worker/attendance.controller.js";
-import { getAvailablePickups, getAvailableDeliveries, getActiveTask, claimTask, completeTask } from "../../controllers/driver-worker/driver.controller.js";
-import { getStationOrders, completeStation, submitItems, createBypassRequest, uploadBypassPhotosMiddleware, getBypassForOrder } from "../../controllers/driver-worker/worker.controller.js";
+import { getAvailablePickups, getAvailableDeliveries, getActiveTask, claimTask, completeTask, getTaskHistory as getDriverTaskHistory } from "../../controllers/driver-worker/driver.controller.js";
+import * as NotifCtrl from "../../controllers/admin/notification.controller.js";
+import { getStationOrders, completeStation, submitItems, createBypassRequest, uploadBypassPhotosMiddleware, getBypassForOrder, getTaskHistory as getWorkerTaskHistory } from "../../controllers/driver-worker/worker.controller.js";
 
 const router = Router();
 
@@ -78,6 +79,11 @@ router.patch(
   requireRole("driver"),
   completeTask,
 );
+router.get(
+  "/driver/tasks/history",
+  requireRole("driver"),
+  getDriverTaskHistory,
+);
 
 router.get(
   "/worker/station/:station",
@@ -95,6 +101,11 @@ router.patch(
   completeStation,
 );
 router.get(
+  "/worker/tasks/history",
+  requireRole(...WORKER_ROLES),
+  getWorkerTaskHistory,
+);
+router.get(
   "/worker/orders/:orderId/bypass",
   requireRole(...WORKER_ROLES),
   getBypassForOrder,
@@ -105,5 +116,10 @@ router.post(
   uploadBypassPhotosMiddleware,
   createBypassRequest,
 );
+
+router.get("/driver/notifications", requireRole("driver"), NotifCtrl.listNotifications);
+router.get("/driver/notifications/unread-count", requireRole("driver"), NotifCtrl.getUnreadCount);
+router.patch("/driver/notifications/read-all", requireRole("driver"), NotifCtrl.markAllAsRead);
+router.patch("/driver/notifications/:id/read", requireRole("driver"), NotifCtrl.markAsRead);
 
 export default router;

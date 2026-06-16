@@ -54,8 +54,6 @@ export function initSocketServer(httpServer: HttpServer): IOServer {
 
     socket.join(`role:${user.role}`);
 
-    socket.join(`online:${user.role}`);
-
     if (user.role !== "customer" && user.outletId) {
       socket.join(`outlet:${user.outletId}`);
     }
@@ -68,12 +66,6 @@ export function initSocketServer(httpServer: HttpServer): IOServer {
   return io;
 }
 
-export function getIO(): IOServer {
-  if (!io) {
-    throw new Error("socket.io belum di inisialisasi");
-  }
-  return io;
-}
 
 export function emitToRoom(room: string, event: string, data: any) {
   if (!io) return;

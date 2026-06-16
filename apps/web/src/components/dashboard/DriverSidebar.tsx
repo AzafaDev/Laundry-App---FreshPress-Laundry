@@ -1,12 +1,13 @@
 "use client";
 
-import { LayoutDashboard, Clock, ScrollText } from "lucide-react";
+import { LayoutDashboard, Clock, ScrollText, Bell } from "lucide-react";
 import { EmployeeSidebar } from "./EmployeeSidebar";
 
 const NAV_ITEMS = [
   { href: "/dashboard/driver", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/driver/attendance", label: "Attendance", icon: Clock },
   { href: "/dashboard/driver/history", label: "Riwayat", icon: ScrollText },
+  { href: "/dashboard/driver/notifications", label: "Notifikasi", icon: Bell },
 ];
 
 export function DriverSidebar() {

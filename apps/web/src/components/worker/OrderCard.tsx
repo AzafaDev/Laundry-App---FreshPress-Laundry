@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle, Clock, AlertCircle, Clock3, Loader2, Eye } from "lucide-react";
+import { CheckCircle, Clock, AlertCircle, Clock3, Loader2, Eye, XCircle } from "lucide-react";
 import type { StationOrder } from "@/services/workerStation.service";
 import { statusLabel, type BypassState } from "./stationConfig";
 
@@ -18,6 +18,18 @@ function PendingBypassBanner() {
     <div className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200 mt-3">
       <Clock3 className="w-4 h-4 text-amber-600 shrink-0" />
       <p className="text-sm text-amber-700 font-medium">Menunggu persetujuan admin</p>
+    </div>
+  );
+}
+
+function RejectedBypassBanner({ notes }: { notes?: string | null }) {
+  return (
+    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-50 border border-red-200 mt-3">
+      <XCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+      <div>
+        <p className="text-sm text-red-700 font-medium">Bypass ditolak</p>
+        {notes && <p className="text-xs text-red-500 mt-0.5">{notes}</p>}
+      </div>
     </div>
   );
 }
@@ -43,7 +55,8 @@ export function OrderCard({
   }, [order.created_at]);
 
   const rawStatus = statusLabel[order.status] ?? order.status;
-  const isPendingBypass = bypassState?.submitted || order.hasPendingBypass;
+  const isPendingBypass = bypassState?.submitted || order.bypassStatus === "pending";
+  const isRejectedBypass = !bypassState?.submitted && order.bypassStatus === "rejected";
 
   return (
     <div
@@ -105,6 +118,18 @@ export function OrderCard({
               Lihat Detail Bypass
             </button>
           )}
+        </>
+      ) : isRejectedBypass ? (
+        <>
+          <RejectedBypassBanner notes={order.bypassAdminNotes} />
+          <button
+            onClick={() => onProcess(order.id)}
+            disabled={isProcessing}
+            className="w-full mt-2 py-2.5 bg-primary text-on-primary rounded-lg font-semibold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+            {isProcessing ? "Memproses..." : "Verifikasi Items"}
+          </button>
         </>
       ) : (
         <button

@@ -147,7 +147,12 @@ async function runCompleteTransaction(
 
     const orderUpdate = await tx.order.updateMany({
       where: { id: task.order_id, status: oldOrderStatus },
-      data: { status: newOrderStatus },
+      data: {
+        status: newOrderStatus,
+        ...(newOrderStatus === "received_by_customer" && {
+          auto_confirm_at: new Date(Date.now() + 48 * 60 * 60 * 1000),
+        }),
+      },
     });
     if (orderUpdate.count === 0) throw new AppError("Status order tidak sesuai untuk diselesaikan", 409);
 
@@ -254,6 +259,36 @@ export const driverService = {
     return prisma.driverTask.create({
       data: { order_id: orderId, task_type: "delivery", status: "available" },
     });
+  },
+
+  async getTaskHistory(employeeId: string, page: number, limit: number) {
+    const skip = (page - 1) * limit;
+    const where = { driver_id: employeeId, status: "completed" as const };
+    const [tasks, total] = await Promise.all([
+      prisma.driverTask.findMany({
+        where,
+        select: {
+          id: true,
+          task_type: true,
+          status: true,
+          taken_at: true,
+          completed_at: true,
+          order: {
+            select: {
+              id: true,
+              invoice_number: true,
+              customer: { select: { full_name: true, phone: true } },
+              pickup_address: { select: { address: true } },
+            },
+          },
+        },
+        orderBy: { completed_at: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.driverTask.count({ where }),
+    ]);
+    return { tasks, pagination: { page, limit, total, total_pages: Math.ceil(total / limit) } };
   },
 
   async completeTask(employeeId: string, taskId: string) {

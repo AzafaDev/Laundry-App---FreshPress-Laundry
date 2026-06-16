@@ -10,7 +10,7 @@ import {
   verifyEmailToken,
   verifyRefreshToken,
 } from "../../utils/jwt.util.js";
-import { parseDuration, storeRefreshToken, revokeRefreshToken } from "../../utils/token.util.js";
+import { parseDuration, storeRefreshToken, revokeRefreshToken, hashToken } from "../../utils/token.util.js";
 import {
   sendVerificationEmail,
   sendResetPasswordEmail,
@@ -146,7 +146,7 @@ export const refreshCustomerToken = async (req: Request, res: Response) => {
 
   const storedToken = await prisma.refreshToken.findFirst({
     where: {
-      token: refreshToken,
+      token: hashToken(refreshToken),
       user_type: "customer",
       user_id: payload.userId,
       revoked_at: null,

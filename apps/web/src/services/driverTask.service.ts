@@ -1,7 +1,7 @@
 import { axiosInstance } from "@/lib/axios";
 
 export type DriverTaskType = "pickup" | "delivery";
-export type DriverTaskStatus = "available" | "in_progress" | "completed" | "cancelled";
+export type DriverTaskStatus = "available" | "in_progress" | "completed";
 
 export interface DriverTask {
   id: string;
@@ -80,4 +80,39 @@ export const driverTaskService = {
     );
     return data.data;
   },
+
+  getTaskHistory: async (page: number, limit: number): Promise<TaskHistoryResponse> => {
+    const { data } = await axiosInstance.get<{ success: true; data: TaskHistoryResponse }>(
+      "/v1/driver/tasks/history",
+      { params: { page, limit } }
+    );
+    return data.data;
+  },
 };
+
+export interface DriverTaskHistoryItem {
+  id: string;
+  task_type: DriverTaskType;
+  status: DriverTaskStatus;
+  taken_at: string | null;
+  completed_at: string | null;
+  order: {
+    id: string;
+    invoice_number: string;
+    customer_name: string | null;
+    customer_phone: string | null;
+    address: string | null;
+  };
+}
+
+export interface TaskHistoryPagination {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+}
+
+export interface TaskHistoryResponse {
+  tasks: DriverTaskHistoryItem[];
+  pagination: TaskHistoryPagination;
+}

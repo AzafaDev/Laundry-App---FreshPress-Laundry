@@ -14,7 +14,8 @@ export type NotificationType =
   | "new_pickup_request"
   | "payment_completed"
   | "complaint_submitted"
-  | "order_update";
+  | "order_update"
+  | "bypass_request";
 
 interface CreateNotificationInput {
   userType: "customer" | "employee";

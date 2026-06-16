@@ -9,6 +9,8 @@ import { seedOrders } from './orders.seed.js';
 import { seedWaitingPaymentOrders } from './waitingPayment.seed.js';
 import { seedLaundryItems } from './laundryItems.seed.js';
 import { seedBypassRequests } from './bypassRequests.seed.js';
+import { seedDriverNotifications } from './driverNotifications.seed.js';
+import { seedTaskHistory } from './taskHistory.seed.js';
 
 export async function runAllSeeds() {
   console.log('🌱 Starting database seeding...\n');
@@ -31,8 +33,7 @@ export async function runAllSeeds() {
   await prisma.workShift.deleteMany({});
   await prisma.laundryItem.deleteMany({});
   await prisma.outlet.deleteMany({});
-  await prisma.activityLog.deleteMany({});
-  await prisma.complaint.deleteMany({});
+await prisma.complaint.deleteMany({});
   await prisma.payment.deleteMany({});
   await prisma.bypassRequest.deleteMany({});
   await prisma.refreshToken.deleteMany({});
@@ -58,6 +59,10 @@ export async function runAllSeeds() {
   await seedOrders(mainOutlet, employees, customers);
 
   await seedBypassRequests();
+
+  await seedTaskHistory();
+
+  await seedDriverNotifications();
 
   console.log('\n✅ All seeds completed successfully');
 }
@@ -127,6 +132,12 @@ export async function runModuleSeed(moduleName: string) {
       break;
     case 'bypass-requests':
       await seedBypassRequests();
+      break;
+    case 'driver-notifications':
+      await seedDriverNotifications();
+      break;
+    case 'task-history':
+      await seedTaskHistory();
       break;
     default:
       console.log(`Module ${moduleName} not recognized`);
