@@ -67,7 +67,7 @@ router.post("/orders", authenticate, validate(createOrderSchema), OrderCtrl.crea
 router.get("/orders", authenticate, OrderCtrl.listOrders);
 router.get("/orders/:id", authenticate, OrderCtrl.getOrderById);
 router.patch("/orders/:id/complete", authenticate, OrderCtrl.completeOrder);
-router.post("/orders/:id/complaints", authenticate, validate(createComplaintSchema), OrderCtrl.createComplaint);
+router.post("/orders/:id/complaints", authenticate, OrderCtrl.uploadComplaintPhotosMiddleware, validate(createComplaintSchema), OrderCtrl.createComplaint);
 
 // Notification Routes (protected)
 router.get("/notifications", authenticate, NotificationCtrl.listNotifications);

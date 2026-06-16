@@ -213,7 +213,7 @@ export const listCustomerOrders = async (customerId: string) => {
     orderBy: { created_at: "desc" },
     include: {
       outlet: {
-        select: { id: true, name: true, city: true },
+        select: { id: true, name: true, city: true, phone: true },
       },
       status_histories: {
         orderBy: { created_at: "desc" },
@@ -234,7 +234,7 @@ export const listCustomerOrders = async (customerId: string) => {
         },
       },
       complaints: {
-        select: { id: true },
+        select: { id: true, status: true, resolution_notes: true },
       },
     },
   });
@@ -296,6 +296,7 @@ export const completeCustomerOrder = async (customerId: string, orderId: string)
 export interface CreateComplaintInput {
   complaint_type: string;
   description: string;
+  photo_urls?: string[];
 }
 
 export const createCustomerComplaint = async (
@@ -332,6 +333,7 @@ export const createCustomerComplaint = async (
       customer_id: customerId,
       complaint_type: input.complaint_type,
       description: input.description,
+      photo_urls: input.photo_urls ?? [],
     },
   });
 
