@@ -10,6 +10,95 @@ interface BypassItem {
   quantity: number;
 }
 
+// ── Discrepancy table separated by kiloan / satuan ────────────────────────────
+function DiscrepancyTable({ rows }: { rows: Array<{ exp: BypassItem; actual: number; selisih: number }> }) {
+  return (
+    <div className="rounded-xl border border-outline-variant overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-surface-container-low border-b border-outline-variant">
+            <th className="text-left px-3 py-2 text-xs font-semibold text-on-surface-variant">Item</th>
+            <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Expected</th>
+            <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Actual</th>
+            <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Selisih</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ exp, actual, selisih }, idx) => (
+            <tr
+              key={exp.item_id && exp.item_type ? `${exp.item_type}:${exp.item_id}` : `row-${idx}`}
+              className="border-b border-outline-variant last:border-0 bg-amber-50/60"
+            >
+              <td className="px-3 py-2.5 font-medium text-on-surface">{exp.name}</td>
+              <td className="px-3 py-2.5 text-center text-on-surface-variant">{exp.quantity}</td>
+              <td className="px-3 py-2.5 text-center font-bold text-on-surface">{actual}</td>
+              <td className="px-3 py-2.5 text-center">
+                {selisih !== 0 ? (
+                  <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full bg-error/10 text-error">
+                    {selisih > 0 ? `-${selisih}` : `+${Math.abs(selisih)}`}
+                  </span>
+                ) : (
+                  <span className="text-xs text-on-surface-variant">—</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function buildRows(expectedItems: BypassItem[], actualItems: BypassItem[], filterType: string) {
+  return expectedItems
+    .filter((exp) => exp.item_type === filterType)
+    .map((exp) => {
+      const actItem = actualItems.find((a) => a.item_id === exp.item_id && a.item_type === filterType);
+      const selisih = exp.quantity - (actItem?.quantity ?? 0);
+      const actual = exp.quantity - selisih;
+      return { exp, actual, selisih };
+    });
+}
+
+function DiscrepancySection({
+  expectedItems,
+  actualItems,
+}: {
+  expectedItems: BypassItem[];
+  actualItems: BypassItem[];
+}) {
+  const kiloanRows = buildRows(expectedItems, actualItems, "breakdown");
+  const satuanRows = buildRows(expectedItems, actualItems, "satuan");
+
+  // If only one type exists, render without section headers
+  const hasBoth = kiloanRows.length > 0 && satuanRows.length > 0;
+
+  return (
+    <div className="space-y-3">
+      {kiloanRows.length > 0 && (
+        <div>
+          {hasBoth && (
+            <p className="text-xs font-medium text-on-surface-variant mb-1.5 ml-0.5">
+              Kiloan (per jenis pakaian)
+            </p>
+          )}
+          <DiscrepancyTable rows={kiloanRows} />
+        </div>
+      )}
+      {satuanRows.length > 0 && (
+        <div>
+          {hasBoth && (
+            <p className="text-xs font-medium text-on-surface-variant mb-1.5 ml-0.5">
+              Satuan (per item laundry)
+            </p>
+          )}
+          <DiscrepancyTable rows={satuanRows} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface BypassRequest {
   id: string;
   orderId: string;
@@ -21,6 +110,7 @@ interface BypassRequest {
   status: "pending" | "approved" | "rejected";
   admin_notes?: string | null;
   photo_evidence?: string[];
+  attempt_number?: number;
 }
 
 interface BypassReviewModalProps {
@@ -37,6 +127,7 @@ export function BypassReviewModal({
   onReject,
 }: BypassReviewModalProps) {
   const [adminNote, setAdminNote] = useState(request.admin_notes ?? "");
+  const isFinalAttempt = (request.attempt_number ?? 1) >= 2;
 
   return (
     <div className="fixed inset-0 bg-black/60 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -104,53 +195,16 @@ export function BypassReviewModal({
               <AlertTriangle className="w-3.5 h-3.5 text-error" />
               Ketidaksesuaian Item
             </p>
-            <div className="rounded-xl border border-outline-variant overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-surface-container-low border-b border-outline-variant">
-                    <th className="text-left px-3 py-2 text-xs font-semibold text-on-surface-variant">Item</th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Expected</th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Actual</th>
-                    <th className="text-center px-3 py-2 text-xs font-semibold text-on-surface-variant">Selisih</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {request.expected_items.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-3 py-4 text-center text-xs text-on-surface-variant">
-                        Tidak ada data item
-                      </td>
-                    </tr>
-                  ) : (
-                    request.expected_items.map((exp, idx) => {
-                      const actItem = request.actual_items.find((a) => a.item_id === exp.item_id);
-                      // actual = expected - selisih
-                      const selisih = exp.quantity - (actItem?.quantity ?? 0);
-                      const actual = exp.quantity - selisih;
-                      return (
-                        <tr
-                          key={exp.item_id && exp.item_type ? `${exp.item_type}:${exp.item_id}` : `row-${idx}`}
-                          className="border-b border-outline-variant last:border-0 bg-amber-50/60"
-                        >
-                          <td className="px-3 py-2.5 font-medium text-on-surface">{exp.name}</td>
-                          <td className="px-3 py-2.5 text-center text-on-surface-variant">{exp.quantity}</td>
-                          <td className="px-3 py-2.5 text-center font-bold text-on-surface">{actual}</td>
-                          <td className="px-3 py-2.5 text-center">
-                            {selisih !== 0 ? (
-                              <span className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full bg-error/10 text-error">
-                                {selisih > 0 ? `-${selisih}` : `+${Math.abs(selisih)}`}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-on-surface-variant">—</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+            {request.expected_items.length === 0 ? (
+              <p className="text-xs text-on-surface-variant px-3 py-4 text-center border border-outline-variant rounded-xl">
+                Tidak ada data item
+              </p>
+            ) : (
+              <DiscrepancySection
+                expectedItems={request.expected_items}
+                actualItems={request.actual_items}
+              />
+            )}
           </div>
 
           {/* Worker reason */}
@@ -228,17 +282,19 @@ export function BypassReviewModal({
         <div className="px-5 py-4 border-t border-outline-variant shrink-0">
           {request.status === "pending" ? (
             <div className="flex gap-3">
-              <button
-                onClick={() => onReject("", adminNote)}
-                className="flex-1 py-2.5 border-2 border-error text-error rounded-xl text-sm font-semibold hover:bg-error/5 transition-colors"
-              >
-                Tolak
-              </button>
+              {!isFinalAttempt && (
+                <button
+                  onClick={() => onReject("", adminNote)}
+                  className="flex-1 py-2.5 border-2 border-error text-error rounded-xl text-sm font-semibold hover:bg-error/5 transition-colors"
+                >
+                  Reject
+                </button>
+              )}
               <button
                 onClick={() => onApprove("", adminNote)}
                 className="flex-1 py-2.5 bg-primary text-on-primary rounded-xl text-sm font-semibold hover:opacity-90 transition-all shadow-md shadow-primary/20"
               >
-                Setujui
+                {isFinalAttempt ? "Approve (Final)" : "Approve"}
               </button>
             </div>
           ) : (

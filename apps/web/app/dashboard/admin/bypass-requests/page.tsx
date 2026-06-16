@@ -41,6 +41,7 @@ interface BypassRequest {
   actual_items: BypassItem[];
   admin_notes: string | null;
   photo_evidence: string[];
+  attempt_number: number;
   created_at: string;
   order: { id: string; invoice_number: string; outlet: { name: string } };
   requester: { id: string; full_name: string; role: string };
@@ -199,6 +200,7 @@ export default function BypassRequestsPage() {
         status: selected.status,
         admin_notes: selected.admin_notes,
         photo_evidence: Array.isArray(selected.photo_evidence) ? selected.photo_evidence : [],
+        attempt_number: selected.attempt_number ?? 1,
       }
     : null;
 

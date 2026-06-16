@@ -55,7 +55,7 @@ const NAV: NavItem[] = [
   },
   {
     href: "/dashboard/admin/clothing-types",
-    label: "Jenis Pakaian",
+    label: "Clothing Types",
     icon: Shirt,
     roles: ["super_admin"],
   },
@@ -73,7 +73,7 @@ const NAV: NavItem[] = [
   },
   {
     href: "/dashboard/admin/orders/create",
-    label: "Proses Order Masuk",
+    label: "Process Order",
     icon: PlayCircle,
     roles: ["outlet_admin"],
   },
@@ -85,7 +85,7 @@ const NAV: NavItem[] = [
   },
   {
     href: "/dashboard/admin/complaints",
-    label: "Komplain",
+    label: "Complaints",
     icon: MessageSquareWarning,
     roles: ["super_admin", "outlet_admin"],
   },
