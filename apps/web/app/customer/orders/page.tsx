@@ -11,6 +11,7 @@ import {
   Circle,
   ClipboardList,
   Loader2,
+  Phone,
   RefreshCw,
   Truck,
 } from "lucide-react";
@@ -25,6 +26,66 @@ import {
 } from "@/services/order.service";
 import { useAuthStore } from "@/stores/authStore";
 import { formatRupiah } from "@/utils/formatPrice";
+
+const COMPLAINT_STATUS_LABEL: Record<string, string> = {
+  in_progress: "Sedang Diproses",
+  resolved: "Diselesaikan",
+  rejected: "Ditolak",
+};
+
+const COMPLAINT_STATUS_COLOR: Record<string, string> = {
+  in_progress: "bg-blue-100 text-blue-700",
+  resolved: "bg-green-100 text-green-700",
+  rejected: "bg-red-100 text-red-700",
+};
+
+function formatWhatsApp(phone: string): string {
+  const cleaned = phone.replace(/[\s\-()]/g, "");
+  if (cleaned.startsWith("+")) return cleaned.slice(1);
+  if (cleaned.startsWith("0")) return "62" + cleaned.slice(1);
+  return cleaned;
+}
+
+function ComplaintReplySection({
+  complaint,
+  outletPhone,
+}: {
+  complaint: { status: string; resolution_notes: string | null };
+  outletPhone?: string | null;
+}) {
+  if (complaint.status === "open") return null;
+
+  const waNumber = outletPhone ? formatWhatsApp(outletPhone) : null;
+
+  return (
+    <div className="rounded-xl border border-outline-variant bg-surface-container-low p-4 space-y-3">
+      <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">
+        Balasan Komplain
+      </p>
+      <span
+        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${COMPLAINT_STATUS_COLOR[complaint.status] ?? "bg-surface-container text-on-surface-variant"}`}
+      >
+        {COMPLAINT_STATUS_LABEL[complaint.status] ?? complaint.status}
+      </span>
+      {complaint.resolution_notes && (
+        <p className="text-sm text-on-surface leading-relaxed">
+          {complaint.resolution_notes}
+        </p>
+      )}
+      {waNumber && (
+        <a
+          href={`https://wa.me/${waNumber}`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-green-600 transition-colors"
+        >
+          <Phone className="w-4 h-4" />
+          Hubungi Admin via WhatsApp
+        </a>
+      )}
+    </div>
+  );
+}
 
 const ORDER_PROGRESS_STEPS: Array<{ key: CustomerOrderStatus; label: string }> = [
   { key: "waiting_pickup_driver", label: "Menunggu driver pickup" },
@@ -397,6 +458,14 @@ export default function CustomerProgressPage() {
                             </button>
                           )}
                         </div>
+                      )}
+
+                      {/* Admin reply section: shows when admin has updated complaint status */}
+                      {order.complaints && order.complaints.length > 0 && (
+                        <ComplaintReplySection
+                          complaint={order.complaints[0]}
+                          outletPhone={order.outlet?.phone}
+                        />
                       )}
 
                   </div>

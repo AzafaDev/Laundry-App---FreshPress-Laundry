@@ -147,7 +147,12 @@ async function runCompleteTransaction(
 
     const orderUpdate = await tx.order.updateMany({
       where: { id: task.order_id, status: oldOrderStatus },
-      data: { status: newOrderStatus },
+      data: {
+        status: newOrderStatus,
+        ...(newOrderStatus === "received_by_customer" && {
+          auto_confirm_at: new Date(Date.now() + 48 * 60 * 60 * 1000),
+        }),
+      },
     });
     if (orderUpdate.count === 0) throw new AppError("Status order tidak sesuai untuk diselesaikan", 409);
 
