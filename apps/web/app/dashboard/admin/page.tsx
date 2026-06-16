@@ -45,7 +45,7 @@ export default function AdminDashboardPage() {
           <DashCard
             href="/dashboard/admin/outlets"
             icon={<Store className="w-6 h-6 text-primary" />}
-            title="Outlets"
+            title="Outlet"
             description="Daftar outlet, koordinat lokasi, dan radius layanan."
           />
         )}
@@ -79,7 +79,7 @@ export default function AdminDashboardPage() {
           href="/dashboard/admin/orders"
           icon={<Receipt className="w-6 h-6 text-primary" />}
           title="Orders"
-          description="Lihat semua pesanan dan tracking status order."
+          description="Lihat semua pesanan dan lacak status order."
         />
 
         {/* Outlet admin only */}

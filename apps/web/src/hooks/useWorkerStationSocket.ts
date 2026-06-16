@@ -52,6 +52,7 @@ export function useWorkerStationSocket({
           [data.orderId]: { ...prev[data.orderId], submitted: false },
         };
       });
+      queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     });
 
     const unsubConnect = on("connect", () => setIsConnected(true));
