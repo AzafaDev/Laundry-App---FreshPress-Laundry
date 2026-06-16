@@ -13,8 +13,9 @@ function getParamId(value: string | string[] | undefined): string {
 
 export const listNotifications = asyncHandler(async (req: Request, res: Response) => {
   const customerId = req.user!.userId;
-  const notifications = await NotificationService.listCustomerNotifications(customerId);
-  ok(res, notifications, "Daftar notifikasi berhasil diambil.");
+  const { page, limit } = req.query as { page?: number; limit?: number };
+  const result = await NotificationService.listCustomerNotifications(customerId, page, limit);
+  ok(res, result, "Daftar notifikasi berhasil diambil.");
 });
 
 export const getUnreadCount = asyncHandler(async (req: Request, res: Response) => {

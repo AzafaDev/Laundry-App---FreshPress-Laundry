@@ -25,6 +25,8 @@ import {
   updateAddressSchema,
   createOrderSchema,
   createComplaintSchema,
+  listOrdersQuerySchema,
+  listNotificationsQuerySchema,
 } from "../../validations/customer.validation.js";
 
 const router = Router();
@@ -64,13 +66,13 @@ router.get("/laundry-items", LaundryItemCtrl.listLaundryItems);
 
 // Order Routes (protected)
 router.post("/orders", authenticate, validate(createOrderSchema), OrderCtrl.createOrder);
-router.get("/orders", authenticate, OrderCtrl.listOrders);
+router.get("/orders", authenticate, validate(listOrdersQuerySchema, "query"), OrderCtrl.listOrders);
 router.get("/orders/:id", authenticate, OrderCtrl.getOrderById);
 router.patch("/orders/:id/complete", authenticate, OrderCtrl.completeOrder);
 router.post("/orders/:id/complaints", authenticate, OrderCtrl.uploadComplaintPhotosMiddleware, validate(createComplaintSchema), OrderCtrl.createComplaint);
 
 // Notification Routes (protected)
-router.get("/notifications", authenticate, NotificationCtrl.listNotifications);
+router.get("/notifications", authenticate, validate(listNotificationsQuerySchema, "query"), NotificationCtrl.listNotifications);
 router.get("/notifications/unread-count", authenticate, NotificationCtrl.getUnreadCount);
 router.patch("/notifications/read-all", authenticate, NotificationCtrl.markAllAsRead);
 router.patch("/notifications/:id/read", authenticate, NotificationCtrl.markAsRead);

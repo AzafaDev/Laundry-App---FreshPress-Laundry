@@ -211,8 +211,18 @@ async function emitCompleteEvents(
 export const driverService = {
   async getAvailablePickupOrders(employeeId: string) {
     const outletId = await assertShiftEligibility(employeeId);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
     const tasks = await prisma.driverTask.findMany({
-      where: { task_type: "pickup", status: "available", driver_id: null, order: { outlet_id: outletId } },
+      where: {
+        task_type: "pickup",
+        status: "available",
+        driver_id: null,
+        order: {
+          outlet_id: outletId,
+          pickup_date: { lte: endOfToday },
+        },
+      },
       include: { order: { include: { customer: true, pickup_address: true } } },
       orderBy: { created_at: "asc" },
     });

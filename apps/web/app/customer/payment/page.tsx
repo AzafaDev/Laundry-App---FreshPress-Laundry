@@ -31,14 +31,16 @@ export default function CustomerPaymentLandingPage() {
   }, [_hasHydrated, user, router]);
 
   const {
-    data: orders = [],
+    data,
     isLoading,
     isError,
-  } = useQuery<CustomerOrder[]>({
+  } = useQuery({
     queryKey: ["customer", "orders"],
-    queryFn: orderService.listOrders,
+    queryFn: () => orderService.listOrders(),
     enabled: _hasHydrated && !!user,
   });
+
+  const orders: CustomerOrder[] = data?.orders ?? [];
 
   const unpaidOrders = orders.filter(
     (order) => order.status === "waiting_payment" && order.payment?.status !== "paid",

@@ -18,12 +18,13 @@ export const Navbar = () => {
 
   const isAuthenticated = !!user;
 
-  const { data: notifications = [] } = useQuery({
+  const { data } = useQuery({
     queryKey: ["customer", "notifications"],
-    queryFn: notificationService.list,
+    queryFn: () => notificationService.list(1, 50),
     enabled: isAuthenticated,
     staleTime: 30_000,
   });
+  const notifications = data?.notifications ?? [];
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   useCustomerNotificationSocket((data) => socketToast(data.title, data.body));
