@@ -1,4 +1,5 @@
 import { axiosInstance } from "@/lib/axios";
+import type { TaskHistoryPagination } from "./driverTask.service";
 
 export type StationType = "washing" | "ironing" | "packing";
 
@@ -97,4 +98,31 @@ export const workerStationService = {
     );
     return data.data;
   },
+
+  getTaskHistory: async (page: number, limit: number): Promise<WorkerTaskHistoryResponse> => {
+    const { data } = await axiosInstance.get<{ success: true; data: WorkerTaskHistoryResponse }>(
+      "/v1/worker/tasks/history",
+      { params: { page, limit } }
+    );
+    return data.data;
+  },
 };
+
+export interface WorkerTaskHistoryItem {
+  id: string;
+  station: StationType;
+  is_bypassed: boolean;
+  started_at: string | null;
+  completed_at: string | null;
+  notes: string | null;
+  order: {
+    id: string;
+    invoice_number: string;
+    customer: { full_name: string } | null;
+  };
+}
+
+export interface WorkerTaskHistoryResponse {
+  tasks: WorkerTaskHistoryItem[];
+  pagination: TaskHistoryPagination;
+}
