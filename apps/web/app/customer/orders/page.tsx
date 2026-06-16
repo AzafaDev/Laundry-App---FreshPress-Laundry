@@ -52,7 +52,6 @@ const ORDER_STATUS_LABEL: Record<CustomerOrderStatus, string> = {
   delivery_to_customer: "Dalam Pengantaran",
   received_by_customer: "Diterima Customer",
   completed: "Selesai",
-  cancelled: "Dibatalkan",
 };
 
 
@@ -305,12 +304,7 @@ export default function CustomerProgressPage() {
                   )}
 
                   {/* Progress */}
-                  {order.status === "cancelled" ? (
-                    <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">
-                      Pesanan ini dibatalkan.
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
+                  <div className="space-y-3">
                       {/* Current status */}
                       <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">Status Order</p>
                       <button
@@ -405,8 +399,7 @@ export default function CustomerProgressPage() {
                         </div>
                       )}
 
-                    </div>
-                  )}
+                  </div>
                 </article>
               );
             })}

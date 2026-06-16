@@ -192,7 +192,7 @@ export const workerService = {
 
     await emitStationEvents(order, station, finalStatus, employeeId);
 
-    return { order: updatedOrder, createdDeliveryTask: shouldCreateDeliveryTask };
+    return { order: updatedOrder };
   },
 
   async createBypassRequest(

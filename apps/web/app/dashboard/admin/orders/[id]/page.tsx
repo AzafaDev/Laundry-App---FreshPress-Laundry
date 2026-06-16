@@ -36,7 +36,7 @@ const STATION_LABEL: Record<string, string> = {
   packing: "Packing Station",
 };
 
-const STEP_ORDER = ORDER_STATUS_LIST.filter((s) => s !== "cancelled");
+const STEP_ORDER = ORDER_STATUS_LIST;
 
 // ── Status Stepper ─────────────────────────────────────────────────────────────
 function StatusStepper({ current }: { current: OrderStatus }) {
