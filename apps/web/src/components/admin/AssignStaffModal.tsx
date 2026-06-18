@@ -20,6 +20,7 @@ import {
 import { EmployeeShiftModal } from "@/components/admin/EmployeeShiftModal";
 import type { Outlet } from "@/types/outlet.types";
 import type { User, UserRole } from "@/types/user.types";
+import type { AssignedUser } from "@/services/outlet.service";
 
 interface Props {
   outlet: Outlet;
@@ -49,6 +50,8 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [recentlyAssigned, setRecentlyAssigned] = useState<string | null>(null);
   const [shiftEmployee, setShiftEmployee] = useState<User | null>(null);
+  const toUser = (u: AssignedUser): User =>
+    ({ ...u, outlet_id: outlet.id, created_at: u.assigned_at, updated_at: u.assigned_at, deleted_at: null, phone: u.phone ?? null }) as unknown as User;
 
   const { data: assigned = [], isLoading: assignedLoading } =
     useOutletAssignments(outlet.id);
@@ -144,7 +147,7 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <button
-                        onClick={() => setShiftEmployee(u)}
+                        onClick={() => setShiftEmployee(toUser(u))}
                         className="p-2 rounded-md hover:bg-primary/10 text-primary"
                         aria-label="Atur shift"
                         title="Atur Shift"

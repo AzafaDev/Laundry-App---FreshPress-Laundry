@@ -8,12 +8,18 @@ const g = globalThis as typeof globalThis & { __appSocket?: Socket };
 export function getSocket(): Socket {
   if (g.__appSocket) return g.__appSocket;
 
+  if (typeof window === "undefined") {
+    throw new Error("getSocket() must be called in the browser");
+  }
+
   g.__appSocket = io(SOCKET_URL, {
     withCredentials: true,
     transports: ["websocket", "polling"],
     reconnection: true,
-    reconnectionAttempts: 10,
-    reconnectionDelay: 2000,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 3000,
+    reconnectionDelayMax: 10000,
+    autoConnect: true,
   });
 
   g.__appSocket.on("connect", () => {
@@ -24,8 +30,19 @@ export function getSocket(): Socket {
     console.log("[socket] disconnected:", reason);
   });
 
+  let errorCount = 0;
   g.__appSocket.on("connect_error", (err) => {
-    console.error("[socket] connection error:", err.message);
+    errorCount++;
+    if (errorCount === 1) {
+      console.warn("[socket] connection error:", err.message);
+    } else if (errorCount === 5) {
+      console.warn("[socket] giving up after 5 attempts. Is the API server running?");
+      g.__appSocket?.disconnect();
+    }
+  });
+
+  g.__appSocket.on("connect", () => {
+    errorCount = 0;
   });
 
   return g.__appSocket;
@@ -39,6 +56,7 @@ export function disconnectSocket() {
 }
 
 export function reconnectSocket() {
-  if (g.__appSocket) return g.__appSocket;
+  if (g.__appSocket?.connected) return g.__appSocket;
+  disconnectSocket();
   return getSocket();
 }

@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, Search, Users } from "lucide-react";
+import { Search, Users } from "lucide-react";
 import { useUsers } from "@/hooks/useUsers";
 import { useEmployeeShifts } from "@/hooks/useShifts";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
-import { EmployeeShiftModal } from "@/components/admin/EmployeeShiftModal";
 import type { User } from "@/types/user.types";
 import { DAY_NAMES } from "@/types/shift.types";
 
@@ -46,17 +45,16 @@ function EmployeeShiftBadges({ employeeId }: { employeeId: string }) {
 
 export default function OutletShiftSchedulePage() {
   const user = useEmployeeAuthStore((s) => s.user);
-  const outletId = user?.outletId ?? undefined;
+  const outletId = user?.outlet_id ?? undefined;
 
   const [search, setSearch] = useState("");
-  const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
 
   const { data, isLoading } = useUsers({
     outlet_id: outletId,
     limit: 100,
   });
 
-  const employees = (data?.data ?? []).filter((e: User) =>
+  const employees = (data?.items ?? []).filter((e: User) =>
     WORKER_ROLES.includes(e.role) &&
     (search === "" ||
       e.full_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -68,7 +66,7 @@ export default function OutletShiftSchedulePage() {
       <div>
         <h2 className="text-2xl font-bold">Jadwal Shift Outlet</h2>
         <p className="text-base text-on-surface-variant">
-          Lihat dan kelola jadwal shift karyawan di outlet{user?.outlet_name ? ` ${user.outlet_name}` : " ini"}.
+          Jadwal shift karyawan di outlet{user?.outlet_name ? ` ${user.outlet_name}` : " ini"}.
         </p>
       </div>
 
@@ -103,7 +101,6 @@ export default function OutletShiftSchedulePage() {
                     <th className="p-4 text-sm font-bold">Karyawan</th>
                     <th className="p-4 text-sm font-bold">Role</th>
                     <th className="p-4 text-sm font-bold">Jadwal Shift</th>
-                    <th className="p-4 text-sm font-bold text-right">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant">
@@ -121,15 +118,6 @@ export default function OutletShiftSchedulePage() {
                       <td className="p-4">
                         <EmployeeShiftBadges employeeId={emp.id} />
                       </td>
-                      <td className="p-4 text-right">
-                        <button
-                          onClick={() => setSelectedEmployee(emp)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 border border-outline-variant rounded-lg text-xs font-medium hover:bg-surface-container-high ml-auto"
-                        >
-                          <Calendar className="w-3.5 h-3.5" />
-                          Kelola
-                        </button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -140,17 +128,9 @@ export default function OutletShiftSchedulePage() {
             <div className="md:hidden divide-y divide-outline-variant">
               {employees.map((emp: User) => (
                 <div key={emp.id} className="p-4 space-y-2">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-sm">{emp.full_name}</p>
-                      <p className="text-xs text-on-surface-variant capitalize">{emp.role.replace(/_/g, " ")}</p>
-                    </div>
-                    <button
-                      onClick={() => setSelectedEmployee(emp)}
-                      className="flex items-center gap-1 px-3 py-1.5 border border-outline-variant rounded-lg text-xs font-medium hover:bg-surface-container-high"
-                    >
-                      <Calendar className="w-3 h-3" /> Kelola
-                    </button>
+                  <div>
+                    <p className="font-medium text-sm">{emp.full_name}</p>
+                    <p className="text-xs text-on-surface-variant capitalize">{emp.role.replace(/_/g, " ")}</p>
                   </div>
                   <EmployeeShiftBadges employeeId={emp.id} />
                 </div>
@@ -159,13 +139,6 @@ export default function OutletShiftSchedulePage() {
           </>
         )}
       </div>
-
-      {selectedEmployee && (
-        <EmployeeShiftModal
-          employee={selectedEmployee}
-          onClose={() => setSelectedEmployee(null)}
-        />
-      )}
     </>
   );
 }
