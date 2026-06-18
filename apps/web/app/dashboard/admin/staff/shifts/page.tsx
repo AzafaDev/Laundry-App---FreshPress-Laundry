@@ -1,44 +1,136 @@
 "use client";
 
-import { useState } from "react";
-import { Search, Users } from "lucide-react";
+import { useState, useMemo } from "react";
+import { ChevronLeft, ChevronRight, Users, CalendarDays } from "lucide-react";
 import { useUsers } from "@/hooks/useUsers";
 import { useEmployeeShifts } from "@/hooks/useShifts";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import type { User } from "@/types/user.types";
-import { DAY_NAMES } from "@/types/shift.types";
+import type { EmployeeShift } from "@/types/shift.types";
 
 const WORKER_ROLES = ["washing_worker", "ironing_worker", "packing_worker", "driver"];
+const DAY_SHORT = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+const DAY_LONG = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 
-function formatTime(timeStr: string): string {
-  if (!timeStr) return "—";
-  if (timeStr.includes("T")) {
-    const d = new Date(timeStr);
-    const h = String(d.getUTCHours()).padStart(2, "0");
-    const m = String(d.getUTCMinutes()).padStart(2, "0");
-    return `${h}:${m}`;
+function formatTime(t: string) {
+  if (!t) return "—";
+  if (t.includes("T")) {
+    const d = new Date(t);
+    return `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
   }
-  return timeStr.slice(0, 5);
+  return t.slice(0, 5);
 }
 
-function EmployeeShiftBadges({ employeeId }: { employeeId: string }) {
-  const { data: shifts = [], isLoading } = useEmployeeShifts(employeeId);
-  const active = shifts.filter((s) => s.is_active);
+function toDateStr(d: Date) {
+  return d.toISOString().split("T")[0];
+}
 
-  if (isLoading) return <span className="text-xs text-on-surface-variant">Memuat…</span>;
-  if (active.length === 0)
-    return <span className="text-xs text-on-surface-variant italic">Belum ada jadwal</span>;
+function getMondayWeek(base: Date): Date[] {
+  const day = base.getDay();
+  const monday = new Date(base);
+  monday.setDate(base.getDate() - (day === 0 ? 6 : day - 1));
+  monday.setHours(0, 0, 0, 0);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+}
+
+function shiftStyle(name: string): { bg: string; text: string; border: string } {
+  const n = name.toLowerCase();
+  if (n.includes("pagi"))  return { bg: "bg-emerald-50", text: "text-emerald-800", border: "border-emerald-300" };
+  if (n.includes("siang")) return { bg: "bg-blue-50",    text: "text-blue-800",    border: "border-blue-300" };
+  if (n.includes("malam")) return { bg: "bg-violet-50",  text: "text-violet-800",  border: "border-violet-300" };
+  return                          { bg: "bg-amber-50",   text: "text-amber-800",   border: "border-amber-300" };
+}
+
+function findShiftForDate(
+  data: { recurring: EmployeeShift[]; date_specific: EmployeeShift[] } | undefined,
+  date: Date,
+): EmployeeShift | null {
+  if (!data) return null;
+  const dateStr = toDateStr(date);
+  const specific = data.date_specific.find((s) => s.is_active && s.date?.startsWith(dateStr));
+  if (specific) return specific;
+  const dow = date.getDay();
+  return data.recurring.find((s) => s.is_active && s.day_of_week === dow) ?? null;
+}
+
+function ShiftCell({ shift, isToday }: { shift: EmployeeShift | null; isToday: boolean }) {
+  if (!shift) {
+    return (
+      <td className={`px-1 py-2 text-center align-middle ${isToday ? "bg-blue-50/60" : ""}`}>
+        <span className="text-xs text-on-surface-variant/40">—</span>
+      </td>
+    );
+  }
+  const s = shiftStyle(shift.shift.name);
+  return (
+    <td className={`px-1 py-2 text-center align-middle ${isToday ? "bg-blue-50/60" : ""}`}>
+      <span
+        className={`inline-flex flex-col items-center px-1.5 py-0.5 rounded-md border text-xs font-medium ${s.bg} ${s.text} ${s.border} ${isToday ? "ring-1 ring-offset-1 ring-current" : ""}`}
+      >
+        <span>{shift.shift.name}</span>
+        <span className="opacity-60 font-normal" style={{ fontSize: "10px" }}>
+          {formatTime(shift.shift.start_time)}–{formatTime(shift.shift.end_time)}
+        </span>
+      </span>
+    </td>
+  );
+}
+
+function WeekRow({ employee, weekDates, todayStr }: { employee: User; weekDates: Date[]; todayStr: string }) {
+  const { data, isLoading } = useEmployeeShifts(employee.id);
 
   return (
-    <div className="flex flex-wrap gap-1">
-      {active.map((es) => (
-        <span
-          key={es.id}
-          className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary font-medium"
-        >
-          {DAY_NAMES[es.day_of_week]} · {es.shift.name} ({formatTime(es.shift.start_time)}–{formatTime(es.shift.end_time)})
-        </span>
-      ))}
+    <tr className="border-b border-outline-variant hover:bg-surface-container-lowest transition-colors">
+      <td className="px-4 py-3 min-w-[150px]">
+        <p className="text-sm font-medium text-on-surface leading-tight">{employee.full_name}</p>
+        <p className="text-xs text-on-surface-variant capitalize">{employee.role.replace(/_/g, " ")}</p>
+      </td>
+      {isLoading
+        ? weekDates.map((_, i) => (
+            <td key={i} className="px-1 py-2 text-center">
+              <span className="inline-block w-8 h-4 bg-surface-container-low rounded animate-pulse" />
+            </td>
+          ))
+        : weekDates.map((date) => {
+            const shift = findShiftForDate(data, date);
+            const isToday = toDateStr(date) === todayStr;
+            return <ShiftCell key={toDateStr(date)} shift={shift} isToday={isToday} />;
+          })}
+    </tr>
+  );
+}
+
+function MobileCard({ employee, weekDates, todayStr }: { employee: User; weekDates: Date[]; todayStr: string }) {
+  const { data } = useEmployeeShifts(employee.id);
+  const shifts = weekDates.map((d) => ({ date: d, shift: findShiftForDate(data, d) }));
+  const hasShifts = shifts.some((s) => s.shift !== null);
+
+  return (
+    <div className="p-4 border-b border-outline-variant">
+      <p className="text-sm font-medium text-on-surface">{employee.full_name}</p>
+      <p className="text-xs text-on-surface-variant capitalize mb-2">{employee.role.replace(/_/g, " ")}</p>
+      {!hasShifts ? (
+        <p className="text-xs text-on-surface-variant italic">Tidak ada shift minggu ini</p>
+      ) : (
+        <div className="flex flex-wrap gap-1">
+          {shifts.filter((s) => s.shift).map(({ date, shift }) => {
+            const st = shiftStyle(shift!.shift.name);
+            const isToday = toDateStr(date) === todayStr;
+            return (
+              <span
+                key={toDateStr(date)}
+                className={`px-2 py-0.5 text-xs rounded-md border font-medium ${st.bg} ${st.text} ${st.border} ${isToday ? "ring-1 ring-current" : ""}`}
+              >
+                {DAY_SHORT[date.getDay()]} · {shift!.shift.name}
+              </span>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -47,43 +139,103 @@ export default function OutletShiftSchedulePage() {
   const user = useEmployeeAuthStore((s) => s.user);
   const outletId = user?.outlet_id ?? undefined;
 
-  const [search, setSearch] = useState("");
+  const [weekBase, setWeekBase] = useState(() => new Date());
+  const [roleFilter, setRoleFilter] = useState("");
 
-  const { data, isLoading } = useUsers({
-    outlet_id: outletId,
-    limit: 100,
-  });
+  const weekDates = useMemo(() => getMondayWeek(weekBase), [weekBase]);
+  const todayStr = toDateStr(new Date());
 
-  const employees = (data?.items ?? []).filter((e: User) =>
-    WORKER_ROLES.includes(e.role) &&
-    (search === "" ||
-      e.full_name.toLowerCase().includes(search.toLowerCase()) ||
-      e.email.toLowerCase().includes(search.toLowerCase()))
-  );
+  const weekLabel = `${weekDates[0].toLocaleDateString("id-ID", { day: "numeric", month: "short" })} – ${weekDates[6].toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}`;
+
+  const { data, isLoading } = useUsers({ outlet_id: outletId, limit: 100 });
+  const allEmployees = (data?.items ?? []).filter((e: User) => WORKER_ROLES.includes(e.role));
+  const employees = allEmployees.filter((e: User) => !roleFilter || e.role === roleFilter);
+
+  const todayDow = new Date().getDay();
+  const totalEmployees = allEmployees.length;
 
   return (
-    <>
-      <div>
-        <h2 className="text-2xl font-bold">Jadwal Shift Outlet</h2>
-        <p className="text-base text-on-surface-variant">
-          Jadwal shift karyawan di outlet{user?.outlet_name ? ` ${user.outlet_name}` : " ini"}.
-        </p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-on-surface">Jadwal Shift</h2>
+          <p className="text-sm text-on-surface-variant mt-0.5">
+            Outlet {user?.outlet_name ?? "ini"} — tampilan read-only
+          </p>
+        </div>
+        {/* Week nav */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { const d = new Date(weekBase); d.setDate(d.getDate() - 7); setWeekBase(d); }}
+            className="p-2 rounded-lg border border-outline-variant hover:bg-surface-container transition-colors"
+            aria-label="Minggu sebelumnya"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-sm font-medium text-on-surface min-w-[190px] text-center">{weekLabel}</span>
+          <button
+            onClick={() => { const d = new Date(weekBase); d.setDate(d.getDate() + 7); setWeekBase(d); }}
+            className="p-2 rounded-lg border border-outline-variant hover:bg-surface-container transition-colors"
+            aria-label="Minggu berikutnya"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setWeekBase(new Date())}
+            className="px-3 py-2 text-xs rounded-lg border border-outline-variant hover:bg-surface-container transition-colors flex items-center gap-1"
+          >
+            <CalendarDays className="w-3.5 h-3.5" /> Hari ini
+          </button>
+        </div>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-        <input
-          type="text"
-          placeholder="Cari nama atau email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-outline-variant bg-surface text-sm focus:outline-none focus:border-primary"
-        />
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { label: "Total karyawan", value: totalEmployees, sub: "di outlet ini" },
+          { label: "Bertugas hari ini", value: "-", sub: DAY_LONG[todayDow] },
+          { label: "Libur hari ini", value: "-", sub: "off jadwal" },
+          { label: "Sedang tampil", value: employees.length, sub: roleFilter ? roleFilter.replace(/_/g, " ") : "semua role" },
+        ].map((c) => (
+          <div key={c.label} className="bg-surface-container-low rounded-xl p-4">
+            <p className="text-xs text-on-surface-variant mb-1">{c.label}</p>
+            <p className="text-2xl font-bold text-on-surface">{c.value}</p>
+            <p className="text-xs text-on-surface-variant mt-0.5 capitalize">{c.sub}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Table */}
-      <div className="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+      {/* Legend + filter */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3 flex-wrap text-xs text-on-surface-variant">
+          {[
+            { label: "Pagi", bg: "bg-emerald-200" },
+            { label: "Siang", bg: "bg-blue-200" },
+            { label: "Malam", bg: "bg-violet-200" },
+            { label: "Lainnya", bg: "bg-amber-200" },
+          ].map((l) => (
+            <span key={l.label} className="flex items-center gap-1.5">
+              <span className={`w-2.5 h-2.5 rounded-full ${l.bg}`} />
+              {l.label}
+            </span>
+          ))}
+        </div>
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
+          className="text-sm px-3 py-2 rounded-xl border border-outline-variant bg-surface focus:outline-none focus:border-primary"
+        >
+          <option value="">Semua role</option>
+          <option value="washing_worker">Washing worker</option>
+          <option value="ironing_worker">Ironing worker</option>
+          <option value="packing_worker">Packing worker</option>
+          <option value="driver">Driver</option>
+        </select>
+      </div>
+
+      {/* Weekly grid — desktop */}
+      <div className="hidden md:block border border-outline-variant rounded-xl overflow-hidden bg-surface shadow-sm">
         {isLoading ? (
           <div className="p-10 text-center text-sm text-on-surface-variant">Memuat data karyawan…</div>
         ) : employees.length === 0 ? (
@@ -92,53 +244,53 @@ export default function OutletShiftSchedulePage() {
             <p>Tidak ada karyawan ditemukan.</p>
           </div>
         ) : (
-          <>
-            {/* Desktop */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-surface-container-low border-b border-outline-variant">
-                    <th className="p-4 text-sm font-bold">Karyawan</th>
-                    <th className="p-4 text-sm font-bold">Role</th>
-                    <th className="p-4 text-sm font-bold">Jadwal Shift</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant">
-                  {employees.map((emp: User) => (
-                    <tr key={emp.id} className="hover:bg-surface-container-lowest transition-colors">
-                      <td className="p-4">
-                        <p className="font-medium text-sm">{emp.full_name}</p>
-                        <p className="text-xs text-on-surface-variant">{emp.email}</p>
-                      </td>
-                      <td className="p-4">
-                        <span className="text-xs px-2 py-1 rounded-full bg-surface-container-high capitalize">
-                          {emp.role.replace(/_/g, " ")}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
+              <colgroup>
+                <col style={{ width: "160px" }} />
+                {weekDates.map((_, i) => <col key={i} style={{ width: "100px" }} />)}
+              </colgroup>
+              <thead>
+                <tr className="bg-surface-container-low border-b border-outline-variant">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-on-surface-variant">Karyawan</th>
+                  {weekDates.map((d) => {
+                    const isToday = toDateStr(d) === todayStr;
+                    return (
+                      <th
+                        key={toDateStr(d)}
+                        className={`px-1 py-3 text-center text-xs font-semibold ${isToday ? "bg-blue-50 text-blue-700" : "text-on-surface-variant"}`}
+                      >
+                        {DAY_SHORT[d.getDay()]}
+                        <span className={`block font-normal ${isToday ? "text-blue-600" : "text-on-surface-variant/60"}`} style={{ fontSize: "10px" }}>
+                          {d.getDate()}/{d.getMonth() + 1}
                         </span>
-                      </td>
-                      <td className="p-4">
-                        <EmployeeShiftBadges employeeId={emp.id} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile cards */}
-            <div className="md:hidden divide-y divide-outline-variant">
-              {employees.map((emp: User) => (
-                <div key={emp.id} className="p-4 space-y-2">
-                  <div>
-                    <p className="font-medium text-sm">{emp.full_name}</p>
-                    <p className="text-xs text-on-surface-variant capitalize">{emp.role.replace(/_/g, " ")}</p>
-                  </div>
-                  <EmployeeShiftBadges employeeId={emp.id} />
-                </div>
-              ))}
-            </div>
-          </>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {employees.map((emp: User) => (
+                  <WeekRow key={emp.id} employee={emp} weekDates={weekDates} todayStr={todayStr} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
-    </>
+
+      {/* Mobile cards */}
+      <div className="md:hidden border border-outline-variant rounded-xl overflow-hidden bg-surface shadow-sm">
+        {isLoading ? (
+          <div className="p-8 text-center text-sm text-on-surface-variant">Memuat…</div>
+        ) : employees.length === 0 ? (
+          <div className="p-8 text-center text-sm text-on-surface-variant">Tidak ada karyawan.</div>
+        ) : (
+          employees.map((emp: User) => (
+            <MobileCard key={emp.id} employee={emp} weekDates={weekDates} todayStr={todayStr} />
+          ))
+        )}
+      </div>
+    </div>
   );
 }

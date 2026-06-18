@@ -108,16 +108,19 @@ export const listEmployeeShifts = async (employeeId: string) => {
   if (!employee || employee.deleted_at)
     throw new AppError("Employee tidak ditemukan.", 404);
 
-  return prisma.employeeShift.findMany({
+  const records = await prisma.employeeShift.findMany({
     where: { employee_id: employeeId },
     include: {
       shift: true,
-      outlet: {
-        select: { id: true, name: true },
-      },
+      outlet: { select: { id: true, name: true } },
     },
-    orderBy: [{ day_of_week: "asc" }],
+    orderBy: [{ day_of_week: "asc" }, { date: "asc" }],
   });
+
+  return {
+    recurring: records.filter((r) => r.day_of_week !== null && r.date === null),
+    date_specific: records.filter((r) => r.date !== null),
+  };
 };
 
 export const assignEmployeeShift = async (
@@ -135,22 +138,50 @@ export const assignEmployeeShift = async (
   if (!shift) throw new AppError("Shift tidak ditemukan.", 404);
   if (!outlet) throw new AppError("Outlet tidak ditemukan.", 404);
 
-  // Upsert: update is_active if combo already exists
-  return prisma.employeeShift.upsert({
-    where: {
-      employee_id_shift_id_day_of_week: {
+  const isActive = input.is_active ?? true;
+
+  // Date-specific assignment (one-time)
+  if (input.date !== undefined) {
+    const dateValue = new Date(input.date);
+    const existing = await prisma.employeeShift.findFirst({
+      where: { employee_id: employeeId, date: dateValue },
+    });
+    if (existing) {
+      return prisma.employeeShift.update({
+        where: { id: existing.id },
+        data: { shift_id: input.shift_id, outlet_id: input.outlet_id, is_active: isActive },
+      });
+    }
+    return prisma.employeeShift.create({
+      data: {
         employee_id: employeeId,
         shift_id: input.shift_id,
-        day_of_week: input.day_of_week,
+        outlet_id: input.outlet_id,
+        date: dateValue,
+        day_of_week: null,
+        is_active: isActive,
       },
-    },
-    update: { is_active: input.is_active ?? true, outlet_id: input.outlet_id },
-    create: {
+    });
+  }
+
+  // Recurring weekly assignment (by day_of_week)
+  const existing = await prisma.employeeShift.findFirst({
+    where: { employee_id: employeeId, day_of_week: input.day_of_week, date: null },
+  });
+  if (existing) {
+    return prisma.employeeShift.update({
+      where: { id: existing.id },
+      data: { shift_id: input.shift_id, outlet_id: input.outlet_id, is_active: isActive },
+    });
+  }
+  return prisma.employeeShift.create({
+    data: {
       employee_id: employeeId,
       shift_id: input.shift_id,
       outlet_id: input.outlet_id,
-      day_of_week: input.day_of_week,
-      is_active: input.is_active ?? true,
+      day_of_week: input.day_of_week ?? null,
+      date: null,
+      is_active: isActive,
     },
   });
 };

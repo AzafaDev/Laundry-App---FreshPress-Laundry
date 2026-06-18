@@ -81,10 +81,10 @@ export const listEmployeeShifts = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const items = await ShiftService.listEmployeeShifts(
+    const result = await ShiftService.listEmployeeShifts(
       req.params.id as string,
     );
-    res.json({ success: true, items });
+    res.json({ success: true, data: result });
   } catch (err) {
     next(err);
   }

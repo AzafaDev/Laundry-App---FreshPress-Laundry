@@ -13,12 +13,20 @@ export interface EmployeeShift {
   employee_id: string;
   shift_id: string;
   outlet_id: string;
-  day_of_week: number; // 0=Sunday, 6=Saturday
+  /** Recurring weekly schedule (0=Sun…6=Sat). Null when date is set. */
+  day_of_week: number | null;
+  /** One-time specific date (YYYY-MM-DD). Null for recurring schedules. */
+  date: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
   shift: WorkShift;
   outlet: { id: string; name: string };
+}
+
+export interface EmployeeShiftListResponse {
+  recurring: EmployeeShift[];
+  date_specific: EmployeeShift[];
 }
 
 export interface WorkShiftListPagination {
@@ -52,7 +60,10 @@ export type UpdateWorkShiftPayload = Partial<CreateWorkShiftPayload>;
 export interface AssignEmployeeShiftPayload {
   shift_id: string;
   outlet_id: string;
-  day_of_week: number;
+  /** Required for recurring assignments. Mutually exclusive with date. */
+  day_of_week?: number;
+  /** Required for date-specific assignments (YYYY-MM-DD). Mutually exclusive with day_of_week. */
+  date?: string;
   is_active?: boolean;
 }
 
