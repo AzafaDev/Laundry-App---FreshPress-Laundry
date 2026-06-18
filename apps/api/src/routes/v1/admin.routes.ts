@@ -52,8 +52,8 @@ router.get(
 );
 
 // -- Users (super_admin only) --------------------------------------------------
-router.get("/admin/users", requireRole("super_admin"), UserCtrl.listUsers);
-router.get("/admin/users/:id", requireRole("super_admin"), UserCtrl.getUser);
+router.get("/admin/users", requireRole("super_admin", "outlet_admin"), UserCtrl.listUsers);
+router.get("/admin/users/:id", requireRole("super_admin", "outlet_admin"), UserCtrl.getUser);
 router.post(
   "/admin/users",
   requireRole("super_admin"),
@@ -72,10 +72,10 @@ router.delete(
   UserCtrl.deleteUser,
 );
 
-// Employee shift assignments (super_admin only)
+// Employee shift assignments
 router.get(
   "/admin/employees/:id/shifts",
-  requireRole("super_admin"),
+  requireRole("super_admin", "outlet_admin"),
   ShiftCtrl.listEmployeeShifts,
 );
 router.post(

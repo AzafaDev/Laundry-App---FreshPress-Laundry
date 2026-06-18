@@ -15,6 +15,7 @@ import {
   PlayCircle,
   ShieldAlert,
   CalendarCheck,
+  CalendarDays,
   MessageSquareWarning,
   X,
   type LucideIcon,
@@ -94,6 +95,12 @@ const NAV: NavItem[] = [
     label: "Reports",
     icon: BarChart3,
     roles: ["super_admin", "outlet_admin"],
+  },
+  {
+    href: "/dashboard/admin/staff/shifts",
+    label: "Jadwal Shift",
+    icon: CalendarDays,
+    roles: ["outlet_admin"],
   },
   {
     href: "/dashboard/admin/attendance-report",

@@ -9,6 +9,7 @@ import {
   Trash2,
   Loader2,
   CheckCircle,
+  CalendarDays,
 } from "lucide-react";
 import { useUsers } from "@/hooks/useUsers";
 import {
@@ -16,8 +17,10 @@ import {
   useOutletAssignments,
   useUnassignUser,
 } from "@/hooks/useOutlets";
+import { EmployeeShiftModal } from "@/components/admin/EmployeeShiftModal";
 import type { Outlet } from "@/types/outlet.types";
-import type { UserRole } from "@/types/user.types";
+import type { User, UserRole } from "@/types/user.types";
+import type { AssignedUser } from "@/services/outlet.service";
 
 interface Props {
   outlet: Outlet;
@@ -46,6 +49,9 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [recentlyAssigned, setRecentlyAssigned] = useState<string | null>(null);
+  const [shiftEmployee, setShiftEmployee] = useState<User | null>(null);
+  const toUser = (u: AssignedUser): User =>
+    ({ ...u, outlet_id: outlet.id, created_at: u.assigned_at, updated_at: u.assigned_at, deleted_at: null, phone: u.phone ?? null }) as unknown as User;
 
   const { data: assigned = [], isLoading: assignedLoading } =
     useOutletAssignments(outlet.id);
@@ -80,6 +86,7 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
   );
 
   return (
+    <>
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
       <div className="bg-surface-container-lowest w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-outline-variant max-h-[92vh] flex flex-col">
         <div className="p-6 bg-surface-container-low border-b border-outline-variant flex justify-between items-center flex-shrink-0">
@@ -138,22 +145,28 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        if (
-                          confirm(
-                            `Unassign ${u.full_name} dari ${outlet.name}?`,
-                          )
-                        ) {
-                          unassign.mutate(u.id);
-                        }
-                      }}
-                      disabled={unassign.isPending}
-                      className="p-2 rounded-md hover:bg-error-container/30 text-error disabled:opacity-50 flex-shrink-0"
-                      aria-label="Unassign"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={() => setShiftEmployee(toUser(u))}
+                        className="p-2 rounded-md hover:bg-primary/10 text-primary"
+                        aria-label="Atur shift"
+                        title="Atur Shift"
+                      >
+                        <CalendarDays className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Unassign ${u.full_name} dari ${outlet.name}?`)) {
+                            unassign.mutate(u.id);
+                          }
+                        }}
+                        disabled={unassign.isPending}
+                        className="p-2 rounded-md hover:bg-error-container/30 text-error disabled:opacity-50"
+                        aria-label="Unassign"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -257,5 +270,13 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
         </div>
       </div>
     </div>
+
+    {shiftEmployee && (
+      <EmployeeShiftModal
+        employee={shiftEmployee}
+        onClose={() => setShiftEmployee(null)}
+      />
+    )}
+    </>
   );
 }

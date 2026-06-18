@@ -304,12 +304,6 @@ export default function OrderDetailPage() {
                 {order.payment?.status ?? "Belum bayar"}
               </span>
             </div>
-            {order.payment_deadline && (
-              <div className="flex justify-between text-sm">
-                <span className="text-on-surface-variant">Deadline</span>
-                <span>{fmtDateTime(order.payment_deadline)}</span>
-              </div>
-            )}
           </div>
         </div>
       </div>

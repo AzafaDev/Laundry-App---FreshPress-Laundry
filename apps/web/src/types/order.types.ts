@@ -85,7 +85,6 @@ export interface OrderItem {
 
 export interface OrderDetail extends OrderSummary {
   notes: string | null;
-  payment_deadline: string | null;
   order_items: OrderItem[];
   status_histories: OrderStatusHistory[];
   process_logs: ProcessLog[];
