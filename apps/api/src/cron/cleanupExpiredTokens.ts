@@ -36,4 +36,4 @@ cron.schedule("0 19 * * *", async () => {
   } catch (err) {
     console.error("[Cron] cleanupExpiredTokens error:", err);
   }
-});
+}, { timezone: "UTC" });

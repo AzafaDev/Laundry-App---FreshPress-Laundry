@@ -52,6 +52,9 @@ export const attendanceService = {
     if (!shift) throw new AppError("Anda tidak memiliki shift yang aktif hari ini", 403);
     if (!employee) throw new AppError("Employee tidak ditemukan", 404);
     if (!employee.outlet_id) throw new AppError("Employee belum memiliki outlet", 400);
+    if (canCheckOut(now, shift.endTime)) {
+      throw new AppError("Shift sudah berakhir, check-in tidak dapat dilakukan", 403);
+    }
     if (!canCheckIn(now, shift.startTime, shift.endTime, 15)) {
       throw new AppError("Check-in hanya dapat dilakukan maksimal 15 menit sebelum shift dimulai", 403);
     }

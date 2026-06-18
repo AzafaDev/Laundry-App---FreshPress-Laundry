@@ -3,6 +3,7 @@ import type { z } from "zod";
 import type { getMyLogsQuerySchema } from "../../validations/attendance.validation.js";
 import { attendanceService } from "../../services/driver-worker/attendance.service.js";
 import { requireUserId } from "../../utils/asyncHandler.js";
+import { AppError } from "../../middlewares/error.middleware.js";
 
 type MyLogsQuery = z.infer<typeof getMyLogsQuerySchema>;
 
@@ -10,7 +11,7 @@ export const checkIn = async (req: Request, res: Response, next: NextFunction) =
   try {
     const employeeId = requireUserId(req);
     const { lat, lng } = req.body;
-    if (!lat || !lng) throw new Error("Lokasi tidak tersedia. Aktifkan GPS untuk check-in.");
+    if (!lat || !lng) throw new AppError("Lokasi tidak tersedia. Aktifkan GPS untuk check-in.", 400);
 
     // radius check dinonaktifkan sementara — aktifkan saat production
     // const outletId = await getEmployeeOutlet(employeeId);

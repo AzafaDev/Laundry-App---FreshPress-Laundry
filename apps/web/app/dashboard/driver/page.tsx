@@ -17,7 +17,6 @@ import { TaskDetailModal } from "@/components/driver/TaskDetailModal";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { useAttendance } from "@/hooks/useAttendance";
 import { useDriverTasks } from "@/hooks/useDriverTasks";
-import { useDriverTaskSocket } from "@/hooks/useDriverTaskSocket";
 import type { DriverTask } from "@/services/driverTask.service";
 
 type TaskTab = "pickup" | "delivery";
@@ -43,11 +42,11 @@ export default function DriverDashboardPage() {
     isCompleting,
   } = useDriverTasks({ checkedIn });
 
-  useDriverTaskSocket(() => {
-    if (isModalOpen && !selectedTask) {
+  useEffect(() => {
+    if (isModalOpen && !selectedTask && !hasActiveTask) {
       setIsModalOpen(false);
     }
-  });
+  }, [hasActiveTask, isModalOpen, selectedTask]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [thumbTop, setThumbTop] = useState(0);

@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FreshPress Laundry — Integration Test Report</title>
+  <style>
+    :root {
+      --pass: #16a34a;
+      --pass-bg: #dcfce7;
+      --fail: #dc2626;
+      --fail-bg: #fee2e2;
+      --warn: #d97706;
+      --warn-bg: #fef3c7;
+      --blue: #2563eb;
+      --blue-bg: #dbeafe;
+      --gray: #6b7280;
+      --gray-light: #f3f4f6;
+      --border: #e5e7eb;
+      --text: #111827;
+      --text-muted: #6b7280;
+      --card-shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f9fafb;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    .header {
+      background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+      color: #fff;
+      padding: 48px 40px 40px;
+    }
+    .header-inner { max-width: 1100px; margin: 0 auto; }
+    .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+    .header .subtitle { font-size: 14px; opacity: .8; margin-bottom: 28px; }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .stat-card {
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 10px;
+      padding: 16px 20px;
+      backdrop-filter: blur(4px);
+    }
+    .stat-card .num {
+      font-size: 32px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .stat-card .label {
+      font-size: 12px;
+      opacity: .8;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .stat-card.pass  { background: rgba(22,163,74,.3); border-color: rgba(22,163,74,.5); }
+    .stat-card.total { background: rgba(255,255,255,.2); }
+
+    /* ── Layout ─────────────────────────────────────────────────────────── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 32px 40px 64px; }
+
+    /* ── Section ────────────────────────────────────────────────────────── */
+    .section { margin-bottom: 40px; }
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 99px;
+    }
+    .badge.positive { background: var(--pass-bg); color: var(--pass); }
+    .badge.negative { background: var(--fail-bg); color: var(--fail); }
+    .badge.info     { background: var(--blue-bg); color: var(--blue); }
+    .badge.warn     { background: var(--warn-bg); color: var(--warn); }
+
+    /* ── Role card ──────────────────────────────────────────────────────── */
+    .role-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .role-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: var(--gray-light);
+      border-bottom: 1px solid var(--border);
+    }
+    .role-header h3 {
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .role-icon { font-size: 18px; }
+    .count-pill {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: #fff;
+      border: 1px solid var(--border);
+      padding: 2px 10px;
+      border-radius: 99px;
+    }
+
+    /* ── Table ──────────────────────────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #f9fafb; }
+    th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 10px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid #f3f4f6;
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafafa; }
+
+    .num-col { width: 44px; color: var(--text-muted); font-size: 12px; }
+    .status-col { width: 80px; text-align: center; }
+
+    code {
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      font-size: 12px;
+      background: var(--gray-light);
+      padding: 1px 6px;
+      border-radius: 4px;
+      color: var(--blue);
+    }
+
+    .pass-icon  { color: var(--pass); font-size: 16px; }
+    .skip-icon  { color: var(--warn); font-size: 16px; }
+
+    /* ── Expected badge ─────────────────────────────────────────────────── */
+    .http {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    .http.h200 { background: #dcfce7; color: #15803d; }
+    .http.h201 { background: #d1fae5; color: #065f46; }
+    .http.h204 { background: #e0f2fe; color: #0369a1; }
+    .http.h401 { background: #fee2e2; color: #991b1b; }
+    .http.h403 { background: #fef3c7; color: #92400e; }
+    .http.h404 { background: #fde8d8; color: #9a3412; }
+    .http.h409 { background: #f3e8ff; color: #6b21a8; }
+    .http.h422 { background: #ffe4e6; color: #9f1239; }
+    .http.multi { background: var(--gray-light); color: var(--text-muted); }
+    .http.cond  { background: #fef9c3; color: #713f12; }
+
+    /* ── Notes ─────────────────────────────────────────────────────────── */
+    .note-box {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--blue);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--card-shadow);
+    }
+    .note-box.warn { border-left-color: var(--warn); }
+    .note-box h4 { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+    .note-box p, .note-box li { font-size: 13px; color: var(--text-muted); }
+    .note-box ul { padding-left: 18px; margin-top: 6px; }
+    .note-box li { margin-bottom: 4px; }
+
+    /* ── File tree ──────────────────────────────────────────────────────── */
+    .tree {
+      background: #0f172a;
+      color: #94a3b8;
+      font-family: "SF Mono", "Fira Code", Consolas, monospace;
+      font-size: 13px;
+      border-radius: 10px;
+      padding: 20px 24px;
+      line-height: 1.8;
+      overflow-x: auto;
+    }
+    .tree .dir { color: #93c5fd; }
+    .tree .pos { color: #86efac; }
+    .tree .neg { color: #fca5a5; }
+    .tree .hlp { color: #fde68a; }
+    .tree .cnt { color: var(--text-muted); font-size: 11px; margin-left: 4px; }
+
+    /* ── Run commands ───────────────────────────────────────────────────── */
+    .cmd-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 10px;
+    }
+    .cmd-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      box-shadow: var(--card-shadow);
+    }
+    .cmd-card .label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; }
+    .cmd-card code { display: block; font-size: 12px; background: var(--gray-light); padding: 6px 10px; border-radius: 6px; color: var(--text); white-space: nowrap; overflow-x: auto; }
+
+    /* ── Summary bar ────────────────────────────────────────────────────── */
+    .summary-bar {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 32px;
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 24px;
+      align-items: center;
+    }
+    .summary-bar .item { display: flex; align-items: center; gap: 8px; }
+    .summary-bar .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .summary-bar .label { font-size: 13px; color: var(--text-muted); }
+    .summary-bar .val   { font-size: 15px; font-weight: 700; }
+
+    /* ── Footer ─────────────────────────────────────────────────────────── */
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      padding: 24px 0 40px;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ HEADER -->
+<header class="header">
+  <div class="header-inner">
+    <h1>🧺 FreshPress Laundry</h1>
+    <p class="subtitle">Integration Test Report &nbsp;·&nbsp; Jest + Supertest &nbsp;·&nbsp; 2026-06-17</p>
+    <div class="stat-grid">
+      <div class="stat-card total">
+        <div class="num">130</div>
+        <div class="label">Total Tests</div>
+      </div>
+      <div class="stat-card pass">
+        <div class="num">130</div>
+        <div class="label">Passed</div>
+      </div>
+      <div class="stat-card total">
+        <div class="num">0</div>
+        <div class="label">Failed</div>
+      </div>
+      <div class="stat-card total">
+        <div class="num">61</div>
+        <div class="label">Positive</div>
+      </div>
+      <div class="stat-card total">
+        <div class="num">69</div>
+        <div class="label">Negative</div>
+      </div>
+      <div class="stat-card total">
+        <div class="num">11</div>
+        <div class="label">Test Suites</div>
+      </div>
+      <div class="stat-card total">
+        <div class="num">~84s</div>
+        <div class="label">Duration</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ── Summary bar ─────────────────────────────────────────────────────── -->
+  <div class="summary-bar">
+    <div class="item">
+      <div class="dot" style="background:#16a34a"></div>
+      <span class="label">Positive Tests</span>
+      <span class="val">61</span>
+    </div>
+    <div class="item">
+      <div class="dot" style="background:#dc2626"></div>
+      <span class="label">Negative Tests</span>
+      <span class="val">69</span>
+    </div>
+    <div class="item">
+      <div class="dot" style="background:#2563eb"></div>
+      <span class="label">Roles Covered</span>
+      <span class="val">5</span>
+    </div>
+    <div class="item" style="margin-left:auto">
+      <span class="badge positive">✓ All Passing</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ POSITIVE TESTS -->
+  <div class="section">
+    <h2 class="section-title">
+      <span>✅ Positive Tests</span>
+      <span class="badge positive">61 tests</span>
+    </h2>
+
+    <!-- Customer -->
+    <div class="role-card">
+      <div class="role-header">
+        <h3><span class="role-icon">👤</span> Customer &nbsp;<code>customer.positive.test.ts</code></h3>
+        <span class="count-pill">10 tests</span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th class="num-col">#</th>
+            <th>Test Case</th>
+            <th>Endpoint</th>
+            <th>Expected</th>
+            <th class="status-col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="num-col">1</td><td>Auth cookie berhasil di-set</td><td><code>POST /customer/auth/login</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">2</td><td>Return profile customer</td><td><code>GET /customer/profile</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">3</td><td>Buat alamat baru</td><td><code>POST /customer/addresses</code></td><td><span class="http h201">201</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">4</td><td>Ambil daftar alamat</td><td><code>GET /customer/addresses</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">5</td><td>Set alamat sebagai primary</td><td><code>PATCH /customer/addresses/:id/primary</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">6</td><td>Hapus alamat</td><td><code>DELETE /customer/addresses/:id</code></td><td><span class="http h204">204</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">7</td><td>List orders dengan pagination</td><td><code>GET /customer/orders</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">8</td><td>Buat order (+ invoice_number)</td><td><code>POST /customer/orders</code></td><td><span class="http h201">201</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">9</td><td>List notifikasi</td><td><code>GET /customer/notifications</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">10</td><td>Jumlah notifikasi belum dibaca</td><td><code>GET /customer/notifications/unread-count</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Driver -->
+    <div class="role-card">
+      <div class="role-header">
+        <h3><span class="role-icon">🚗</span> Driver &nbsp;<code>driver.positive.test.ts</code></h3>
+        <span class="count-pill">9 tests</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th class="num-col">#</th><th>Test Case</th><th>Endpoint</th><th>Expected</th><th class="status-col">Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num-col">1</td><td>Auth cookie driver berhasil</td><td><code>POST /employee/auth/login</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">2</td><td>Return profile driver</td><td><code>GET /employee/profile</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">3</td><td>Check-in kehadiran</td><td><code>POST /attendance/check-in</code></td><td><span class="http h201">201</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">4</td><td>Status kehadiran hari ini</td><td><code>GET /attendance/today</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">5</td><td>Daftar pickup tersedia</td><td><code>GET /driver/pickups/available</code></td><td><span class="http cond">200 / 403*</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">6</td><td>Daftar delivery tersedia</td><td><code>GET /driver/deliveries/available</code></td><td><span class="http cond">200 / 403*</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">7</td><td>Task aktif saat ini</td><td><code>GET /driver/tasks/active</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">8</td><td>Riwayat task driver</td><td><code>GET /driver/tasks/history</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">9</td><td>Klaim task kondisional</td><td><code>POST /driver/tasks/:id/claim</code></td><td><span class="http cond">skip jika kosong</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Worker -->
+    <div class="role-card">
+      <div class="role-header">
+        <h3><span class="role-icon">🫧</span> Washing Worker &nbsp;<code>worker.positive.test.ts</code></h3>
+        <span class="count-pill">5 tests</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th class="num-col">#</th><th>Test Case</th><th>Endpoint</th><th>Expected</th><th class="status-col">Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num-col">1</td><td>Auth cookie worker berhasil</td><td><code>POST /employee/auth/login</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">2</td><td>Return profile worker</td><td><code>GET /employee/profile</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">3</td><td>Check-in kehadiran</td><td><code>POST /attendance/check-in</code></td><td><span class="http h201">201</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">4</td><td>Status kehadiran hari ini</td><td><code>GET /attendance/today</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">5</td><td>Daftar order di stasiun cuci</td><td><code>GET /worker/station/washing</code></td><td><span class="http cond">200 / 403*</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Outlet Admin -->
+    <div class="role-card">
+      <div class="role-header">
+        <h3><span class="role-icon">🏪</span> Outlet Admin &nbsp;<code>outlet-admin.positive.test.ts</code></h3>
+        <span class="count-pill">12 tests</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th class="num-col">#</th><th>Test Case</th><th>Endpoint</th><th>Expected</th><th class="status-col">Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num-col">1</td><td>Auth cookie outlet_admin berhasil</td><td><code>POST /employee/auth/login</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">2</td><td>Return profile outlet_admin</td><td><code>GET /employee/profile</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">3</td><td>Daftar order di outlet</td><td><code>GET /admin/orders</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">4</td><td>Detail order (conditional)</td><td><code>GET /admin/orders/:id</code></td><td><span class="http cond">skip jika kosong</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">5</td><td>Daftar bypass request</td><td><code>GET /admin/bypass-requests</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">6</td><td>Daftar complaint</td><td><code>GET /admin/complaints</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">7</td><td>Statistik complaint</td><td><code>GET /admin/complaints/stats</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">8</td><td>Laporan kehadiran</td><td><code>GET /reports/attendance</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">9</td><td>Laporan penjualan</td><td><code>GET /reports/sales</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">10</td><td>Laporan performa karyawan</td><td><code>GET /reports/employees</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">11</td><td>Daftar shift (read-only)</td><td><code>GET /admin/shifts</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">12</td><td>Daftar laundry items (read-only)</td><td><code>GET /admin/laundry-items</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Super Admin -->
+    <div class="role-card">
+      <div class="role-header">
+        <h3><span class="role-icon">👑</span> Super Admin &nbsp;<code>super-admin.positive.test.ts</code></h3>
+        <span class="count-pill">25 tests</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th class="num-col">#</th><th>Test Case</th><th>Endpoint</th><th>Expected</th><th class="status-col">Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num-col">1</td><td>Auth cookie super_admin berhasil</td><td>—</td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">2</td><td>Daftar users</td><td><code>GET /admin/users</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">3</td><td>Buat user (driver) baru</td><td><code>POST /admin/users</code></td><td><span class="http h201">201</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">4</td><td>Detail user by ID</td><td><code>GET /admin/users/:id</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">5</td><td>Update full_name user</td><td><code>PATCH /admin/users/:id</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">6</td><td>Hapus user</td><td><code>DELETE /admin/users/:id</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">7</td><td>Daftar outlet</td><td><code>GET /admin/outlets</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">8</td><td>Buat outlet baru</td><td><code>POST /admin/outlets</code></td><td><span class="http h201">201</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">9</td><td>Update outlet</td><td><code>PATCH /admin/outlets/:id</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">10</td><td>Deaktivasi outlet</td><td><code>DELETE /admin/outlets/:id</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">11</td><td>Daftar shift</td><td><code>GET /admin/shifts</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">12</td><td>Buat shift baru</td><td><code>POST /admin/shifts</code></td><td><span class="http h201">201</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">13</td><td>Update shift</td><td><code>PATCH /admin/shifts/:id</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">14</td><td>Hapus shift</td><td><code>DELETE /admin/shifts/:id</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">15</td><td>Daftar laundry items</td><td><code>GET /admin/laundry-items</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">16</td><td>Buat laundry item baru</td><td><code>POST /admin/laundry-items</code></td><td><span class="http h201">201</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">17</td><td>Update laundry item</td><td><code>PATCH /admin/laundry-items/:id</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">18</td><td>Hapus laundry item</td><td><code>DELETE /admin/laundry-items/:id</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">19</td><td>Unread count notifikasi</td><td><code>GET /admin/notifications/unread-count</code></td><td><span class="http h200">200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ NEGATIVE TESTS -->
+  <div class="section">
+    <h2 class="section-title">
+      <span>❌ Negative Tests</span>
+      <span class="badge negative">69 tests</span>
+    </h2>
+
+    <!-- Auth -->
+    <div class="role-card">
+      <div class="role-header">
+        <h3><span class="role-icon">🔐</span> Authentication &amp; RBAC &nbsp;<code>auth.negative.test.ts</code></h3>
+        <span class="count-pill">15 tests</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th class="num-col">#</th><th>Test Case</th><th>Endpoint</th><th>Expected</th><th class="status-col">Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num-col">1</td><td>Login customer: password salah</td><td><code>POST /customer/auth/login</code></td><td><span class="http h401">401</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">2</td><td>Login customer: email tidak ada</td><td><code>POST /customer/auth/login</code></td><td><span class="http h401">401</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">3</td><td>Login employee: password salah</td><td><code>POST /employee/auth/login</code></td><td><span class="http h401">401</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">4</td><td>Login employee: email tidak ada</td><td><code>POST /employee/auth/login</code></td><td><span class="http h401">401</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">5</td><td>Akses customer/profile tanpa token</td><td><code>GET /customer/profile</code></td><td><span class="http h401">401</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">6</td><td>Akses employee/profile tanpa token</td><td><code>GET /employee/profile</code></td><td><span class="http h401">401</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">7</td><td>Akses admin/users tanpa token</td><td><code>GET /admin/users</code></td><td><span class="http h401">401</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">8</td><td>Token malformat (string random)</td><td><code>GET /admin/users</code></td><td><span class="http h401">401</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">9</td><td>Customer akses admin/users</td><td><code>GET /admin/users</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">10</td><td>Driver akses admin/users</td><td><code>GET /admin/users</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">11</td><td>Worker akses admin/users</td><td><code>GET /admin/users</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">12</td><td>Outlet_admin POST admin/users (super only)</td><td><code>POST /admin/users</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">13</td><td>Customer akses admin/orders</td><td><code>GET /admin/orders</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">14</td><td>Driver akses worker/station/washing</td><td><code>GET /worker/station/washing</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">15</td><td>Customer akses driver/pickups/available</td><td><code>GET /driver/pickups/available</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Customer Negative -->
+    <div class="role-card">
+      <div class="role-header">
+        <h3><span class="role-icon">👤</span> Customer — Validation &nbsp;<code>customer.negative.test.ts</code></h3>
+        <span class="count-pill">11 tests</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th class="num-col">#</th><th>Test Case</th><th>Endpoint</th><th>Expected</th><th class="status-col">Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num-col">1</td><td>Register: full_name tidak ada</td><td><code>POST /customer/auth/register</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">2</td><td>Register: format email tidak valid</td><td><code>POST /customer/auth/register</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">3</td><td>Register: email duplikat</td><td><code>POST /customer/auth/register</code></td><td><span class="http h409">409</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">4</td><td>Buat alamat: label tidak ada</td><td><code>POST /customer/addresses</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">5</td><td>Buat alamat: latitude &gt; 90</td><td><code>POST /customer/addresses</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">6</td><td>Buat alamat: longitude &lt; -180</td><td><code>POST /customer/addresses</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">7</td><td>Buat order: tanpa pickup_address_id</td><td><code>POST /customer/orders</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">8</td><td>Buat order: pickup_date tanggal lampau</td><td><code>POST /customer/orders</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">9</td><td>Buat order: pickup_date &gt; 7 hari ke depan</td><td><code>POST /customer/orders</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">10</td><td>Buat order: pickup_address_id bukan UUID</td><td><code>POST /customer/orders</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">11</td><td>Delete alamat milik customer lain</td><td><code>DELETE /customer/addresses/:id</code></td><td><span class="http h403">403/404</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Driver Negative -->
+    <div class="role-card">
+      <div class="role-header">
+        <h3><span class="role-icon">🚗</span> Driver — Role Violations &nbsp;<code>driver.negative.test.ts</code></h3>
+        <span class="count-pill">8 tests</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th class="num-col">#</th><th>Test Case</th><th>Endpoint</th><th>Expected</th><th class="status-col">Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num-col">1</td><td>Customer akses driver/pickups/available</td><td><code>GET /driver/pickups/available</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">2</td><td>Worker akses driver/deliveries/available</td><td><code>GET /driver/deliveries/available</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">3</td><td>Customer akses driver/tasks/active</td><td><code>GET /driver/tasks/active</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">4</td><td>Klaim task tidak ada (shift guard / 404)</td><td><code>POST /driver/tasks/:id/claim</code></td><td><span class="http h403">400/403/404</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">5</td><td>Driver akses admin/orders</td><td><code>GET /admin/orders</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">6</td><td>Driver akses admin/users</td><td><code>GET /admin/users</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">7</td><td>Driver akses worker/station/washing</td><td><code>GET /worker/station/washing</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">8</td><td>Driver akses customer/profile (bukan 200)</td><td><code>GET /customer/profile</code></td><td><span class="http multi">non-200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Worker Negative -->
+    <div class="role-card">
+      <div class="role-header">
+        <h3><span class="role-icon">🫧</span> Worker — Role Violations &nbsp;<code>worker.negative.test.ts</code></h3>
+        <span class="count-pill">10 tests</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th class="num-col">#</th><th>Test Case</th><th>Endpoint</th><th>Expected</th><th class="status-col">Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num-col">1</td><td>Worker akses driver/pickups/available</td><td><code>GET /driver/pickups/available</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">2</td><td>Worker akses driver/deliveries/available</td><td><code>GET /driver/deliveries/available</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">3</td><td>Worker akses driver/tasks/:id/claim</td><td><code>POST /driver/tasks/:id/claim</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">4</td><td>Worker akses admin/users</td><td><code>GET /admin/users</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">5</td><td>Worker akses admin/orders</td><td><code>GET /admin/orders</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">6</td><td>Worker POST admin/laundry-items</td><td><code>POST /admin/laundry-items</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">7</td><td>Submit items: orderId tidak valid</td><td><code>POST /worker/station/washing/orders/:id/submit-items</code></td><td><span class="http h403">400/403/404</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">8</td><td>Complete station: orderId tidak ada</td><td><code>PATCH /worker/station/washing/orders/:id/complete</code></td><td><span class="http h403">400/403/404</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">9</td><td>Driver akses worker/station/washing</td><td><code>GET /worker/station/washing</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">10</td><td>Customer akses worker/station/washing</td><td><code>GET /worker/station/washing</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Outlet Admin Negative -->
+    <div class="role-card">
+      <div class="role-header">
+        <h3><span class="role-icon">🏪</span> Outlet Admin — Permission Limits &nbsp;<code>outlet-admin.negative.test.ts</code></h3>
+        <span class="count-pill">11 tests</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th class="num-col">#</th><th>Test Case</th><th>Endpoint</th><th>Expected</th><th class="status-col">Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num-col">1</td><td>POST admin/users (super_admin only)</td><td><code>POST /admin/users</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">2</td><td>DELETE admin/users/:id (super_admin only)</td><td><code>DELETE /admin/users/:id</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">3</td><td>POST admin/outlets (super_admin only)</td><td><code>POST /admin/outlets</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">4</td><td>POST admin/shifts (super_admin only)</td><td><code>POST /admin/shifts</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">5</td><td>POST admin/laundry-items (super_admin only)</td><td><code>POST /admin/laundry-items</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">6</td><td>GET admin/orders/:id tidak ada</td><td><code>GET /admin/orders/:id</code></td><td><span class="http h404">400/404</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">7</td><td>GET admin/complaints/:id tidak ada</td><td><code>GET /admin/complaints/:id</code></td><td><span class="http h404">400/404</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">8</td><td>GET admin/bypass-requests/:id tidak ada</td><td><code>GET /admin/bypass-requests/:id</code></td><td><span class="http h404">400/404</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">9</td><td>Outlet_admin akses customer/profile (bukan 200)</td><td><code>GET /customer/profile</code></td><td><span class="http multi">non-200</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">10</td><td>Outlet_admin akses driver/pickups/available</td><td><code>GET /driver/pickups/available</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">11</td><td>Outlet_admin akses worker/station/washing</td><td><code>GET /worker/station/washing</code></td><td><span class="http h403">403</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Super Admin Negative -->
+    <div class="role-card">
+      <div class="role-header">
+        <h3><span class="role-icon">👑</span> Super Admin — Input Validation &nbsp;<code>super-admin.negative.test.ts</code></h3>
+        <span class="count-pill">12 tests</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th class="num-col">#</th><th>Test Case</th><th>Endpoint</th><th>Expected</th><th class="status-col">Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="num-col">1</td><td>POST user: role bukan enum valid</td><td><code>POST /admin/users</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">2</td><td>POST user: format email tidak valid</td><td><code>POST /admin/users</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">3</td><td>POST user: password &lt; 8 karakter</td><td><code>POST /admin/users</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">4</td><td>POST user: full_name tidak ada</td><td><code>POST /admin/users</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">5</td><td>PATCH user: body kosong</td><td><code>PATCH /admin/users/:id</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">6</td><td>GET user: id tidak ada</td><td><code>GET /admin/users/:id</code></td><td><span class="http h404">400/404</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">7</td><td>POST outlet: name tidak ada</td><td><code>POST /admin/outlets</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">8</td><td>POST outlet: service_radius_km = 0</td><td><code>POST /admin/outlets</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">9</td><td>POST shift: format start_time salah</td><td><code>POST /admin/shifts</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">10</td><td>POST shift: name &lt; 2 karakter</td><td><code>POST /admin/shifts</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">11</td><td>POST laundry item: base_price = 0</td><td><code>POST /admin/laundry-items</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+          <tr><td class="num-col">12</td><td>POST laundry item: name tidak ada</td><td><code>POST /admin/laundry-items</code></td><td><span class="http h422">400/422</span></td><td class="status-col"><span class="pass-icon">✔</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════ TECHNICAL NOTES -->
+  <div class="section">
+    <h2 class="section-title">📋 Catatan Teknis</h2>
+
+    <div class="note-box warn">
+      <h4>⚡ Shift Guard — assertShiftEligibility()</h4>
+      <p>Beberapa endpoint driver/worker menerapkan business guard yang mengembalikan <strong>403</strong> ketika:</p>
+      <ul>
+        <li>Shift tidak sedang aktif (di luar jam shift terdaftar)</li>
+        <li>Karyawan belum check-in hari ini</li>
+        <li>Karyawan sudah check-out</li>
+      </ul>
+      <p style="margin-top:8px">Endpoint yang terpengaruh: <code>GET /driver/pickups/available</code>, <code>GET /driver/deliveries/available</code>, <code>GET /worker/station/:station</code>, <code>POST .../submit-items</code>, <code>PATCH .../complete</code></p>
+    </div>
+
+    <div class="note-box">
+      <h4>🔢 Kode Status Validasi</h4>
+      <p>API menggunakan <strong>422 Unprocessable Entity</strong> (bukan 400) untuk error validasi Zod. Test menerima keduanya: <code>[400, 422]</code>.</p>
+    </div>
+
+    <div class="note-box">
+      <h4>📦 Response Shape Endpoint</h4>
+      <ul>
+        <li><strong>Customer endpoints</strong> (<code>apiResponse.ok()</code>): <code>{ success, message, data: [...] }</code></li>
+        <li><strong>Admin list endpoints</strong> (spread result): <code>{ success, items: [...], pagination: {...} }</code></li>
+        <li><strong>Customer profile</strong>: raw <code>res.json(profile)</code> — langsung cek <code>res.body.email</code></li>
+        <li><strong>DELETE address</strong>: HTTP <code>204 No Content</code> (bukan 200)</li>
+      </ul>
+    </div>
+
+    <div class="note-box">
+      <h4>🗃️ Database &amp; Cleanup</h4>
+      <p>Tests berjalan terhadap Neon production DB (serial, <code>maxWorkers: 1</code>). Setiap test membuat data unik (<code>${'$'}{Date.now()}</code>) dan membersihkannya di <code>afterAll</code>. Tidak ada data test yang tersisa setelah run.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════ RUN COMMANDS -->
+  <div class="section">
+    <h2 class="section-title">▶️ Cara Menjalankan</h2>
+    <div class="cmd-grid">
+      <div class="cmd-card"><div class="label">Semua Tests</div><code>npm test</code></div>
+      <div class="cmd-card"><div class="label">Hanya Positive</div><code>npm run test:positive</code></div>
+      <div class="cmd-card"><div class="label">Hanya Negative</div><code>npm run test:negative</code></div>
+      <div class="cmd-card"><div class="label">Customer</div><code>npm run test:customer</code></div>
+      <div class="cmd-card"><div class="label">Driver</div><code>npm run test:driver</code></div>
+      <div class="cmd-card"><div class="label">Worker</div><code>npm run test:worker</code></div>
+      <div class="cmd-card"><div class="label">Outlet Admin</div><code>npm run test:outlet-admin</code></div>
+      <div class="cmd-card"><div class="label">Super Admin</div><code>npm run test:super-admin</code></div>
+      <div class="cmd-card"><div class="label">Auth</div><code>npm run test:auth</code></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ FILE TREE -->
+  <div class="section">
+    <h2 class="section-title">📁 Struktur File Test</h2>
+    <div class="tree">
+<span class="dir">apps/api/tests/</span>
+├── globalSetup.ts
+├── globalTeardown.ts
+├── <span class="hlp">helpers/</span>
+│   ├── <span class="hlp">auth.helper.ts</span>       <span class="cnt">← Login + token caching per role</span>
+│   └── <span class="hlp">data.helper.ts</span>       <span class="cnt">← Prisma helpers (create/delete test data)</span>
+├── <span class="pos">positive/</span>
+│   ├── <span class="pos">customer.positive.test.ts</span>      <span class="cnt">(10 tests)</span>
+│   ├── <span class="pos">driver.positive.test.ts</span>        <span class="cnt">(9 tests)</span>
+│   ├── <span class="pos">worker.positive.test.ts</span>        <span class="cnt">(5 tests)</span>
+│   ├── <span class="pos">outlet-admin.positive.test.ts</span>  <span class="cnt">(12 tests)</span>
+│   └── <span class="pos">super-admin.positive.test.ts</span>   <span class="cnt">(25 tests)</span>
+└── <span class="neg">negative/</span>
+    ├── <span class="neg">auth.negative.test.ts</span>          <span class="cnt">(15 tests)</span>
+    ├── <span class="neg">customer.negative.test.ts</span>      <span class="cnt">(11 tests)</span>
+    ├── <span class="neg">driver.negative.test.ts</span>        <span class="cnt">(8 tests)</span>
+    ├── <span class="neg">worker.negative.test.ts</span>        <span class="cnt">(10 tests)</span>
+    ├── <span class="neg">outlet-admin.negative.test.ts</span>  <span class="cnt">(11 tests)</span>
+    └── <span class="neg">super-admin.negative.test.ts</span>   <span class="cnt">(12 tests)</span>
+    </div>
+  </div>
+
+</div>
+
+<footer class="footer">
+  FreshPress Laundry · Integration Test Report · Generated 2026-06-17 · Jest + Supertest · 130/130 passed
+</footer>
+
+</body>
+</html>
