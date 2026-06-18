@@ -158,6 +158,7 @@ export default function PendingOrdersPage() {
         <ProcessOrderModal
           orderId={processing.id}
           invoiceNumber={processing.invoice_number}
+          deliveryFee={processing.delivery_fee}
           onClose={() => setProcessing(null)}
           onSuccess={() => { refetch(); setProcessing(null); }}
         />

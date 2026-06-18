@@ -87,6 +87,7 @@ export const listOrders = async (
           pickup_schedule: true,
           total_weight_kg: true,
           total_price: true,
+          delivery_fee: true,
           created_at: true,
           updated_at: true,
           customer: { select: { id: true, full_name: true, email: true, phone: true } },

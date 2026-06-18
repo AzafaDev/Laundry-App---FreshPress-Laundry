@@ -24,6 +24,7 @@ const useClothingTypes = () =>
 interface Props {
   orderId: string;
   invoiceNumber: string;
+  deliveryFee?: number | string | null;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -37,7 +38,7 @@ const fmtPrice = (v: string | number) =>
     maximumFractionDigits: 0,
   }).format(Number(v));
 
-export function ProcessOrderModal({ orderId, invoiceNumber, onClose, onSuccess }: Props) {
+export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose, onSuccess }: Props) {
   const { data: itemsData } = useLaundryItems({ is_active: true, limit: 100 });
   const allItems: LaundryItem[] = itemsData?.data ?? [];
 
@@ -88,9 +89,11 @@ export function ProcessOrderModal({ orderId, invoiceNumber, onClose, onSuccess }
     [pcsItems, pcsQtys],
   );
 
+  const deliveryFeeNum = Number(deliveryFee ?? 0);
+
   const grandTotal = useMemo(
-    () => [...kgSubtotals, ...pcsSubtotals].reduce((s, r) => s + r.sub, 0),
-    [kgSubtotals, pcsSubtotals],
+    () => [...kgSubtotals, ...pcsSubtotals].reduce((s, r) => s + r.sub, 0) + deliveryFeeNum,
+    [kgSubtotals, pcsSubtotals, deliveryFeeNum],
   );
 
   // Build items array for API (exclude zero-qty)
@@ -356,9 +359,19 @@ export function ProcessOrderModal({ orderId, invoiceNumber, onClose, onSuccess }
 
               {/* Grand total */}
               {grandTotal > 0 && (
-                <div className="flex justify-between items-center px-4 py-3 bg-surface-container-low rounded-xl text-sm border border-outline-variant">
-                  <span className="text-on-surface-variant font-medium">Estimasi Total</span>
-                  <span className="font-bold text-primary text-base">{fmtPrice(grandTotal)}</span>
+                <div className="rounded-xl border border-outline-variant overflow-hidden text-sm">
+                  <div className="flex justify-between items-center px-4 py-2.5 bg-surface-container-low border-b border-outline-variant">
+                    <span className="text-on-surface-variant">Ongkir</span>
+                    {deliveryFeeNum > 0 ? (
+                      <span className="font-medium">{fmtPrice(deliveryFeeNum)}</span>
+                    ) : (
+                      <span className="text-secondary font-medium">Gratis</span>
+                    )}
+                  </div>
+                  <div className="flex justify-between items-center px-4 py-3 bg-surface-container-low">
+                    <span className="text-on-surface-variant font-medium">Estimasi Total</span>
+                    <span className="font-bold text-primary text-base">{fmtPrice(grandTotal)}</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -456,6 +469,14 @@ export function ProcessOrderModal({ orderId, invoiceNumber, onClose, onSuccess }
                   </div>
                 )}
 
+                <div className="px-4 py-3 flex justify-between text-sm">
+                  <span className="text-on-surface-variant">Ongkir</span>
+                  {deliveryFeeNum > 0 ? (
+                    <span className="font-medium">{fmtPrice(deliveryFeeNum)}</span>
+                  ) : (
+                    <span className="text-secondary font-medium">Gratis</span>
+                  )}
+                </div>
                 <div className="px-4 py-3 flex justify-between text-sm">
                   <span className="text-on-surface-variant">Estimasi Total</span>
                   <span className="font-bold text-primary text-base">{fmtPrice(grandTotal)}</span>

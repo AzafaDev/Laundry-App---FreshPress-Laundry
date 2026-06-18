@@ -283,6 +283,14 @@ export default function OrderDetailPage() {
               <span>{order.total_weight_kg ? `${order.total_weight_kg} kg` : "—"}</span>
             </div>
             <div className="flex justify-between text-sm">
+              <span className="text-on-surface-variant">Ongkir</span>
+              {Number(order.delivery_fee ?? 0) > 0 ? (
+                <span>{fmtPrice(order.delivery_fee)}</span>
+              ) : (
+                <span className="text-secondary font-medium">Gratis</span>
+              )}
+            </div>
+            <div className="flex justify-between text-sm">
               <span className="text-on-surface-variant">Total</span>
               <span className="font-bold">{fmtPrice(order.total_price)}</span>
             </div>
@@ -372,6 +380,7 @@ export default function OrderDetailPage() {
         <ProcessOrderModal
           orderId={order.id}
           invoiceNumber={order.invoice_number}
+          deliveryFee={order.delivery_fee}
           onClose={() => setShowProcessModal(false)}
           onSuccess={() => refetch()}
         />

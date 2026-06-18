@@ -34,6 +34,7 @@ export interface OrderSummary {
   pickup_schedule: string;
   total_weight_kg: string | number | null;
   total_price: string | number | null;
+  delivery_fee: string | number | null;
   created_at: string;
   updated_at: string;
   customer: { id: string; full_name: string; email: string; phone: string | null };
@@ -84,7 +85,6 @@ export interface OrderItem {
 
 export interface OrderDetail extends OrderSummary {
   notes: string | null;
-  delivery_fee: string | number | null;
   payment_deadline: string | null;
   order_items: OrderItem[];
   status_histories: OrderStatusHistory[];
