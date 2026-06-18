@@ -27,7 +27,7 @@ export const WhatsAppCTA = () => {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat via WhatsApp"
-      className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#25D366] text-white px-4 py-3 rounded-full shadow-lg hover:bg-[#1ebe5d] hover:shadow-xl hover:-translate-y-0.5 transition-all"
+      className="fixed bottom-[88px] lg:bottom-6 right-4 lg:right-6 z-50 flex items-center gap-2 bg-[#25D366] text-white px-4 py-3 rounded-full shadow-lg hover:bg-[#1ebe5d] hover:shadow-xl hover:-translate-y-0.5 transition-all"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
