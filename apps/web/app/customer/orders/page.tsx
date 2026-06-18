@@ -60,19 +60,9 @@ const STATUS_FILTER_OPTIONS: Array<{ value: CustomerOrderStatus | ""; label: str
   { value: "completed", label: "Selesai" },
 ];
 
-const ORDER_STATUS_LABEL: Record<CustomerOrderStatus, string> = {
-  waiting_pickup_driver: "Menunggu Pickup Driver",
-  laundry_to_outlet: "Menuju Outlet",
-  laundry_arrived_outlet: "Tiba di Outlet",
-  washing: "Washing",
-  ironing: "Ironing",
-  packing: "Packing",
-  waiting_payment: "Menunggu Pembayaran",
-  ready_for_delivery: "Siap Diantar",
-  delivery_to_customer: "Dalam Pengantaran",
-  received_by_customer: "Diterima Customer",
-  completed: "Selesai",
-};
+const ORDER_STATUS_LABEL = Object.fromEntries(
+  ORDER_PROGRESS_STEPS.map((s) => [s.key, s.label])
+) as Record<CustomerOrderStatus, string>;
 
 const COMPLAINT_STATUS_LABEL: Record<string, string> = {
   in_progress: "Sedang Diproses",
