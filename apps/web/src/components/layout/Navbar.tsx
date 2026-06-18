@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Shirt, Menu, X, User, LogOut, ChevronDown, ShieldAlert, Bell } from "lucide-react";
+import { Shirt, User, LogOut, ChevronDown, ShieldAlert, Bell } from "lucide-react";
+
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -11,8 +12,8 @@ import { notificationService } from "@/services/notification.service";
 import { useCustomerNotificationSocket } from "@/hooks/useCustomerNotificationSocket";
 import { socketToast } from "@/lib/socketToast";
 
+
 export const Navbar = () => {
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { user, clearAuth } = useAuthStore();
   const router = useRouter();
@@ -34,41 +35,36 @@ export const Navbar = () => {
   const handleLogout = () => {
     clearAuth();
     setDropdownOpen(false);
-    setMobileOpen(false);
     router.push("/");
   };
 
-  const publicLinks = [
+  const desktopLinks = [
     { label: "Home", href: "/" },
+    ...(isAuthenticated ? [
+      { label: "Pickup", href: "/customer/pickup" },
+      { label: "Orders", href: "/customer/orders" },
+      { label: "Alamat", href: "/customer/locations" },
+      { label: "Notifikasi", href: "/customer/notifications" },
+    ] : []),
   ];
-
-  const privateLinks = [
-    { label: "Pickup", href: "/customer/pickup" },
-    { label: "Orders", href: "/customer/orders" },
-    { label: "Alamat", href: "/customer/locations" },
-    { label: "Notifikasi", href: "/customer/notifications" },
-  ];
-
-  const allDesktopLinks = isAuthenticated ? [...publicLinks, ...privateLinks] : publicLinks;
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 shadow-sm">
-      <div className="flex justify-between items-center px-4 md:px-8 h-16 max-w-7xl mx-auto">
-        {/* Brand */}
+      <div className="flex justify-center md:justify-between items-center px-4 md:px-8 h-14 md:h-16 max-w-7xl mx-auto">
+
+        {/* Brand — centered on mobile, left on desktop */}
         <Link href="/" className="flex items-center gap-2">
-          <Shirt className="text-primary w-6 h-6" />
-          <span className="text-xl font-bold text-primary">FreshPress</span>
+          <Shirt className="text-primary w-5 h-5 md:w-6 md:h-6" />
+          <span className="text-lg md:text-xl font-bold text-primary">FreshPress</span>
         </Link>
 
-        {/* Desktop Menu */}
+        {/* Desktop full nav */}
         <nav className="hidden md:flex gap-6 items-center">
-          {allDesktopLinks.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
+          {desktopLinks.map((link) => (
+            <Link key={link.label} href={link.href}
               className={`relative px-2 py-1 rounded-lg transition-colors text-sm font-medium ${
                 isActive(link.href)
                   ? "text-primary font-semibold"
@@ -76,7 +72,7 @@ export const Navbar = () => {
               }`}
             >
               {link.label === "Notifikasi" && unreadCount > 0 ? (
-                <span className="relative inline-flex items-center gap-1">
+                <span className="inline-flex items-center gap-1">
                   <Bell className="w-4 h-4" />
                   {link.label}
                   <span className="min-w-[16px] h-4 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center px-1">
@@ -95,177 +91,56 @@ export const Navbar = () => {
                   className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-gray-100 transition-colors"
                 >
                   {user?.avatar_url ? (
-                    <img
-                      src={user.avatar_url}
-                      alt={user.full_name}
-                      className="w-8 h-8 rounded-full object-cover"
-                    />
+                    <img src={user.avatar_url} alt={user.full_name} className="w-8 h-8 rounded-full object-cover" />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center">
                       <User className="w-4 h-4 text-on-primary-container" />
                     </div>
                   )}
-                  <span className="text-sm font-medium text-gray-900 max-w-[120px] truncate">
-                    {user?.full_name}
-                  </span>
+                  <span className="text-sm font-medium text-gray-900 max-w-[120px] truncate">{user?.full_name}</span>
                   <ChevronDown className="w-4 h-4 text-outline" />
                 </button>
-
                 {dropdownOpen && (
                   <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50">
                     {!user?.is_verified && (
                       <div className="px-4 py-2 bg-amber-50 border-b border-amber-200">
-                        <p className="text-xs text-amber-700 font-medium">
-                          ⚠️ Akun belum terverifikasi
-                        </p>
+                        <p className="text-xs text-amber-700 font-medium">⚠️ Akun belum terverifikasi</p>
                       </div>
                     )}
-                    <Link
-                      href="/profile"
-                      onClick={() => setDropdownOpen(false)}
-                      className="flex items-center gap-2 px-4 py-3 text-sm text-on-surface hover:bg-surface-container-low transition-colors"
-                    >
-                      <User className="w-4 h-4" />
-                      Profil Saya
+                    <Link href="/profile" onClick={() => setDropdownOpen(false)}
+                      className="flex items-center gap-2 px-4 py-3 text-sm text-on-surface hover:bg-surface-container-low transition-colors">
+                      <User className="w-4 h-4" /> Profil Saya
                     </Link>
                     {(user?.role === "super_admin" || user?.role === "outlet_admin") && (
-                      <Link
-                        href="/dashboard/admin"
-                        onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-2 px-4 py-3 text-sm text-gray-900 hover:bg-gray-50 transition-colors"
-                      >
-                        <ShieldAlert className="w-4 h-4" />
-                        Admin Dashboard
+                      <Link href="/dashboard/admin" onClick={() => setDropdownOpen(false)}
+                        className="flex items-center gap-2 px-4 py-3 text-sm text-gray-900 hover:bg-gray-50 transition-colors">
+                        <ShieldAlert className="w-4 h-4" /> Admin Dashboard
                       </Link>
                     )}
-                    <button
-                      onClick={handleLogout}
-                      className="flex items-center gap-2 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-200"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Keluar
+                    <button onClick={handleLogout}
+                      className="flex items-center gap-2 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-200">
+                      <LogOut className="w-4 h-4" /> Keluar
                     </button>
                   </div>
                 )}
               </div>
             ) : (
               <>
-                <Link
-                  href="/customer/login"
-                  className="text-gray-700 text-sm font-medium hover:text-primary transition-colors"
-                >
+                <Link href="/customer/login" className="text-gray-700 text-sm font-medium hover:text-primary transition-colors">
                   Masuk
                 </Link>
-                <Link
-                  href="/customer/register"
-                  className="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-primary/90 transition-colors"
-                >
+                <Link href="/customer/register" className="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-primary/90 transition-colors">
                   Daftar
                 </Link>
               </>
             )}
           </div>
         </nav>
-
-        {/* Mobile Menu Toggle */}
-        <button
-          className="md:hidden text-on-surface"
-          onClick={() => setMobileOpen((o) => !o)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
       </div>
 
-      {/* Mobile Drawer */}
-      {mobileOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200 px-4 py-4 space-y-1">
-          {/* Public links always visible */}
-          {publicLinks.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive(link.href)
-                  ? "bg-primary/8 text-primary font-semibold"
-                  : "text-gray-900 hover:bg-gray-50"
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
-
-          {/* Private links — only when authenticated */}
-          {isAuthenticated && privateLinks.map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
-              onClick={() => setMobileOpen(false)}
-              className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive(link.href)
-                  ? "bg-primary/8 text-primary font-semibold"
-                  : "text-gray-900 hover:bg-gray-50"
-              }`}
-            >
-              {link.label}
-              {link.label === "Notifikasi" && unreadCount > 0 && (
-                <span className="min-w-[20px] h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center px-1">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              )}
-            </Link>
-          ))}
-
-          <div className="pt-2 border-t border-gray-200 space-y-1">
-            {isAuthenticated ? (
-              <>
-                <Link
-                  href="/profile"
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    pathname === "/profile" ? "bg-primary/8 text-primary" : "text-gray-900 hover:bg-gray-50"
-                  }`}
-                >
-                  <User className="w-4 h-4" />
-                  Profil Saya
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 w-full px-3 py-2.5 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Keluar
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/customer/login"
-                  onClick={() => setMobileOpen(false)}
-                  className="block px-3 py-2.5 text-primary hover:bg-primary/5 rounded-lg text-sm font-medium"
-                >
-                  Masuk
-                </Link>
-                <Link
-                  href="/customer/register"
-                  onClick={() => setMobileOpen(false)}
-                  className="block px-3 py-2.5 bg-primary text-white rounded-lg text-sm font-bold text-center"
-                >
-                  Daftar
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Backdrop — closes mobile menu and dropdown on outside click */}
-      {(mobileOpen || dropdownOpen) && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => { setMobileOpen(false); setDropdownOpen(false); }}
-        />
+      {/* Backdrop untuk tutup dropdown */}
+      {dropdownOpen && (
+        <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
       )}
     </header>
   );
