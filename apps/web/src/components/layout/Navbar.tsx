@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Shirt, Menu, X, User, LogOut, ChevronDown, ShieldAlert } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Shirt, Menu, X, User, LogOut, ChevronDown, ShieldAlert, Bell } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -15,6 +16,7 @@ export const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { user, clearAuth } = useAuthStore();
   const router = useRouter();
+  const pathname = usePathname();
 
   const isAuthenticated = !!user;
 
@@ -32,17 +34,25 @@ export const Navbar = () => {
   const handleLogout = () => {
     clearAuth();
     setDropdownOpen(false);
+    setMobileOpen(false);
     router.push("/");
   };
 
-  const navLinks = [
+  const publicLinks = [
     { label: "Home", href: "/" },
+  ];
+
+  const privateLinks = [
     { label: "Pickup", href: "/customer/pickup" },
     { label: "Orders", href: "/customer/orders" },
     { label: "Alamat", href: "/customer/locations" },
-    { label: "Pembayaran", href: "/customer/payment" },
     { label: "Notifikasi", href: "/customer/notifications" },
   ];
+
+  const allDesktopLinks = isAuthenticated ? [...publicLinks, ...privateLinks] : publicLinks;
+
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 shadow-sm">
@@ -55,16 +65,21 @@ export const Navbar = () => {
 
         {/* Desktop Menu */}
         <nav className="hidden md:flex gap-6 items-center">
-          {navLinks.map((link) => (
+          {allDesktopLinks.map((link) => (
             <Link
               key={link.label}
               href={link.href}
-              className="text-gray-600 hover:text-primary hover:bg-gray-100 px-2 py-1 rounded-lg transition-colors text-sm font-medium"
+              className={`relative px-2 py-1 rounded-lg transition-colors text-sm font-medium ${
+                isActive(link.href)
+                  ? "text-primary font-semibold"
+                  : "text-gray-600 hover:text-primary hover:bg-gray-100"
+              }`}
             >
               {link.label === "Notifikasi" && unreadCount > 0 ? (
-                <span className="relative inline-flex">
+                <span className="relative inline-flex items-center gap-1">
+                  <Bell className="w-4 h-4" />
                   {link.label}
-                  <span className="absolute -top-1 -right-3 min-w-[16px] h-4 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center px-1">
+                  <span className="min-w-[16px] h-4 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center px-1">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 </span>
@@ -164,13 +179,34 @@ export const Navbar = () => {
 
       {/* Mobile Drawer */}
       {mobileOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200 px-4 py-4 space-y-2">
-          {navLinks.map((link) => (
+        <div className="md:hidden bg-white border-t border-gray-200 px-4 py-4 space-y-1">
+          {/* Public links always visible */}
+          {publicLinks.map((link) => (
             <Link
               key={link.label}
               href={link.href}
               onClick={() => setMobileOpen(false)}
-              className="flex items-center justify-between px-3 py-2.5 text-gray-900 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors"
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isActive(link.href)
+                  ? "bg-primary/8 text-primary font-semibold"
+                  : "text-gray-900 hover:bg-gray-50"
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
+
+          {/* Private links — only when authenticated */}
+          {isAuthenticated && privateLinks.map((link) => (
+            <Link
+              key={link.label}
+              href={link.href}
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isActive(link.href)
+                  ? "bg-primary/8 text-primary font-semibold"
+                  : "text-gray-900 hover:bg-gray-50"
+              }`}
             >
               {link.label}
               {link.label === "Notifikasi" && unreadCount > 0 && (
@@ -180,20 +216,25 @@ export const Navbar = () => {
               )}
             </Link>
           ))}
-          <div className="pt-2 border-t border-gray-200 space-y-2">
+
+          <div className="pt-2 border-t border-gray-200 space-y-1">
             {isAuthenticated ? (
               <>
                 <Link
                   href="/profile"
                   onClick={() => setMobileOpen(false)}
-                  className="block px-3 py-2.5 text-gray-900 hover:bg-gray-50 rounded-lg text-sm font-medium"
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    pathname === "/profile" ? "bg-primary/8 text-primary" : "text-gray-900 hover:bg-gray-50"
+                  }`}
                 >
+                  <User className="w-4 h-4" />
                   Profil Saya
                 </Link>
                 <button
-                  onClick={() => { handleLogout(); setMobileOpen(false); }}
-                  className="block w-full text-left px-3 py-2.5 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium"
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 w-full px-3 py-2.5 text-red-600 hover:bg-red-50 rounded-lg text-sm font-medium"
                 >
+                  <LogOut className="w-4 h-4" />
                   Keluar
                 </button>
               </>
@@ -209,7 +250,7 @@ export const Navbar = () => {
                 <Link
                   href="/customer/register"
                   onClick={() => setMobileOpen(false)}
-                  className="block px-3 py-2.5 bg-primary text-white rounded-lg text-sm font-medium text-center"
+                  className="block px-3 py-2.5 bg-primary text-white rounded-lg text-sm font-bold text-center"
                 >
                   Daftar
                 </Link>
@@ -219,11 +260,11 @@ export const Navbar = () => {
         </div>
       )}
 
-      {/* Close dropdown on outside click */}
-      {dropdownOpen && (
+      {/* Backdrop — closes mobile menu and dropdown on outside click */}
+      {(mobileOpen || dropdownOpen) && (
         <div
           className="fixed inset-0 z-40"
-          onClick={() => setDropdownOpen(false)}
+          onClick={() => { setMobileOpen(false); setDropdownOpen(false); }}
         />
       )}
     </header>
