@@ -84,10 +84,10 @@ export const workerStationService = {
     await axiosInstance.post(`/v1/worker/bypass`, formData);
   },
 
-  completeStation: async (station: StationType, orderId: string): Promise<{ order: StationOrder; createdDeliveryTask: boolean }> => {
+  completeStation: async (station: StationType, orderId: string): Promise<{ order: StationOrder }> => {
     const { data } = await axiosInstance.patch<{
       success: true;
-      data: { order: StationOrder; createdDeliveryTask: boolean };
+      data: { order: StationOrder };
     }>(`/v1/worker/station/${station}/orders/${orderId}/complete`);
     return data.data;
   },

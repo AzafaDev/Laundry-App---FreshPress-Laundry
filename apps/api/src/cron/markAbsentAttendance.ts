@@ -10,8 +10,7 @@ async function processEndOfDay(targetDate: Date) {
   const start = targetDate; // WIB midnight = start of WIB day
   const end = new Date(targetDate.getTime() + 24 * 60 * 60 * 1000 - 1);
 
-  const jsDay = wib.getUTCDay();
-  const dbDay = jsDay === 0 ? 7 : jsDay;
+  const dbDay = wib.getUTCDay();
 
   const employeesWithShift = await prisma.employeeShift.findMany({
     where: {
@@ -73,4 +72,4 @@ cron.schedule('55 16 * * *', async () => {
   const yesterday = subDays(getTodayLocalStart(), 1);
   await processEndOfDay(yesterday);
   console.log(`[Cron] Processed end-of-day for ${yesterday.toISOString()}`);
-});
+}, { timezone: "UTC" });

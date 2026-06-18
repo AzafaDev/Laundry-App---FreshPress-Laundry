@@ -23,8 +23,7 @@ export async function getEmployeeShiftForDate(
   localDate: Date,
 ): Promise<{ shiftName: string; startTime: Date; endTime: Date } | null> {
   const wibDate = toWIBView(localDate);
-  const jsDay = wibDate.getUTCDay();
-  const dbDay = jsDay === 0 ? 7 : jsDay;
+  const dbDay = wibDate.getUTCDay();
 
   const employeeShift = await prisma.employeeShift.findFirst({
     where: { employee_id: employeeId, day_of_week: dbDay, is_active: true },
@@ -47,8 +46,7 @@ export async function getShiftForDateTime(
   targetDate: Date,
 ): Promise<{ shiftName: string; startTime: Date; endTime: Date } | null> {
   const wibTarget = toWIBView(targetDate);
-  const jsDay = wibTarget.getUTCDay();
-  const dbDay = jsDay === 0 ? 7 : jsDay;
+  const dbDay = wibTarget.getUTCDay();
 
   const employeeShifts = await prisma.employeeShift.findMany({
     where: { employee_id: employeeId, day_of_week: dbDay, is_active: true },
@@ -92,8 +90,7 @@ export async function getUpcomingShiftForDateTime(
   preShiftMinutes = 15,
 ): Promise<{ shiftName: string; startTime: Date; endTime: Date } | null> {
   const wibTarget = toWIBView(targetDate);
-  const jsDay = wibTarget.getUTCDay();
-  const dbDay = jsDay === 0 ? 7 : jsDay;
+  const dbDay = wibTarget.getUTCDay();
 
   const employeeShifts = await prisma.employeeShift.findMany({
     where: { employee_id: employeeId, day_of_week: dbDay, is_active: true },
