@@ -14,10 +14,24 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
+import { z } from "zod";
 import { addressService } from "@/services/address.service";
 import type { GeocodeResult } from "@/services/address.service";
 import { useAuthStore } from "@/stores/authStore";
 import type { MapPickerProps } from "@/components/address/MapPicker";
+
+const addressSchema = z.object({
+  label: z.string().min(1, "Label alamat wajib diisi."),
+  address: z.string().min(5, "Nama jalan minimal 5 karakter."),
+  province: z.string().min(2, "Provinsi wajib diisi."),
+  city: z.string().min(2, "Kota wajib diisi."),
+  district: z.string().min(2, "Kecamatan wajib diisi."),
+  postal_code: z
+    .string()
+    .regex(/^\d{5}$/, "Kode pos harus 5 digit angka.")
+    .optional()
+    .or(z.literal("")),
+});
 
 // Lazy-load Leaflet map (no SSR)
 const MapPicker = dynamic<MapPickerProps>(
@@ -175,11 +189,20 @@ function AddAddressPageInner() {
   const handleSave = async () => {
     setSaveError(null);
     const finalLabel = label === "custom" ? customLabel.trim() : label;
-    if (!finalLabel) { setSaveError("Label alamat wajib diisi."); return; }
-    if (!street.trim()) { setSaveError("Nama jalan wajib diisi."); return; }
-    if (!province.trim() || !city.trim() || !district.trim()) {
-      setSaveError("Provinsi, kota, dan kecamatan wajib diisi."); return;
+
+    const validationResult = addressSchema.safeParse({
+      label: finalLabel,
+      address: street.trim(),
+      province: province.trim(),
+      city: city.trim(),
+      district: district.trim(),
+      postal_code: postalCode.trim() || undefined,
+    });
+    if (!validationResult.success) {
+      setSaveError(validationResult.error.issues[0].message);
+      return;
     }
+
     if (!pinSet) { setSaveError("Tandai lokasi di peta atau klik 'Cari di Peta' terlebih dahulu."); return; }
     setSaving(true);
     const payload = {

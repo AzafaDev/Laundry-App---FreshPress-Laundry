@@ -10,6 +10,7 @@ import {
   Send,
 } from "lucide-react";
 import Link from "next/link";
+import { z } from "zod";
 
 const complaintTypes = [
   { value: "lost", label: "Barang Hilang" },
@@ -17,6 +18,16 @@ const complaintTypes = [
   { value: "mismatch", label: "Tidak Sesuai Pesanan" },
   { value: "other", label: "Lainnya" },
 ];
+
+const complaintSchema = z.object({
+  type: z.enum(["lost", "damaged", "mismatch", "other"] as const, {
+    message: "Pilih jenis masalah terlebih dahulu.",
+  }),
+  description: z
+    .string()
+    .min(10, "Deskripsi minimal 10 karakter.")
+    .max(1000, "Deskripsi maksimal 1000 karakter."),
+});
 
 export default function ComplainPage() {
   const params = useParams();
@@ -28,6 +39,7 @@ export default function ComplainPage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [fileError, setFileError] = useState("");
+  const [formError, setFormError] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,6 +70,14 @@ export default function ComplainPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError("");
+
+    const result = complaintSchema.safeParse({ type: type || undefined, description });
+    if (!result.success) {
+      setFormError(result.error.issues[0].message);
+      return;
+    }
+
     // TODO: API call
     console.log("Complaint submitted:", { orderId, type, description, file });
     setSubmitted(true);
@@ -106,6 +126,11 @@ export default function ComplainPage() {
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {formError && (
+              <div className="text-sm text-error bg-error-container/30 px-3 py-2 rounded-xl" role="alert">
+                {formError}
+              </div>
+            )}
             <div className="space-y-1">
               <label className="text-sm font-bold text-on-surface/80 block ml-1 mb-1.5">
                 Jenis Masalah

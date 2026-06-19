@@ -33,6 +33,12 @@ import {
   createLaundryItemSchema,
   updateLaundryItemSchema,
 } from "../../validations/laundryItem.validation.js";
+import {
+  createClothingTypeSchema,
+  updateClothingTypeSchema,
+} from "../../validations/clothingType.validation.js";
+import { updateComplaintStatusSchema } from "../../validations/complaint.validation.js";
+import { processOrderSchema, reviewBypassSchema } from "../../validations/order.validation.js";
 
 const router = Router();
 
@@ -213,6 +219,7 @@ router.get(
 router.post(
   "/admin/orders/:id/process",
   requireRole("outlet_admin"),
+  validate(processOrderSchema),
   OrderCtrl.processOrder,
 );
 
@@ -230,6 +237,7 @@ router.get(
 router.patch(
   "/admin/bypass-requests/:id/review",
   requireRole("outlet_admin"),
+  validate(reviewBypassSchema),
   BypassCtrl.reviewBypassRequest,
 );
 
@@ -248,11 +256,13 @@ router.get(
 router.post(
   "/admin/clothing-types",
   requireRole("super_admin"),
+  validate(createClothingTypeSchema),
   ClothingCtrl.createClothingType,
 );
 router.patch(
   "/admin/clothing-types/:id",
   requireRole("super_admin"),
+  validate(updateClothingTypeSchema),
   ClothingCtrl.updateClothingType,
 );
 router.delete(
@@ -314,6 +324,7 @@ router.get(
 router.patch(
   "/admin/complaints/:id/status",
   requireRole("super_admin", "outlet_admin"),
+  validate(updateComplaintStatusSchema),
   ComplaintCtrl.updateComplaintStatus,
 );
 

@@ -2,9 +2,17 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X, Flag, Upload, Trash2, Loader2, AlertTriangle, ImagePlus, Shirt, Tag } from "lucide-react";
+import { z } from "zod";
 import { workerStationService } from "@/services/workerStation.service";
 import toast from "react-hot-toast";
 import type { Discrepancy } from "@/services/workerStation.service";
+
+const bypassSchema = z.object({
+  description: z
+    .string()
+    .min(10, "Deskripsi minimal 10 karakter.")
+    .max(1000, "Deskripsi maksimal 1000 karakter."),
+});
 
 interface WorkerBypassModalProps {
   open: boolean;
@@ -79,17 +87,12 @@ export function WorkerBypassModal({
   };
 
   const handleSubmit = async () => {
-    let valid = true;
-
-    if (description.trim().length < 10) {
-      setDescError("Deskripsi minimal 10 karakter.");
-      valid = false;
-    } else {
-      setDescError("");
+    const result = bypassSchema.safeParse({ description: description.trim() });
+    if (!result.success) {
+      setDescError(result.error.issues[0].message);
+      return;
     }
-
-
-    if (!valid) return;
+    setDescError("");
 
     setIsSubmitting(true);
     try {
