@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const processOrderSchema = z.object({
   total_weight_kg: z.coerce
-    .number({ required_error: "Berat total wajib diisi." })
+    .number({ message: "Berat total wajib diisi." })
     .positive("Berat harus lebih dari 0.")
     .max(999.99, "Berat maksimal 999.99 kg."),
   items: z
@@ -25,9 +25,8 @@ export const processOrderSchema = z.object({
 });
 
 export const reviewBypassSchema = z.object({
-  action: z.enum(["approve", "reject"], {
-    required_error: "Action wajib diisi.",
-    invalid_type_error: "Action harus 'approve' atau 'reject'.",
+  action: z.enum(["approve", "reject"] as const, {
+    message: "Action harus 'approve' atau 'reject'.",
   }),
   admin_notes: z.string().max(500, "Catatan admin maksimal 500 karakter.").optional(),
 });

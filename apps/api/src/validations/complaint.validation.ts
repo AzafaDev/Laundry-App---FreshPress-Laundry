@@ -1,9 +1,8 @@
 import { z } from "zod";
 
 export const updateComplaintStatusSchema = z.object({
-  status: z.enum(["in_progress", "resolved", "rejected"], {
-    required_error: "Status wajib diisi.",
-    invalid_type_error: "Status tidak valid.",
+  status: z.enum(["in_progress", "resolved", "rejected"] as const, {
+    message: "Status harus 'in_progress', 'resolved', atau 'rejected'.",
   }),
   resolution_notes: z
     .string()

@@ -21,7 +21,7 @@ const outletSchema = z.object({
   postal_code: z.string().regex(/^\d{5}$/, "Kode pos harus 5 digit angka.").optional().or(z.literal("")),
   phone: z.string().regex(/^[0-9+\-\s]{7,15}$/, "Format nomor telepon tidak valid.").optional().or(z.literal("")),
   service_radius_km: z
-    .number({ invalid_type_error: "Radius layanan wajib diisi." })
+    .number({ message: "Radius layanan wajib diisi." })
     .positive("Radius layanan harus lebih dari 0.")
     .max(100, "Radius layanan maksimal 100 km."),
 });

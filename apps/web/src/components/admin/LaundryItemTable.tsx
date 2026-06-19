@@ -15,7 +15,7 @@ const laundryItemSchema = z.object({
   name: z.string().min(1, "Nama item wajib diisi.").max(100, "Nama maksimal 100 karakter."),
   description: z.string().max(500, "Deskripsi maksimal 500 karakter.").optional(),
   unit: z.string().min(1, "Satuan wajib diisi."),
-  base_price: z.number({ invalid_type_error: "Harga harus berupa angka." }).positive("Harga harus lebih dari 0."),
+  base_price: z.number({ message: "Harga harus berupa angka." }).positive("Harga harus lebih dari 0."),
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

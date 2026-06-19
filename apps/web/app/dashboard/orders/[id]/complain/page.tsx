@@ -20,9 +20,8 @@ const complaintTypes = [
 ];
 
 const complaintSchema = z.object({
-  type: z.enum(["lost", "damaged", "mismatch", "other"], {
-    required_error: "Pilih jenis masalah terlebih dahulu.",
-    invalid_type_error: "Jenis masalah tidak valid.",
+  type: z.enum(["lost", "damaged", "mismatch", "other"] as const, {
+    message: "Pilih jenis masalah terlebih dahulu.",
   }),
   description: z
     .string()

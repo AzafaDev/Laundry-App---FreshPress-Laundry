@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const createClothingTypeSchema = z.object({
   name: z
-    .string({ required_error: "Nama wajib diisi." })
+    .string()
     .min(1, "Nama wajib diisi.")
     .max(100, "Nama maksimal 100 karakter.")
     .trim(),
