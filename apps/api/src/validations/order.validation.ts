@@ -1,0 +1,33 @@
+import { z } from "zod";
+
+export const processOrderSchema = z.object({
+  total_weight_kg: z.coerce
+    .number({ required_error: "Berat total wajib diisi." })
+    .positive("Berat harus lebih dari 0.")
+    .max(999.99, "Berat maksimal 999.99 kg."),
+  items: z
+    .array(
+      z.object({
+        laundry_item_id: z.string().uuid("laundry_item_id harus UUID yang valid."),
+        quantity: z.coerce.number().int().positive("Quantity harus lebih dari 0."),
+      }),
+    )
+    .min(1, "Minimal satu item laundry harus diisi."),
+  breakdown: z
+    .array(
+      z.object({
+        clothing_type_id: z.string().uuid("clothing_type_id harus UUID yang valid."),
+        quantity: z.coerce.number().int().positive("Quantity harus lebih dari 0."),
+      }),
+    )
+    .optional(),
+  notes: z.string().max(500, "Catatan maksimal 500 karakter.").optional(),
+});
+
+export const reviewBypassSchema = z.object({
+  action: z.enum(["approve", "reject"], {
+    required_error: "Action wajib diisi.",
+    invalid_type_error: "Action harus 'approve' atau 'reject'.",
+  }),
+  admin_notes: z.string().max(500, "Catatan admin maksimal 500 karakter.").optional(),
+});

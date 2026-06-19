@@ -2,12 +2,27 @@
 
 import { useState, useEffect } from "react";
 import { X, Clock } from "lucide-react";
+import { z } from "zod";
 import { useCreateWorkShift, useUpdateWorkShift } from "@/hooks/useShifts";
 import type {
   WorkShift,
   CreateWorkShiftPayload,
   UpdateWorkShiftPayload,
 } from "@/types/shift.types";
+
+const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+const workShiftSchema = z
+  .object({
+    name: z.string().min(2, "Nama shift minimal 2 karakter."),
+    start_time: z.string().regex(timeRegex, "Format waktu mulai tidak valid (HH:MM)."),
+    end_time: z.string().regex(timeRegex, "Format waktu selesai tidak valid (HH:MM)."),
+    description: z.string().max(255, "Deskripsi maksimal 255 karakter.").optional(),
+  })
+  .refine((data) => data.start_time < data.end_time, {
+    message: "Waktu selesai harus lebih dari waktu mulai.",
+    path: ["end_time"],
+  });
 
 interface Props {
   shift: WorkShift | null;
@@ -57,6 +72,18 @@ export function WorkShiftFormModal({ shift, onClose }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const result = workShiftSchema.safeParse({
+      name: form.name,
+      start_time: form.start_time,
+      end_time: form.end_time,
+      description: form.description || undefined,
+    });
+    if (!result.success) {
+      setError(result.error.issues[0].message);
+      return;
+    }
+
     try {
       if (isEdit && shift) {
         const payload: UpdateWorkShiftPayload = {

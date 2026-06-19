@@ -6,11 +6,36 @@ import {
   Mail, MapPin, Shield, CheckCircle2,
   XCircle, ChevronDown, ChevronUp,
 } from "lucide-react";
+import { z } from "zod";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { employeeProfileService } from "@/services/employeeProfile.service";
 import { employeeAuthService } from "@/services/employeeAuth.service";
 import type { EmployeeRole } from "@/types/employee.types";
+
+const employeeProfileSchema = z.object({
+  full_name: z.string().min(2, "Nama lengkap minimal 2 karakter."),
+  phone: z
+    .string()
+    .regex(/^[0-9+\-\s]{8,15}$/, "Nomor telepon tidak valid (8-15 digit).")
+    .optional()
+    .or(z.literal("")),
+});
+
+const employeePasswordSchema = z
+  .object({
+    oldPassword: z.string().min(1, "Password lama wajib diisi."),
+    newPassword: z
+      .string()
+      .min(8, "Password baru minimal 8 karakter.")
+      .regex(/[a-zA-Z]/, "Password harus mengandung huruf.")
+      .regex(/\d/, "Password harus mengandung angka."),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: "Konfirmasi password tidak cocok.",
+    path: ["confirmPassword"],
+  });
 
 const ROLE_LABEL: Record<EmployeeRole, string> = {
   super_admin: "Super Admin",
@@ -77,8 +102,15 @@ export default function EmployeeProfilePage() {
 
   const handleProfileSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setProfileLoading(true);
     setProfileMsg(null);
+
+    const result = employeeProfileSchema.safeParse({ full_name: fullName, phone: phone || undefined });
+    if (!result.success) {
+      setProfileMsg({ type: "error", text: result.error.issues[0].message });
+      return;
+    }
+
+    setProfileLoading(true);
     try {
       const updated = await employeeProfileService.updateProfile({ full_name: fullName, phone });
       updateUser({ full_name: updated.full_name, phone: updated.phone });
@@ -109,12 +141,15 @@ export default function EmployeeProfilePage() {
 
   const handlePasswordSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      setPasswordMsg({ type: "error", text: "Konfirmasi password tidak cocok." });
+    setPasswordMsg(null);
+
+    const result = employeePasswordSchema.safeParse({ oldPassword, newPassword, confirmPassword });
+    if (!result.success) {
+      setPasswordMsg({ type: "error", text: result.error.issues[0].message });
       return;
     }
+
     setPasswordLoading(true);
-    setPasswordMsg(null);
     try {
       const result = await employeeAuthService.changePassword(oldPassword, newPassword);
       setPasswordMsg({ type: "success", text: result.message });

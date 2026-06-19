@@ -17,6 +17,7 @@ import {
 import { getAvailablePickups, getAvailableDeliveries, getActiveTask, claimTask, completeTask, getTaskHistory as getDriverTaskHistory } from "../../controllers/driver-worker/driver.controller.js";
 import * as NotifCtrl from "../../controllers/admin/notification.controller.js";
 import { getStationOrders, completeStation, submitItems, createBypassRequest, uploadBypassPhotosMiddleware, getBypassForOrder, getTaskHistory as getWorkerTaskHistory } from "../../controllers/driver-worker/worker.controller.js";
+import { submitItemsSchema, createBypassRequestSchema } from "../../validations/worker.validation.js";
 
 const router = Router();
 
@@ -93,6 +94,7 @@ router.get(
 router.post(
   "/worker/station/:station/orders/:orderId/submit-items",
   requireRole(...WORKER_ROLES),
+  validate(submitItemsSchema),
   submitItems,
 );
 router.patch(
@@ -114,6 +116,7 @@ router.post(
   "/worker/bypass",
   requireRole(...WORKER_ROLES),
   uploadBypassPhotosMiddleware,
+  validate(createBypassRequestSchema),
   createBypassRequest,
 );
 

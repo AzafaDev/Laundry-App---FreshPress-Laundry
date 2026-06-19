@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { X, Store, MapPin, Search, Loader2 } from "lucide-react";
+import { z } from "zod";
 import { useCreateOutlet, useUpdateOutlet } from "@/hooks/useOutlets";
 import { outletService, type GeocodeMatch } from "@/services/outlet.service";
 import type {
@@ -10,6 +11,20 @@ import type {
   Outlet,
   UpdateOutletPayload,
 } from "@/types/outlet.types";
+
+const outletSchema = z.object({
+  name: z.string().min(2, "Nama outlet minimal 2 karakter."),
+  address: z.string().min(5, "Alamat minimal 5 karakter."),
+  province: z.string().min(2, "Provinsi wajib diisi."),
+  city: z.string().min(2, "Kota wajib diisi."),
+  district: z.string().min(2, "Kecamatan wajib diisi."),
+  postal_code: z.string().regex(/^\d{5}$/, "Kode pos harus 5 digit angka.").optional().or(z.literal("")),
+  phone: z.string().regex(/^[0-9+\-\s]{7,15}$/, "Format nomor telepon tidak valid.").optional().or(z.literal("")),
+  service_radius_km: z
+    .number({ invalid_type_error: "Radius layanan wajib diisi." })
+    .positive("Radius layanan harus lebih dari 0.")
+    .max(100, "Radius layanan maksimal 100 km."),
+});
 
 const OutletMapPicker = dynamic(
   () => import("./OutletMapPicker").then((m) => m.OutletMapPicker),
@@ -112,6 +127,22 @@ export function OutletForm({ outlet, onClose }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const result = outletSchema.safeParse({
+      name: form.name,
+      address: form.address,
+      province: form.province,
+      city: form.city,
+      district: form.district,
+      postal_code: form.postal_code || undefined,
+      phone: form.phone || undefined,
+      service_radius_km: form.service_radius_km,
+    });
+    if (!result.success) {
+      setError(result.error.issues[0].message);
+      return;
+    }
+
     try {
       if (isEdit && outlet) {
         const payload: UpdateOutletPayload = {

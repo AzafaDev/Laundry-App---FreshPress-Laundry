@@ -19,10 +19,36 @@ import {
   X,
   KeyRound,
 } from "lucide-react";
+import { z } from "zod";
 import { axiosInstance } from "@/lib/axios";
 import { useAuthStore } from "@/stores/authStore";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Navbar } from "@/components/layout/Navbar";
+
+const profileSchema = z.object({
+  full_name: z.string().min(2, "Nama lengkap minimal 2 karakter."),
+  phone: z
+    .string()
+    .regex(/^[0-9+\-\s]{8,15}$/, "Nomor telepon tidak valid (8-15 digit).")
+    .optional()
+    .or(z.literal("")),
+  email: z.string().email("Format email tidak valid."),
+});
+
+const passwordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Password lama wajib diisi."),
+    newPassword: z
+      .string()
+      .min(8, "Password baru minimal 8 karakter.")
+      .regex(/[a-zA-Z]/, "Password harus mengandung huruf.")
+      .regex(/\d/, "Password harus mengandung angka."),
+    confirm: z.string(),
+  })
+  .refine((d) => d.newPassword === d.confirm, {
+    message: "Konfirmasi password tidak cocok.",
+    path: ["confirm"],
+  });
 
 const MAX_SIZE = 1 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
@@ -86,7 +112,19 @@ export default function ProfilePage() {
 
   const handleProfileSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setProfileError(""); setProfileSuccess(""); setProfileLoading(true);
+    setProfileError(""); setProfileSuccess("");
+
+    const result = profileSchema.safeParse({
+      full_name: profileForm.full_name,
+      phone: profileForm.phone || undefined,
+      email: profileForm.email,
+    });
+    if (!result.success) {
+      setProfileError(result.error.issues[0].message);
+      return;
+    }
+
+    setProfileLoading(true);
     try {
       const payload: Record<string, string | undefined> = {
         full_name: profileForm.full_name,
@@ -109,9 +147,13 @@ export default function ProfilePage() {
   const handlePasswordSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setPwdError(""); setPwdSuccess("");
-    if (pwdForm.newPassword.length < 8) { setPwdError("Password baru minimal 8 karakter."); return; }
-    if (!/[a-zA-Z]/.test(pwdForm.newPassword) || !/\d/.test(pwdForm.newPassword)) { setPwdError("Password harus mengandung huruf dan angka."); return; }
-    if (pwdForm.newPassword !== pwdForm.confirm) { setPwdError("Konfirmasi password tidak cocok."); return; }
+
+    const result = passwordSchema.safeParse(pwdForm);
+    if (!result.success) {
+      setPwdError(result.error.issues[0].message);
+      return;
+    }
+
     setPwdLoading(true);
     try {
       await axiosInstance.patch("/v1/customer/profile/password", { currentPassword: pwdForm.currentPassword, newPassword: pwdForm.newPassword });

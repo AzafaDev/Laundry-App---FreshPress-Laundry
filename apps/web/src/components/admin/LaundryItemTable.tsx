@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, X, Scale, Package } from "lucide-react";
+import { z } from "zod";
 import {
   useLaundryItems,
   useCreateLaundryItem,
@@ -9,6 +10,13 @@ import {
   useDeleteLaundryItem,
 } from "@/hooks/useLaundryItems";
 import type { LaundryItem, CreateLaundryItemPayload } from "@/types/laundryItem.types";
+
+const laundryItemSchema = z.object({
+  name: z.string().min(1, "Nama item wajib diisi.").max(100, "Nama maksimal 100 karakter."),
+  description: z.string().max(500, "Deskripsi maksimal 500 karakter.").optional(),
+  unit: z.string().min(1, "Satuan wajib diisi."),
+  base_price: z.number({ invalid_type_error: "Harga harus berupa angka." }).positive("Harga harus lebih dari 0."),
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmtPrice = (v: string | number) =>
@@ -48,8 +56,17 @@ function LaundryItemFormModal({ initial, onClose }: FormModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!form.name.trim()) return setError("Nama wajib diisi.");
-    if (!form.base_price || form.base_price <= 0) return setError("Harga harus lebih dari 0.");
+
+    const result = laundryItemSchema.safeParse({
+      name: form.name.trim(),
+      description: form.description || undefined,
+      unit: form.unit,
+      base_price: form.base_price,
+    });
+    if (!result.success) {
+      setError(result.error.issues[0].message);
+      return;
+    }
 
     try {
       if (isEdit) {
