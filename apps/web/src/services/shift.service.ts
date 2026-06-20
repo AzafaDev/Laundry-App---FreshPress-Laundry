@@ -2,6 +2,7 @@ import { axiosInstance } from "@/lib/axios";
 import type {
   WorkShift,
   EmployeeShift,
+  EmployeeShiftListResponse,
   WorkShiftListQuery,
   WorkShiftListResponse,
   CreateWorkShiftPayload,
@@ -63,12 +64,12 @@ export const shiftService = {
 
   // ── EmployeeShift ─────────────────────────────────────────────────────────
 
-  listEmployeeShifts: async (employeeId: string): Promise<EmployeeShift[]> => {
+  listEmployeeShifts: async (employeeId: string): Promise<EmployeeShiftListResponse> => {
     const { data } = await axiosInstance.get<{
       success: true;
-      items: EmployeeShift[];
+      data: EmployeeShiftListResponse;
     }>(`/v1/admin/employees/${employeeId}/shifts`);
-    return data.items;
+    return data.data;
   },
 
   assignEmployeeShift: async (

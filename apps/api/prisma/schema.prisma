@@ -271,23 +271,29 @@ model WorkShift {
 }
 
 model EmployeeShift {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  employee_id String   @db.Uuid
-  shift_id    String   @db.Uuid
-  outlet_id   String   @db.Uuid
-  day_of_week Int
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now()) @db.Timestamptz
-  updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employee_id String    @db.Uuid
+  shift_id    String    @db.Uuid
+  outlet_id   String    @db.Uuid
+  // Recurring weekly schedule (0=Sun … 6=Sat). Required when date is null.
+  day_of_week Int?
+  // One-time specific date assignment. Takes priority over day_of_week when set.
+  date        DateTime? @db.Date
+  is_active   Boolean   @default(true)
+  created_at  DateTime  @default(now()) @db.Timestamptz
+  updated_at  DateTime  @default(now()) @updatedAt @db.Timestamptz
 
   // Relations
   employee Employee  @relation(fields: [employee_id], references: [id])
   shift    WorkShift @relation(fields: [shift_id], references: [id])
   outlet   Outlet    @relation(fields: [outlet_id], references: [id])
 
-  @@unique([employee_id, shift_id, day_of_week])
-  @@unique([employee_id, day_of_week])
-  @@index([outlet_id, shift_id, day_of_week])
+  // Recurring: one shift per employee per day-of-week
+  @@unique([employee_id, day_of_week], name: "employee_id_day_of_week")
+  // Date-specific: one shift per employee per date
+  @@unique([employee_id, date], name: "employee_id_date")
+  @@index([outlet_id, day_of_week])
+  @@index([outlet_id, date])
   @@map("employee_shifts")
 }
 

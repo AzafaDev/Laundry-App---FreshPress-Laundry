@@ -25,8 +25,15 @@ export async function getEmployeeShiftForDate(
   const wibDate = toWIBView(localDate);
   const dbDay = wibDate.getUTCDay();
 
-  const employeeShift = await prisma.employeeShift.findFirst({
-    where: { employee_id: employeeId, day_of_week: dbDay, is_active: true },
+  // Date-specific takes priority over recurring
+  const dateOnly = new Date(Date.UTC(wibDate.getUTCFullYear(), wibDate.getUTCMonth(), wibDate.getUTCDate()));
+  const dateSpecific = await prisma.employeeShift.findFirst({
+    where: { employee_id: employeeId, date: dateOnly, is_active: true },
+    include: { shift: true },
+  });
+
+  const employeeShift = dateSpecific ?? await prisma.employeeShift.findFirst({
+    where: { employee_id: employeeId, day_of_week: dbDay, date: null, is_active: true },
     include: { shift: true },
   });
 
@@ -48,10 +55,18 @@ export async function getShiftForDateTime(
   const wibTarget = toWIBView(targetDate);
   const dbDay = wibTarget.getUTCDay();
 
-  const employeeShifts = await prisma.employeeShift.findMany({
-    where: { employee_id: employeeId, day_of_week: dbDay, is_active: true },
+  // Date-specific takes priority over recurring
+  const dateOnly = new Date(Date.UTC(wibTarget.getUTCFullYear(), wibTarget.getUTCMonth(), wibTarget.getUTCDate()));
+  const dateSpecificShifts = await prisma.employeeShift.findMany({
+    where: { employee_id: employeeId, date: dateOnly, is_active: true },
     include: { shift: true },
   });
+  const employeeShifts = dateSpecificShifts.length > 0
+    ? dateSpecificShifts
+    : await prisma.employeeShift.findMany({
+        where: { employee_id: employeeId, day_of_week: dbDay, date: null, is_active: true },
+        include: { shift: true },
+      });
 
   if (employeeShifts.length === 0) return null;
 
@@ -92,10 +107,18 @@ export async function getUpcomingShiftForDateTime(
   const wibTarget = toWIBView(targetDate);
   const dbDay = wibTarget.getUTCDay();
 
-  const employeeShifts = await prisma.employeeShift.findMany({
-    where: { employee_id: employeeId, day_of_week: dbDay, is_active: true },
+  // Date-specific takes priority over recurring
+  const dateOnly = new Date(Date.UTC(wibTarget.getUTCFullYear(), wibTarget.getUTCMonth(), wibTarget.getUTCDate()));
+  const dateSpecificShifts = await prisma.employeeShift.findMany({
+    where: { employee_id: employeeId, date: dateOnly, is_active: true },
     include: { shift: true },
   });
+  const employeeShifts = dateSpecificShifts.length > 0
+    ? dateSpecificShifts
+    : await prisma.employeeShift.findMany({
+        where: { employee_id: employeeId, day_of_week: dbDay, date: null, is_active: true },
+        include: { shift: true },
+      });
 
   if (employeeShifts.length === 0) return null;
 

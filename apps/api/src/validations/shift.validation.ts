@@ -25,16 +25,22 @@ export const updateWorkShiftSchema = z
     message: "Setidaknya satu field harus diubah.",
   });
 
-export const assignEmployeeShiftSchema = z.object({
-  shift_id: z.string().uuid("shift_id harus UUID."),
-  outlet_id: z.string().uuid("outlet_id harus UUID."),
-  day_of_week: z
-    .number()
-    .int()
-    .min(0, "day_of_week 0=Minggu, 6=Sabtu.")
-    .max(6, "day_of_week 0=Minggu, 6=Sabtu."),
-  is_active: z.boolean().optional().default(true),
-});
+export const assignEmployeeShiftSchema = z
+  .object({
+    shift_id: z.string().uuid("shift_id harus UUID."),
+    outlet_id: z.string().uuid("outlet_id harus UUID."),
+    // Recurring weekly (0=Sun … 6=Sat) — required when date is not set
+    day_of_week: z.number().int().min(0).max(6).optional(),
+    // One-time specific date — takes priority when provided
+    date: z.string().date("Format tanggal harus YYYY-MM-DD.").optional(),
+    is_active: z.boolean().optional().default(true),
+  })
+  .refine((d) => d.day_of_week !== undefined || d.date !== undefined, {
+    message: "Harus mengisi day_of_week (recurring) atau date (tanggal spesifik).",
+  })
+  .refine((d) => !(d.day_of_week !== undefined && d.date !== undefined), {
+    message: "Tidak boleh mengisi day_of_week dan date sekaligus.",
+  });
 
 export const listWorkShiftQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -47,5 +53,8 @@ export const listWorkShiftQuerySchema = z.object({
 
 export type CreateWorkShiftInput = z.infer<typeof createWorkShiftSchema>;
 export type UpdateWorkShiftInput = z.infer<typeof updateWorkShiftSchema>;
-export type AssignEmployeeShiftInput = z.infer<typeof assignEmployeeShiftSchema>;
+export type AssignEmployeeShiftInput = z.infer<typeof assignEmployeeShiftSchema> & {
+  day_of_week?: number;
+  date?: string;
+};
 export type ListWorkShiftQuery = z.infer<typeof listWorkShiftQuerySchema>;
