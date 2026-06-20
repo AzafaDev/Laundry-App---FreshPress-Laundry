@@ -2,11 +2,13 @@
 
 import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Users, CalendarDays } from "lucide-react";
+import { useQueries } from "@tanstack/react-query";
 import { useUsers } from "@/hooks/useUsers";
 import { useEmployeeShifts } from "@/hooks/useShifts";
+import { shiftService } from "@/services/shift.service";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import type { User } from "@/types/user.types";
-import type { EmployeeShift } from "@/types/shift.types";
+import type { EmployeeShift, EmployeeShiftListResponse } from "@/types/shift.types";
 
 const WORKER_ROLES = ["washing_worker", "ironing_worker", "packing_worker", "driver"];
 const DAY_SHORT = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
@@ -151,8 +153,23 @@ export default function OutletShiftSchedulePage() {
   const allEmployees = (data?.items ?? []).filter((e: User) => WORKER_ROLES.includes(e.role));
   const employees = allEmployees.filter((e: User) => !roleFilter || e.role === roleFilter);
 
-  const todayDow = new Date().getDay();
   const totalEmployees = allEmployees.length;
+
+  // Fetch all employee shifts for stat cards
+  const shiftQueries = useQueries({
+    queries: allEmployees.map((emp: User) => ({
+      queryKey: ["admin", "employees", emp.id, "shifts"],
+      queryFn: () => shiftService.listEmployeeShifts(emp.id),
+      enabled: !!emp.id,
+    })),
+  });
+
+  const today = new Date();
+  const workingToday = shiftQueries.filter(({ data: d }) => {
+    if (!d) return false;
+    return findShiftForDate(d as EmployeeShiftListResponse, today) !== null;
+  }).length;
+  const offToday = totalEmployees - workingToday;
 
   return (
     <div className="space-y-6">
@@ -194,8 +211,8 @@ export default function OutletShiftSchedulePage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: "Total karyawan", value: totalEmployees, sub: "di outlet ini" },
-          { label: "Bertugas hari ini", value: "-", sub: DAY_LONG[todayDow] },
-          { label: "Libur hari ini", value: "-", sub: "off jadwal" },
+          { label: "Bertugas hari ini", value: workingToday, sub: DAY_LONG[today.getDay()] },
+          { label: "Libur hari ini", value: offToday, sub: "off jadwal" },
           { label: "Sedang tampil", value: employees.length, sub: roleFilter ? roleFilter.replace(/_/g, " ") : "semua role" },
         ].map((c) => (
           <div key={c.label} className="bg-surface-container-low rounded-xl p-4">

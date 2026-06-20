@@ -98,7 +98,7 @@ const NAV: NavItem[] = [
   },
   {
     href: "/dashboard/admin/staff/shifts",
-    label: "Jadwal Shift",
+    label: "Work Shift Schedule",
     icon: CalendarDays,
     roles: ["outlet_admin"],
   },
