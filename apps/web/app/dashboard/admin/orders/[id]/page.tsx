@@ -6,7 +6,7 @@ import { ChevronRight, ArrowLeft, Package, Truck, User, CreditCard, PlayCircle }
 import { useOrder } from "@/hooks/useOrders";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { ORDER_STATUS_LABELS, ORDER_STATUS_LIST, type OrderStatus } from "@/types/order.types";
-import type { ProcessLog, DriverTask, OrderItem, OrderStatusHistory } from "@/types/order.types";
+import type { ProcessLog, DriverTask, OrderItem, OrderItemBreakdown, OrderStatusHistory } from "@/types/order.types";
 import { ProcessOrderModal } from "@/components/orders/ProcessOrderModal";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -320,17 +320,35 @@ export default function OrderDetailPage() {
           </p>
         ) : (
           <div className="divide-y divide-outline-variant">
-            {order.order_items.map((item: OrderItem) => (
-              <div key={item.id} className="py-2 flex justify-between items-center text-sm">
-                <div>
-                  <span className="font-medium">{item.laundry_item.name}</span>
-                  <span className="text-on-surface-variant ml-2">
-                    × {item.quantity} {item.laundry_item.unit}
-                  </span>
+            {order.order_items.map((item: OrderItem) => {
+              const isKiloan = item.laundry_item.unit === "kg";
+              const breakdowns = isKiloan ? (order.order_item_breakdowns ?? []) : [];
+              return (
+                <div key={item.id} className="py-2 text-sm">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-medium">{item.laundry_item.name}</span>
+                      <span className="text-on-surface-variant ml-2">
+                        × {item.quantity} {item.laundry_item.unit}
+                      </span>
+                    </div>
+                    <span className="font-medium">{fmtPrice(item.price_at_order)}</span>
+                  </div>
+                  {/* Breakdown per clothing type for kiloan items */}
+                  {isKiloan && breakdowns.length > 0 && (
+                    <div className="mt-2 ml-3 space-y-1 border-l-2 border-outline-variant pl-3">
+                      <p className="text-xs font-semibold text-on-surface-variant mb-1">Rincian jenis pakaian:</p>
+                      {breakdowns.map((b: OrderItemBreakdown) => (
+                        <div key={b.id} className="flex justify-between text-xs text-on-surface-variant">
+                          <span>{b.clothing_type.name}</span>
+                          <span className="font-medium">{b.quantity} pcs</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <span className="font-medium">{fmtPrice(item.price_at_order)}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
