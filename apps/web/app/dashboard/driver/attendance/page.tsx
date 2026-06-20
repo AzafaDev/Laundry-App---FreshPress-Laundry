@@ -61,10 +61,8 @@ export default function DriverAttendancePage() {
     }
     try {
       await att.checkInAsync();
-      att.refetch();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || "Gagal check-in");
+    } catch {
+      // handled by checkInMutation.onError
     }
   };
 
@@ -75,10 +73,8 @@ export default function DriverAttendancePage() {
     }
     try {
       await att.checkOutAsync(att.attendanceId);
-      att.refetch();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error(err.response?.data?.message || "Gagal check-out");
+    } catch {
+      // handled by checkOutMutation.onError
     }
   };
 

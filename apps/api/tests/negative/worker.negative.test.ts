@@ -84,7 +84,11 @@ describe("Worker (washing_worker) — Negative Cases", () => {
       const res = await request(app)
         .post("/api/v1/worker/station/washing/orders/00000000-0000-0000-0000-000000000099/submit-items")
         .set("Cookie", washingWorkerCookie)
-        .send({ items: [] });
+        .send({
+          actual_items: [
+            { clothing_type_id: "11111111-1111-4111-8111-111111111111", actual_quantity: 1 },
+          ],
+        });
 
       // 403 jika shift guard menolak, 404 jika shift aktif tapi order tidak ada
       expect([400, 403, 404]).toContain(res.status);
