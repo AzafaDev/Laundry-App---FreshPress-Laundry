@@ -187,6 +187,10 @@ async function emitCompleteEvents(
   emitToUser(task.order.customer_id, "order:status-updated", {
     orderId: task.order_id,
     status: newOrderStatus,
+    message:
+      task.task_type === "pickup"
+        ? "Laundry Anda telah tiba di outlet dan akan segera diproses."
+        : "Driver telah tiba di lokasi Anda dengan pesanan laundry Anda.",
   });
 
   if (task.task_type === "pickup") {

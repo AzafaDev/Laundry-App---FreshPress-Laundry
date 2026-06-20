@@ -2,13 +2,14 @@ import { prisma } from '../../src/lib/prisma.js';
 
 // Seed 3 order dengan status `waiting_payment` (+ Payment pending) untuk customer tertentu.
 // Berguna untuk testing halaman pembayaran customer tanpa perlu menjalani seluruh alur order.
-const TARGET_CUSTOMER_ID = '34fd7198-026b-4fd3-8d15-bf30f648051a';
+const TARGET_CUSTOMER_EMAIL = 'testcustomer@freshpress.com';
 
-export async function seedWaitingPaymentOrders(customerId: string = TARGET_CUSTOMER_ID) {
-  const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+export async function seedWaitingPaymentOrders(customerEmail: string = TARGET_CUSTOMER_EMAIL) {
+  const customer = await prisma.customer.findUnique({ where: { email: customerEmail } });
   if (!customer) {
-    throw new Error(`Customer ${customerId} tidak ditemukan`);
+    throw new Error(`Customer ${customerEmail} tidak ditemukan`);
   }
+  const customerId = customer.id;
 
   const outlet = await prisma.outlet.findFirst({ orderBy: { created_at: 'asc' } });
   if (!outlet) {
@@ -22,31 +23,31 @@ export async function seedWaitingPaymentOrders(customerId: string = TARGET_CUSTO
     data: {
       customer_id: customerId,
       label: 'Rumah',
-      address: 'Jl. Contoh No. 1, Jakarta',
-      province: 'DKI Jakarta',
-      city: 'Jakarta Selatan',
-      district: 'Kebayoran Baru',
-      latitude: -6.2,
-      longitude: 106.816666,
+      address: 'Jl. Tataka Indah, Kadu, Kec. Curug, Kabupaten Tangerang',
+      province: 'Banten',
+      city: 'Kabupaten Tangerang',
+      district: 'Curug',
+      latitude: -6.229383828043414,
+      longitude: 106.56748566704175,
       is_primary: true,
     },
   });
 
   const laundryItems = await Promise.all([
     prisma.laundryItem.upsert({
-      where: { name: 'Kaos' },
+      where: { name: 'Sprei Single' },
       update: {},
-      create: { name: 'Kaos', unit: 'pcs', base_price: 5000 },
+      create: { name: 'Sprei Single', unit: 'pcs', base_price: 15000 },
     }),
     prisma.laundryItem.upsert({
-      where: { name: 'Celana Panjang' },
+      where: { name: 'Sarung Bantal' },
       update: {},
-      create: { name: 'Celana Panjang', unit: 'pcs', base_price: 8000 },
+      create: { name: 'Sarung Bantal', unit: 'pcs', base_price: 5000 },
     }),
     prisma.laundryItem.upsert({
-      where: { name: 'Seprei' },
+      where: { name: 'Bantal / Guling' },
       update: {},
-      create: { name: 'Seprei', unit: 'pcs', base_price: 15000 },
+      create: { name: 'Bantal / Guling', unit: 'pcs', base_price: 20000 },
     }),
   ]);
 

@@ -43,7 +43,7 @@ describe("Driver — Positive Cases", () => {
       const res = await request(app)
         .post("/api/v1/attendance/check-in")
         .set("Cookie", driverCookie)
-        .send({ lat: -6.2, lng: 106.8167 });
+        .send({ lat: -6.229383828043414, lng: 106.56748566704175 });
 
       expect([200, 201, 400]).toContain(res.status);
     });

@@ -13,74 +13,43 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
   const hasDriver = employees.some(e => e.email === 'driver.morning.1@freshpress.com');
   if (!hasDriver) throw new Error('Driver seed employee not found');
 
-  const outletAdmin = await prisma.employee.findFirst({ where: { email: 'outletadmin@freshpress.com' } });
+  const outletAdmin = await prisma.employee.findFirst({ where: { email: 'outletadmin.1@freshpress.com' } });
   if (!outletAdmin) throw new Error('Outlet admin seed employee not found');
 
-  const customerEmails = customers.length > 0
-    ? customers.map(customer => customer.email)
-    : [...seededCustomerEmails];
+  const customerEmail = customers[0]?.email ?? seededCustomerEmails[0];
+  const customer = await prisma.customer.findUnique({ where: { email: customerEmail } });
+  if (!customer) throw new Error('Customer seed data is empty, run customer seed first');
 
-  const existingCustomersRaw = await prisma.customer.findMany({
-    where: { email: { in: customerEmails } },
+  const primaryAddress = await prisma.customerAddress.findFirst({
+    where: { customer_id: customer.id, is_primary: true },
   });
-  // Sort by seed order (customerEmails array), not created_at — upsert doesn't guarantee created_at order
-  const existingCustomers = customerEmails
-    .map(email => existingCustomersRaw.find(c => c.email === email))
-    .filter((c): c is NonNullable<typeof c> => !!c);
+  if (!primaryAddress) throw new Error('Primary customer address not found — run customer seed first');
 
-  if (existingCustomers.length === 0) {
-    throw new Error('Customer seed data is empty, run customer seed first');
-  }
-
-  const customerAddressMap = new Map<string, string>();
-  for (const [index, customer] of existingCustomers.entries()) {
-    const existingAddress = await prisma.customerAddress.findFirst({
-      where: { customer_id: customer.id },
-    });
-
-    const addressData = {
-      label: index === 0 ? 'Rumah' : 'Alamat Utama',
-      address: `Jl. Customer ${index + 1} No. ${index + 10}, Jakarta`,
-      province: 'DKI Jakarta',
-      city: 'Jakarta Selatan',
-      district: 'Kebayoran Baru',
-      latitude: [-6.255, -6.230, -6.180, -6.210][index % 4],
-      longitude: [106.850, 106.780, 106.830, 106.860][index % 4],
-      is_primary: true,
-    };
-    const address = existingAddress
-      ? await prisma.customerAddress.update({ where: { id: existingAddress.id }, data: addressData })
-      : await prisma.customerAddress.create({ data: { customer_id: customer.id, ...addressData } });
-
-    customerAddressMap.set(customer.id, address.id);
-  }
-
-  // Buat clothing types jika belum ada
+  // Buat clothing types jika belum ada — kategori isi 1 bundel kiloan
   const clothingTypes = await Promise.all([
-    prisma.clothingType.upsert({ where: { name: 'Baju' }, update: {}, create: { name: 'Baju' } }),
+    prisma.clothingType.upsert({ where: { name: 'Atasan/Baju' }, update: {}, create: { name: 'Atasan/Baju' } }),
     prisma.clothingType.upsert({ where: { name: 'Celana' }, update: {}, create: { name: 'Celana' } }),
     prisma.clothingType.upsert({ where: { name: 'Kaos' }, update: {}, create: { name: 'Kaos' } }),
-    prisma.clothingType.upsert({ where: { name: 'Jaket' }, update: {}, create: { name: 'Jaket' } }),
-    prisma.clothingType.upsert({ where: { name: 'Selimut' }, update: {}, create: { name: 'Selimut' } }),
-    prisma.clothingType.upsert({ where: { name: 'Seprei' }, update: {}, create: { name: 'Seprei' } }),
+    prisma.clothingType.upsert({ where: { name: 'Pakaian Dalam' }, update: {}, create: { name: 'Pakaian Dalam' } }),
+    prisma.clothingType.upsert({ where: { name: 'Kaos Kaki' }, update: {}, create: { name: 'Kaos Kaki' } }),
   ]);
 
   // Ambil laundry items dari DB (sudah di-seed oleh seedLaundryItems)
-  const laundryItemNames = ['Laundry Kiloan', 'Kaos', 'Kemeja', 'Celana Panjang', 'Jaket Biasa'];
+  const laundryItemNames = ['Cuci Kiloan', 'Sprei Single', 'Sarung Bantal', 'Jaket Kulit / Tebal', 'Bantal / Guling'];
   const laundryItemsRaw = await prisma.laundryItem.findMany({
     where: { name: { in: laundryItemNames } },
   });
   const laundryItemMap = new Map(laundryItemsRaw.map((i) => [i.name, i]));
 
-  const kiloanItem = laundryItemMap.get('Laundry Kiloan');
+  const kiloanItem = laundryItemMap.get('Cuci Kiloan');
   const satuanItems = [
-    laundryItemMap.get('Kaos'),
-    laundryItemMap.get('Kemeja'),
-    laundryItemMap.get('Celana Panjang'),
-    laundryItemMap.get('Jaket Biasa'),
+    laundryItemMap.get('Sprei Single'),
+    laundryItemMap.get('Sarung Bantal'),
+    laundryItemMap.get('Jaket Kulit / Tebal'),
+    laundryItemMap.get('Bantal / Guling'),
   ].filter((i): i is NonNullable<typeof i> => !!i);
 
-  if (!kiloanItem) throw new Error('Laundry item "Laundry Kiloan" tidak ditemukan — jalankan seedLaundryItems dulu.');
+  if (!kiloanItem) throw new Error('Laundry item "Cuci Kiloan" tidak ditemukan — jalankan seedLaundryItems dulu.');
   if (satuanItems.length === 0) throw new Error('Satuan laundry items tidak ditemukan — jalankan seedLaundryItems dulu.');
 
   // Helper buat order
@@ -92,10 +61,7 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
     withDeliveryTask = false,
   ) {
     const invoiceNumber = `INV-SEED-${suffix}`;
-    const pickupAddressId = customerAddressMap.get(customerId);
-    if (!pickupAddressId) {
-      throw new Error(`Primary address for customer ${customerId} not found`);
-    }
+    const pickupAddressId = primaryAddress.id;
 
     // order_items: 1 kiloan service + 4 satuan pcs items
     const orderItemsData = [
@@ -255,8 +221,7 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
 
   ];
 
-  for (const [index, scenario] of orderScenarios.entries()) {
-    const customer = existingCustomers[index % existingCustomers.length];
+  for (const scenario of orderScenarios) {
     const order = await createOrder(customer.id, scenario.suffix, scenario.status, scenario.pickup, scenario.delivery);
     if (stationStatuses.includes(scenario.status)) {
       await seedBreakdown(order.id);

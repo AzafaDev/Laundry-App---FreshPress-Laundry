@@ -20,6 +20,7 @@ export async function runAllSeeds() {
   await prisma.notification.deleteMany({});
   await prisma.driverTask.deleteMany({});
   await prisma.orderItemBreakdown.deleteMany({});
+  await prisma.clothingType.deleteMany({});
   await prisma.orderItem.deleteMany({});
   await prisma.orderStatusHistory.deleteMany({});
   await prisma.processLog.deleteMany({});
@@ -102,6 +103,7 @@ export async function runModuleSeed(moduleName: string) {
         await tx.processLog.deleteMany({});
         await tx.orderStatusHistory.deleteMany({});
         await tx.orderItemBreakdown.deleteMany({});
+        await tx.clothingType.deleteMany({});
         await tx.orderItem.deleteMany({});
         await tx.order.deleteMany({});
         console.log('✅ Order & bypass data cleaned.\n');
