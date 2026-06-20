@@ -173,7 +173,7 @@ export const workerService = {
     station: "washing" | "ironing" | "packing",
     orderId: string,
     actualItems?: { clothing_type_id: string; actual_quantity: number }[],
-    checkPendingBypass = false,
+    checkPendingBypass = true,
   ) {
     const outletId = await assertShiftEligibility(employeeId);
 

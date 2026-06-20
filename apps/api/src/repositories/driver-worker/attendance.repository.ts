@@ -57,44 +57,41 @@ export async function getShiftForDateTime(
 
   // Date-specific takes priority over recurring
   const dateOnly = new Date(Date.UTC(wibTarget.getUTCFullYear(), wibTarget.getUTCMonth(), wibTarget.getUTCDate()));
-  const dateSpecificShifts = await prisma.employeeShift.findMany({
+  const dateSpecific = await prisma.employeeShift.findFirst({
     where: { employee_id: employeeId, date: dateOnly, is_active: true },
     include: { shift: true },
   });
-  const employeeShifts = dateSpecificShifts.length > 0
-    ? dateSpecificShifts
-    : await prisma.employeeShift.findMany({
-        where: { employee_id: employeeId, day_of_week: dbDay, date: null, is_active: true },
-        include: { shift: true },
-      });
 
-  if (employeeShifts.length === 0) return null;
+  const employeeShift = dateSpecific ?? await prisma.employeeShift.findFirst({
+    where: { employee_id: employeeId, day_of_week: dbDay, date: null, is_active: true },
+    include: { shift: true },
+  });
+
+  if (!employeeShift) return null;
 
   const targetHour = wibTarget.getUTCHours();
   const targetMinute = wibTarget.getUTCMinutes();
   const targetTimeInMinutes = targetHour * 60 + targetMinute;
 
-  for (const es of employeeShifts) {
-    const shift = es.shift;
-    const startTotal = shift.start_time.getUTCHours() * 60 + shift.start_time.getUTCMinutes();
-    let endTotal = shift.end_time.getUTCHours() * 60 + shift.end_time.getUTCMinutes();
+  const shift = employeeShift.shift;
+  const startTotal = shift.start_time.getUTCHours() * 60 + shift.start_time.getUTCMinutes();
+  let endTotal = shift.end_time.getUTCHours() * 60 + shift.end_time.getUTCMinutes();
 
-    const isOvernight = endTotal < startTotal;
-    if (isOvernight) endTotal += 24 * 60;
+  const isOvernight = endTotal < startTotal;
+  if (isOvernight) endTotal += 24 * 60;
 
-    let targetAdjusted = targetTimeInMinutes;
-    if (isOvernight && targetAdjusted < startTotal) targetAdjusted += 24 * 60;
+  let targetAdjusted = targetTimeInMinutes;
+  if (isOvernight && targetAdjusted < startTotal) targetAdjusted += 24 * 60;
 
-    if (targetAdjusted >= startTotal && targetAdjusted <= endTotal) {
-      const startDate = wibTimeOnDate(wibTarget, shift.start_time.getUTCHours(), shift.start_time.getUTCMinutes(), shift.start_time.getUTCSeconds());
-      const isAfterMidnight = isOvernight && targetTimeInMinutes < startTotal;
-      const adjustedStart = isAfterMidnight ? new Date(startDate.getTime() - 24 * 60 * 60 * 1000) : startDate;
+  if (targetAdjusted >= startTotal && targetAdjusted <= endTotal) {
+    const startDate = wibTimeOnDate(wibTarget, shift.start_time.getUTCHours(), shift.start_time.getUTCMinutes(), shift.start_time.getUTCSeconds());
+    const isAfterMidnight = isOvernight && targetTimeInMinutes < startTotal;
+    const adjustedStart = isAfterMidnight ? new Date(startDate.getTime() - 24 * 60 * 60 * 1000) : startDate;
 
-      let endDate = wibTimeOnDate(wibTarget, shift.end_time.getUTCHours(), shift.end_time.getUTCMinutes(), shift.end_time.getUTCSeconds());
-      if (isOvernight && !isAfterMidnight) endDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000);
+    let endDate = wibTimeOnDate(wibTarget, shift.end_time.getUTCHours(), shift.end_time.getUTCMinutes(), shift.end_time.getUTCSeconds());
+    if (isOvernight && !isAfterMidnight) endDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000);
 
-      return { shiftName: shift.name, startTime: adjustedStart, endTime: endDate };
-    }
+    return { shiftName: shift.name, startTime: adjustedStart, endTime: endDate };
   }
   return null;
 }
@@ -109,32 +106,41 @@ export async function getUpcomingShiftForDateTime(
 
   // Date-specific takes priority over recurring
   const dateOnly = new Date(Date.UTC(wibTarget.getUTCFullYear(), wibTarget.getUTCMonth(), wibTarget.getUTCDate()));
-  const dateSpecificShifts = await prisma.employeeShift.findMany({
+  const dateSpecific = await prisma.employeeShift.findFirst({
     where: { employee_id: employeeId, date: dateOnly, is_active: true },
     include: { shift: true },
   });
-  const employeeShifts = dateSpecificShifts.length > 0
-    ? dateSpecificShifts
-    : await prisma.employeeShift.findMany({
-        where: { employee_id: employeeId, day_of_week: dbDay, date: null, is_active: true },
-        include: { shift: true },
-      });
 
-  if (employeeShifts.length === 0) return null;
+  const employeeShift = dateSpecific ?? await prisma.employeeShift.findFirst({
+    where: { employee_id: employeeId, day_of_week: dbDay, date: null, is_active: true },
+    include: { shift: true },
+  });
 
-  const preShiftMs = preShiftMinutes * 60 * 1000;
+  if (!employeeShift) return null;
 
-  for (const es of employeeShifts) {
-    const shift = es.shift;
+  const targetTimeInMinutes = wibTarget.getUTCHours() * 60 + wibTarget.getUTCMinutes();
+
+  const shift = employeeShift.shift;
+  const startTotal = shift.start_time.getUTCHours() * 60 + shift.start_time.getUTCMinutes();
+  let endTotal = shift.end_time.getUTCHours() * 60 + shift.end_time.getUTCMinutes();
+
+  const isOvernight = endTotal < startTotal;
+  if (isOvernight) endTotal += 24 * 60;
+
+  let targetAdjusted = targetTimeInMinutes;
+  if (isOvernight && targetAdjusted < startTotal) targetAdjusted += 24 * 60;
+
+  const preShiftMinutesAdjusted = targetAdjusted + preShiftMinutes;
+
+  if (preShiftMinutesAdjusted >= startTotal && targetAdjusted <= endTotal) {
     const startDate = wibTimeOnDate(wibTarget, shift.start_time.getUTCHours(), shift.start_time.getUTCMinutes(), shift.start_time.getUTCSeconds());
+    const isAfterMidnight = isOvernight && targetTimeInMinutes < startTotal;
+    const adjustedStart = isAfterMidnight ? new Date(startDate.getTime() - 24 * 60 * 60 * 1000) : startDate;
+
     let endDate = wibTimeOnDate(wibTarget, shift.end_time.getUTCHours(), shift.end_time.getUTCMinutes(), shift.end_time.getUTCSeconds());
+    if (isOvernight && !isAfterMidnight) endDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000);
 
-    if (endDate <= startDate) endDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000);
-
-    const allowedStart = new Date(startDate.getTime() - preShiftMs);
-    if (targetDate >= allowedStart && targetDate <= endDate) {
-      return { shiftName: shift.name, startTime: startDate, endTime: endDate };
-    }
+    return { shiftName: shift.name, startTime: adjustedStart, endTime: endDate };
   }
 
   return null;

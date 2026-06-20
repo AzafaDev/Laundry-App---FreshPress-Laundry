@@ -23,6 +23,9 @@ export async function runAllSeeds() {
   await prisma.orderItem.deleteMany({});
   await prisma.orderStatusHistory.deleteMany({});
   await prisma.processLog.deleteMany({});
+  await prisma.complaint.deleteMany({});
+  await prisma.payment.deleteMany({});
+  await prisma.bypassRequest.deleteMany({});
   await prisma.order.deleteMany({});
   await prisma.customerAddress.deleteMany({});
   await prisma.customer.deleteMany({});
@@ -33,9 +36,6 @@ export async function runAllSeeds() {
   await prisma.workShift.deleteMany({});
   await prisma.laundryItem.deleteMany({});
   await prisma.outlet.deleteMany({});
-await prisma.complaint.deleteMany({});
-  await prisma.payment.deleteMany({});
-  await prisma.bypassRequest.deleteMany({});
   await prisma.refreshToken.deleteMany({});
   await prisma.emailToken.deleteMany({});
   await prisma.socialAccount.deleteMany({});
@@ -48,9 +48,9 @@ await prisma.complaint.deleteMany({});
 
   const customers = await seedCustomers();
 
-  const employees = await seedEmployees(mainOutlet.id);
+  const employees = await seedEmployees(outlets.map((o) => o.id));
 
-  await seedEmployeeShifts(employees, shifts, mainOutlet.id);
+  await seedEmployeeShifts(employees, shifts);
 
   await seedAttendances(employees, shifts);
 
@@ -77,7 +77,7 @@ export async function runModuleSeed(moduleName: string) {
       break;
     case 'employees':
       const outlets = await seedOutlets();
-      await seedEmployees(outlets[0].id);
+      await seedEmployees(outlets.map((o) => o.id));
       break;
     case 'customers':
       await seedCustomers();

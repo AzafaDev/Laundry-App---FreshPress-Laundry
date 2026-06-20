@@ -1,7 +1,7 @@
 import { prisma } from '../../src/lib/prisma.js';
 
 export async function seedDriverNotifications(): Promise<void> {
-  const driver = await prisma.employee.findFirst({ where: { email: 'driver.morning@freshpress.com' } });
+  const driver = await prisma.employee.findFirst({ where: { email: 'driver.morning.1@freshpress.com' } });
   if (!driver) throw new Error('Driver tidak ditemukan — jalankan seed employees dulu.');
 
   const existing = await prisma.notification.count({ where: { user_id: driver.id, user_type: 'employee' } });

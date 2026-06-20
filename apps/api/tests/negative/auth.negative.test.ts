@@ -46,7 +46,7 @@ describe("Auth — Negative Cases (cross-role)", () => {
     it("harus 401 jika password employee salah", async () => {
       const res = await request(app)
         .post("/api/v1/employee/auth/login")
-        .send({ email: "driver.morning@freshpress.com", password: "BadPass99" });
+        .send({ email: "driver.morning.1@freshpress.com", password: "BadPass99" });
 
       expect(res.status).toBe(401);
     });

@@ -8,22 +8,22 @@ export const SEED_CREDENTIALS = {
     endpoint: "/api/v1/customer/auth/login",
   },
   driver: {
-    email: "driver.morning@freshpress.com",
+    email: "driver.morning.1@freshpress.com",
     password: "Password123",
     endpoint: "/api/v1/employee/auth/login",
   },
   washing_worker: {
-    email: "washing_worker.morning@freshpress.com",
+    email: "washing_worker.morning.1@freshpress.com",
     password: "Password123",
     endpoint: "/api/v1/employee/auth/login",
   },
   ironing_worker: {
-    email: "ironing_worker.morning@freshpress.com",
+    email: "ironing_worker.morning.1@freshpress.com",
     password: "Password123",
     endpoint: "/api/v1/employee/auth/login",
   },
   packing_worker: {
-    email: "packing_worker.morning@freshpress.com",
+    email: "packing_worker.morning.1@freshpress.com",
     password: "Password123",
     endpoint: "/api/v1/employee/auth/login",
   },

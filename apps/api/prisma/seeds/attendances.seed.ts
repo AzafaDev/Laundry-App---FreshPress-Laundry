@@ -50,20 +50,13 @@ export async function seedAttendances(
   for (const emp of employees) {
     if (!emp.outlet_id) continue;
 
-    let shiftName = 'Morning';
-    if (emp.email.includes('afternoon') ||
-        emp.email === 'washing.worker@freshpress.com' ||
-        emp.email === 'ironing.worker@freshpress.com' ||
-        emp.email === 'packing.worker@freshpress.com' ||
-        emp.email === 'driver@freshpress.com') {
-      shiftName = 'Afternoon';
-    }
+    const shiftName = emp.email.includes('.afternoon.') ? 'Afternoon' : 'Morning';
     const shift = shiftMap[shiftName];
 
     const totalRecords = Math.floor(Math.random() * 15) + 12;
     const records = [];
     for (let i = 0; i < totalRecords; i++) {
-      const randomDate = getRandomDateInRange(90, 0);
+      const randomDate = getRandomDateInRange(90, 1);
       const dayOfWeek = randomDate.getUTCDay();
       if (dayOfWeek === 0 || dayOfWeek === 6) continue;
 
