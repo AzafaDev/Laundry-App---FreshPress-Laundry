@@ -10,7 +10,7 @@ import { seededCustomerEmails } from './customers.seed.js';
 // - 1 order status ready_for_delivery + DriverTask available      → driver delivery test
 
 export async function seedOrders(outlet: Outlet, employees: Employee[], customers: Customer[]) {
-  const hasDriver = employees.some(e => e.email === 'driver.morning@freshpress.com');
+  const hasDriver = employees.some(e => e.email === 'driver.morning.1@freshpress.com');
   if (!hasDriver) throw new Error('Driver seed employee not found');
 
   const outletAdmin = await prisma.employee.findFirst({ where: { email: 'outletadmin@freshpress.com' } });

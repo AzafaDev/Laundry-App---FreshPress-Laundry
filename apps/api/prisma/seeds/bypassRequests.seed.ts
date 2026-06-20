@@ -15,13 +15,13 @@ export async function seedBypassRequests(): Promise<void> {
   if (!outletAdmin) throw new Error('Outlet admin tidak ditemukan — jalankan seed employees dulu.');
 
   const washingWorker = await prisma.employee.findFirst({
-    where: { email: 'washing.worker@freshpress.com' },
+    where: { email: 'washing_worker.morning.1@freshpress.com' },
   });
   const ironingWorker = await prisma.employee.findFirst({
-    where: { email: 'ironing.worker@freshpress.com' },
+    where: { email: 'ironing_worker.morning.1@freshpress.com' },
   });
   const packingWorker = await prisma.employee.findFirst({
-    where: { email: 'packing.worker@freshpress.com' },
+    where: { email: 'packing_worker.morning.1@freshpress.com' },
   });
 
   if (!washingWorker || !ironingWorker || !packingWorker) {

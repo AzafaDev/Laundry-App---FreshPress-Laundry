@@ -1,10 +1,10 @@
 import { prisma } from '../../src/lib/prisma.js';
 
 export async function seedTaskHistory() {
-  const driver = await prisma.employee.findUnique({ where: { email: 'driver.morning@freshpress.com' } });
-  const washingWorker = await prisma.employee.findUnique({ where: { email: 'washing_worker.morning@freshpress.com' } });
-  const ironingWorker = await prisma.employee.findUnique({ where: { email: 'ironing_worker.morning@freshpress.com' } });
-  const packingWorker = await prisma.employee.findUnique({ where: { email: 'packing_worker.morning@freshpress.com' } });
+  const driver = await prisma.employee.findUnique({ where: { email: 'driver.morning.1@freshpress.com' } });
+  const washingWorker = await prisma.employee.findUnique({ where: { email: 'washing_worker.morning.1@freshpress.com' } });
+  const ironingWorker = await prisma.employee.findUnique({ where: { email: 'ironing_worker.morning.1@freshpress.com' } });
+  const packingWorker = await prisma.employee.findUnique({ where: { email: 'packing_worker.morning.1@freshpress.com' } });
 
   if (!driver || !washingWorker || !ironingWorker || !packingWorker) {
     throw new Error('Seed employees not found — run full seed first');
