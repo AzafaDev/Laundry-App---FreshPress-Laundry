@@ -83,9 +83,17 @@ export interface OrderItem {
   laundry_item: { id: string; name: string; unit: string };
 }
 
+export interface OrderItemBreakdown {
+  id: string;
+  clothing_type_id: string;
+  quantity: number;
+  clothing_type: { id: string; name: string };
+}
+
 export interface OrderDetail extends OrderSummary {
   notes: string | null;
   order_items: OrderItem[];
+  order_item_breakdowns: OrderItemBreakdown[];
   status_histories: OrderStatusHistory[];
   process_logs: ProcessLog[];
   driver_tasks: DriverTask[];

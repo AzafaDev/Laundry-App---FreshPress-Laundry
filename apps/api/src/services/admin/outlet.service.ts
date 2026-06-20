@@ -152,7 +152,11 @@ export const deactivateOutlet = async (id: string) => {
   });
 };
 
-/** Assign an employee to an outlet by updating their outlet_id. */
+/** Assign an employee to an outlet by updating their outlet_id.
+ *  If the employee is moving from a different outlet, their token_version
+ *  is incremented so all existing sessions are immediately invalidated
+ *  (they must log in again with the new outlet context).
+ */
 export const assignUserToOutlet = async (outletId: string, userId: string) => {
   const [outlet, employee] = await Promise.all([
     prisma.outlet.findUnique({ where: { id: outletId } }),
@@ -161,12 +165,23 @@ export const assignUserToOutlet = async (outletId: string, userId: string) => {
   if (!outlet) throw new AppError("Outlet tidak ditemukan.", 404);
   if (!employee || employee.deleted_at) throw new AppError("User tidak ditemukan.", 404);
 
+  const isMovingOutlet =
+    employee.outlet_id !== null && employee.outlet_id !== outletId;
+
   await prisma.employee.update({
     where: { id: userId },
-    data: { outlet_id: outletId },
+    data: {
+      outlet_id: outletId,
+      // Force re-login if moving to a different outlet
+      ...(isMovingOutlet && { token_version: { increment: 1 } }),
+    },
   });
 
-  return { outlet_id: outletId, user_id: userId };
+  return {
+    outlet_id: outletId,
+    user_id: userId,
+    session_invalidated: isMovingOutlet,
+  };
 };
 
 /** Returns up to limit candidate places matching the free-text query. */

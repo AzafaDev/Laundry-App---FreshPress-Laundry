@@ -133,6 +133,12 @@ export const getOrder = async (
             laundry_item: { select: { id: true, name: true, unit: true } },
           },
         },
+        order_item_breakdowns: {
+          include: {
+            clothing_type: { select: { id: true, name: true } },
+          },
+          orderBy: { created_at: "asc" },
+        },
         status_histories: { orderBy: { created_at: "asc" } },
         process_logs: {
           orderBy: { created_at: "asc" },
