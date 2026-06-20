@@ -216,8 +216,9 @@ export const processOrder = async (
     let totalPrice = 0;
     const orderItemsData = body.items.map((item) => {
       const li = itemMap.get(item.laundry_item_id)!;
-      const priceAtOrder = Number(li.base_price);
-      totalPrice += priceAtOrder * item.quantity;
+      const unitPrice = Number(li.base_price);
+      const priceAtOrder = unitPrice * item.quantity;
+      totalPrice += priceAtOrder;
       return {
         order_id: id,
         laundry_item_id: item.laundry_item_id,
