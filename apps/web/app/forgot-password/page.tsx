@@ -4,16 +4,28 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { Shirt, Mail, ArrowRight, ArrowLeft, ShieldCheck } from "lucide-react";
 import { axiosInstance } from "@/lib/axios";
+import { z } from "zod";
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Format email tidak valid."),
+});
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [clientError, setClientError] = useState("");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    setClientError("");
+
+    const result = forgotPasswordSchema.safeParse({ email: email.trim() });
+    if (!result.success) {
+      setClientError(result.error.issues[0].message);
+      return;
+    }
 
     setLoading(true);
     setServerError("");
@@ -85,9 +97,9 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-lg">
-                  {serverError && (
+                  {(serverError || clientError) && (
                     <div className="bg-error-container/30 border border-error/30 text-error text-sm px-4 py-3 rounded-xl" role="alert">
-                      {serverError}
+                      {clientError || serverError}
                     </div>
                   )}
                   <div className="space-y-xs">

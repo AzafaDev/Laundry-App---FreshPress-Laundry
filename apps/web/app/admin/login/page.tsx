@@ -1,25 +1,38 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { Mail, Lock, Eye, EyeOff, LogIn, Shirt, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, LogIn, Shirt, ShieldCheck } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 
+const loginSchema = z.object({
+  email: z.string().email("Format email tidak valid."),
+  password: z.string().min(1, "Password wajib diisi."),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
 export default function AdminLoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoggingIn, loginError } = useAdminAuth();
 
   const { _hasHydrated, user } = useEmployeeAuthStore();
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!email.trim() || !password) return;
-    login({ email, password });
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  const onSubmit = (data: LoginFormData) => {
+    login(data);
   };
 
-  // Determine error message to show
   let errorMessage: string | null = null;
   if (loginError) {
     errorMessage =
@@ -27,7 +40,6 @@ export default function AdminLoginPage() {
       "Login gagal. Periksa email dan password Anda.";
   }
 
-  // Loading state before hydration
   if (!_hasHydrated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -66,7 +78,7 @@ export default function AdminLoginPage() {
 
           {/* Form */}
           <div className="px-6 py-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
               {errorMessage && (
                 <div
@@ -87,18 +99,18 @@ export default function AdminLoginPage() {
                   Email
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     id="email"
                     type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    {...register("email")}
                     placeholder="admin@freshpress.id"
-                    required
                     autoComplete="username"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm transition-all placeholder:text-gray-400"
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm transition-all placeholder:text-gray-400"
                   />
                 </div>
+                {errors.email && (
+                  <p className="text-xs text-red-600 mt-1">{errors.email.message}</p>
+                )}
               </div>
 
               {/* Password */}
@@ -110,16 +122,13 @@ export default function AdminLoginPage() {
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    {...register("password")}
                     placeholder="••••••••"
-                    required
                     autoComplete="current-password"
-                    className="w-full pl-10 pr-11 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm transition-all placeholder:text-gray-400"
+                    className="w-full px-4 pr-11 py-2.5 rounded-lg border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm transition-all placeholder:text-gray-400"
                   />
                   <button
                     type="button"
@@ -134,6 +143,9 @@ export default function AdminLoginPage() {
                     )}
                   </button>
                 </div>
+                {errors.password && (
+                  <p className="text-xs text-red-600 mt-1">{errors.password.message}</p>
+                )}
               </div>
 
               {/* Submit */}

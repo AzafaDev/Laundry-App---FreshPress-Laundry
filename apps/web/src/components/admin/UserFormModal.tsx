@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X, UserPlus, Mail } from "lucide-react";
+import { z } from "zod";
 import { useCreateUser, useUpdateUser } from "@/hooks/useUsers";
 import { useOutlets } from "@/hooks/useOutlets";
 import type {
@@ -10,6 +11,16 @@ import type {
   User,
   UserRole,
 } from "@/types/user.types";
+
+const userFormSchema = z.object({
+  full_name: z.string().min(2, "Nama lengkap minimal 2 karakter."),
+  email: z.string().email("Format email tidak valid."),
+  phone: z
+    .string()
+    .regex(/^[0-9+\-\s]{8,15}$/, "Nomor telepon tidak valid (8-15 digit).")
+    .optional()
+    .or(z.literal("")),
+});
 
 const ROLES: Array<{ value: UserRole; label: string }> = [
   { value: "super_admin", label: "Super Admin" },
@@ -81,6 +92,16 @@ export function UserFormModal({ user, onClose }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const result = userFormSchema.safeParse({
+      full_name: form.full_name,
+      email: form.email,
+      phone: form.phone || undefined,
+    });
+    if (!result.success) {
+      setError(result.error.issues[0].message);
+      return;
+    }
 
     if (needsOutlet && !form.outlet_id) {
       setError("Pilih outlet untuk role ini.");

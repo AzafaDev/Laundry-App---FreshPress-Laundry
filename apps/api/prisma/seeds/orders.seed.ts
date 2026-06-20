@@ -134,6 +134,9 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
       return existing;
     }
 
+    const deliveryFee = ['waiting_payment', 'ready_for_delivery', 'delivery_to_customer',
+      'received_by_customer', 'completed'].includes(status) ? 10000 : 0;
+
     const order = await prisma.order.create({
       data: {
         invoice_number: invoiceNumber,
@@ -143,7 +146,8 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
         status,
         pickup_schedule: null,
         total_weight_kg: 3.5,
-        total_price: itemsTotalPrice,
+        delivery_fee: deliveryFee,
+        total_price: itemsTotalPrice + deliveryFee,
         notes: `Seed order untuk testing ${status}`,
       },
     });
@@ -156,6 +160,25 @@ export async function seedOrders(outlet: Outlet, employees: Employee[], customer
         price_at_order: item.base_price,
       })),
     });
+
+    // Buat Payment record untuk semua order yang sudah melewati tahap packing
+    if (['waiting_payment', 'ready_for_delivery', 'delivery_to_customer',
+         'received_by_customer', 'completed'].includes(status)) {
+      await prisma.payment.upsert({
+        where: { order_id: order.id },
+        update: {},
+        create: {
+          order_id: order.id,
+          amount: itemsTotalPrice + deliveryFee,
+          payment_method: 'gateway',
+          status: status === 'waiting_payment' ? 'pending' : 'paid',
+          paid_at: status !== 'waiting_payment' ? new Date() : null,
+          expired_at: status === 'waiting_payment'
+            ? new Date(Date.now() + 24 * 60 * 60 * 1000)
+            : null,
+        },
+      });
+    }
 
     if (withPickupTask) {
       await prisma.driverTask.upsert({

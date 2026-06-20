@@ -14,7 +14,7 @@ import { FooterCTA } from "@/components/home/FooterCTA";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden">
+    <div className="min-h-screen bg-white overflow-x-clip">
       <Navbar />
       <main className="pb-20 lg:pb-0">
         <Hero />

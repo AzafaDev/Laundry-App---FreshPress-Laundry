@@ -2,7 +2,7 @@ import { prisma } from '../../src/lib/prisma.js';
 
 // Seed 3 order dengan status `waiting_payment` (+ Payment pending) untuk customer tertentu.
 // Berguna untuk testing halaman pembayaran customer tanpa perlu menjalani seluruh alur order.
-const TARGET_CUSTOMER_ID = '00a25ccf-fe05-4c13-814c-082a4434b3b2';
+const TARGET_CUSTOMER_ID = '34fd7198-026b-4fd3-8d15-bf30f648051a';
 
 export async function seedWaitingPaymentOrders(customerId: string = TARGET_CUSTOMER_ID) {
   const customer = await prisma.customer.findUnique({ where: { id: customerId } });
@@ -70,6 +70,9 @@ export async function seedWaitingPaymentOrders(customerId: string = TARGET_CUSTO
       continue;
     }
 
+    const deliveryFee = 10000;
+    const totalPrice = itemsTotalPrice + deliveryFee;
+
     const order = await prisma.order.create({
       data: {
         invoice_number: invoiceNumber,
@@ -79,8 +82,8 @@ export async function seedWaitingPaymentOrders(customerId: string = TARGET_CUSTO
         status: 'waiting_payment',
         pickup_schedule: new Date(Date.now() - 60 * 60 * 1000),
         total_weight_kg: scenario.weight,
-        total_price: itemsTotalPrice,
-        payment_deadline: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        delivery_fee: deliveryFee,
+        total_price: totalPrice,
         notes: `Seed order untuk testing pembayaran (${scenario.suffix})`,
       },
     });
@@ -97,9 +100,10 @@ export async function seedWaitingPaymentOrders(customerId: string = TARGET_CUSTO
     await prisma.payment.create({
       data: {
         order_id: order.id,
-        amount: itemsTotalPrice,
+        amount: totalPrice,
         payment_method: 'gateway',
         status: 'pending',
+        expired_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
       },
     });
 

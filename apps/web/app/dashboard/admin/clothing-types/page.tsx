@@ -5,11 +5,20 @@ import {
   Plus, Pencil, Trash2, Search,
   ChevronLeft, ChevronRight, X, Shirt,
 } from "lucide-react";
+import { z } from "zod";
 import {
   useQuery, useMutation, useQueryClient, keepPreviousData,
 } from "@tanstack/react-query";
 import { axiosInstance } from "@/lib/axios";
 import toast from "react-hot-toast";
+
+const clothingTypeSchema = z.object({
+  name: z
+    .string()
+    .min(1, "Nama wajib diisi.")
+    .max(100, "Nama maksimal 100 karakter.")
+    .trim(),
+});
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface ClothingType {
@@ -66,7 +75,11 @@ function FormModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!name.trim()) return setError("Nama wajib diisi.");
+    const result = clothingTypeSchema.safeParse({ name });
+    if (!result.success) {
+      setError(result.error.issues[0].message);
+      return;
+    }
     mutation.mutate();
   };
 

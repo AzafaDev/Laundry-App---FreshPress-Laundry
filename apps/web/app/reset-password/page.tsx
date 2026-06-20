@@ -13,6 +13,21 @@ import {
   Droplets,
 } from "lucide-react";
 import { axiosInstance } from "@/lib/axios";
+import { z } from "zod";
+
+const resetPasswordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(8, "Password minimal 8 karakter.")
+      .regex(/[a-zA-Z]/, "Password harus mengandung huruf.")
+      .regex(/\d/, "Password harus mengandung angka."),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Konfirmasi password tidak cocok.",
+    path: ["confirmPassword"],
+  });
 
 function ResetPasswordContent() {
   const searchParams = useSearchParams();
@@ -62,7 +77,12 @@ function ResetPasswordContent() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!token) { setServerError("Token tidak valid. Minta link reset password baru."); return; }
-    if (password !== confirmPassword) { setServerError("Konfirmasi password tidak cocok."); return; }
+
+    const result = resetPasswordSchema.safeParse({ password, confirmPassword });
+    if (!result.success) {
+      setServerError(result.error.issues[0].message);
+      return;
+    }
 
     setServerError("");
     setLoading(true);
