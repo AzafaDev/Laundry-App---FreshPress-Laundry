@@ -20,7 +20,7 @@ export async function seedEmployeeShifts(
     if (!shiftName) continue;
 
     const shiftId = shiftMap[shiftName].id;
-    for (let day = 1; day <= 5; day++) {
+    for (let day = 0; day <= 6; day++) {
       await prisma.employeeShift.upsert({
         where: {
           employee_id_shift_id_day_of_week: {

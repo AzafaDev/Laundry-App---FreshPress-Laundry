@@ -15,7 +15,12 @@ export async function seedEmployees(outletIds: string[]): Promise<Employee[]> {
   // ── Admin accounts ───────────────────────────────────────────────────────
   const adminAccountsData = [
     { email: 'superadmin@freshpress.com', full_name: 'Super Admin', role: 'super_admin', outlet_id: null as string | null },
-    { email: 'outletadmin@freshpress.com', full_name: 'Outlet Admin Demo', role: 'outlet_admin', outlet_id: outletIds[0] },
+    ...outletIds.map((outletId, index) => ({
+      email: `outletadmin.${index + 1}@freshpress.com`,
+      full_name: `Outlet Admin - Outlet ${index + 1}`,
+      role: 'outlet_admin',
+      outlet_id: outletId as string | null,
+    })),
   ];
   for (const data of adminAccountsData) {
     await prisma.employee.upsert({

@@ -147,8 +147,8 @@ describe("Customer — Positive Cases", () => {
 
   describe("POST /api/v1/customer/orders", () => {
     it("harus buat order ketika alamat dalam radius outlet dan tanggal valid", async () => {
-      // Buat alamat dekat outlet Downtown Hub (-6.2, 106.816666)
-      const addr = await createTestAddress(customerId, { latitude: -6.2, longitude: 106.816666 });
+      // Buat alamat dekat outlet Rumah Akmal (-6.229383828043414, 106.56748566704175)
+      const addr = await createTestAddress(customerId, { latitude: -6.229383828043414, longitude: 106.56748566704175 });
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const dateStr = tomorrow.toISOString().split("T")[0];

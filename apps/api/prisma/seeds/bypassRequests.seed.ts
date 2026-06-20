@@ -10,7 +10,7 @@ import { prisma } from '../../src/lib/prisma.js';
 
 export async function seedBypassRequests(): Promise<void> {
   const outletAdmin = await prisma.employee.findFirst({
-    where: { email: 'outletadmin@freshpress.com' },
+    where: { email: 'outletadmin.1@freshpress.com' },
   });
   if (!outletAdmin) throw new Error('Outlet admin tidak ditemukan — jalankan seed employees dulu.');
 

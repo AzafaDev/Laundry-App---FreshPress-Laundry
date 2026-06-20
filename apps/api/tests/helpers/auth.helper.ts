@@ -28,7 +28,7 @@ export const SEED_CREDENTIALS = {
     endpoint: "/api/v1/employee/auth/login",
   },
   outlet_admin: {
-    email: "outletadmin@freshpress.com",
+    email: "outletadmin.1@freshpress.com",
     password: "Password123",
     endpoint: "/api/v1/employee/auth/login",
   },
