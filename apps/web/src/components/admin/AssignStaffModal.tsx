@@ -50,6 +50,7 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [recentlyAssigned, setRecentlyAssigned] = useState<string | null>(null);
   const [shiftEmployee, setShiftEmployee] = useState<User | null>(null);
+  const [conflictUser, setConflictUser] = useState<User | null>(null);
   const toUser = (u: AssignedUser): User =>
     ({ ...u, outlet_id: outlet.id, created_at: u.assigned_at, updated_at: u.assigned_at, deleted_at: null, phone: u.phone ?? null }) as unknown as User;
 
@@ -68,7 +69,7 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
 
   const assignedIds = new Set(assigned.map((a) => a.id));
 
-  const handleAssign = async (userId: string) => {
+  const doAssign = async (userId: string) => {
     try {
       await assign.mutateAsync({ outletId: outlet.id, userId });
       setRecentlyAssigned(userId);
@@ -78,11 +79,26 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
     }
   };
 
+  const handleAssign = (user: User) => {
+    // Already assigned to a different outlet → show confirmation first
+    if (user.outlet_id && user.outlet_id !== outlet.id) {
+      setConflictUser(user);
+      return;
+    }
+    doAssign(user.id);
+  };
+
   const candidates = (usersPage?.items ?? []).filter(
     (u) =>
       ASSIGNABLE_ROLES.includes(u.role) &&
       !assignedIds.has(u.id) &&
       !u.deleted_at,
+  );
+
+  // Split candidates: unassigned vs assigned-to-other-outlet
+  const unassignedCandidates = candidates.filter((u) => !u.outlet_id);
+  const assignedElsewhereCandidates = candidates.filter(
+    (u) => u.outlet_id && u.outlet_id !== outlet.id,
   );
 
   return (
@@ -209,53 +225,43 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
                 Tidak ada kandidat yang cocok.
               </p>
             ) : (
-              <ul className="space-y-2 max-h-72 overflow-y-auto">
-                {candidates.map((u) => {
-                  const justAssigned = recentlyAssigned === u.id;
-                  return (
-                    <li
-                      key={u.id}
-                      className="flex items-center justify-between gap-3 p-3 bg-surface border border-outline-variant rounded-lg"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-full bg-surface-container-high text-on-surface flex items-center justify-center font-semibold flex-shrink-0">
-                          {u.full_name.slice(0, 1).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-on-surface truncate">
-                            {u.full_name}
-                          </p>
-                          <p className="text-xs text-on-surface-variant truncate">
-                            {u.email} ·{" "}
-                            <span className="capitalize">
-                              {u.role.replace(/_/g, " ")}
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleAssign(u.id)}
-                        disabled={assign.isPending}
-                        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                          justAssigned
-                            ? "bg-primary/10 text-primary"
-                            : "bg-primary text-on-primary hover:opacity-90 disabled:opacity-60"
-                        }`}
-                      >
-                        {justAssigned ? (
-                          <>
-                            <CheckCircle className="w-4 h-4" /> Terassign
-                          </>
-                        ) : (
-                          <>
-                            <UserPlus className="w-4 h-4" /> Assign
-                          </>
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+              <div className="space-y-4 max-h-72 overflow-y-auto">
+                {/* Unassigned candidates */}
+                {unassignedCandidates.length > 0 && (
+                  <ul className="space-y-2">
+                    {unassignedCandidates.map((u) => (
+                      <CandidateRow
+                        key={u.id}
+                        user={u}
+                        justAssigned={recentlyAssigned === u.id}
+                        isPending={assign.isPending}
+                        onAssign={() => handleAssign(u)}
+                      />
+                    ))}
+                  </ul>
+                )}
+
+                {/* Assigned-elsewhere candidates */}
+                {assignedElsewhereCandidates.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-amber-600 mb-2 flex items-center gap-1">
+                      ⚠️ Sudah di-assign ke outlet lain
+                    </p>
+                    <ul className="space-y-2">
+                      {assignedElsewhereCandidates.map((u) => (
+                        <CandidateRow
+                          key={u.id}
+                          user={u}
+                          justAssigned={recentlyAssigned === u.id}
+                          isPending={assign.isPending}
+                          onAssign={() => handleAssign(u)}
+                          currentOutletName={u.outlet?.name}
+                        />
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             )}
           </section>
         </div>
@@ -277,6 +283,104 @@ export function AssignStaffModal({ outlet, onClose }: Props) {
         onClose={() => setShiftEmployee(null)}
       />
     )}
+
+    {/* Conflict confirmation modal */}
+    {conflictUser && (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+        <div className="bg-surface-container-lowest w-full max-w-md rounded-2xl shadow-2xl border border-outline-variant p-6 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-100 rounded-lg flex-shrink-0">
+              <UserPlus className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <h4 className="text-base font-bold text-on-surface">Staff sudah di outlet lain</h4>
+              <p className="text-sm text-on-surface-variant mt-1">
+                <span className="font-medium text-on-surface">{conflictUser.full_name}</span> saat ini
+                di-assign ke <span className="font-medium text-on-surface">{conflictUser.outlet?.name ?? "outlet lain"}</span>.
+              </p>
+              <p className="text-sm text-on-surface-variant mt-2">Pilih tindakan:</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <button
+              onClick={async () => {
+                await doAssign(conflictUser.id);
+                setConflictUser(null);
+              }}
+              disabled={assign.isPending}
+              className="w-full px-4 py-3 rounded-xl bg-primary text-on-primary text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-all text-left"
+            >
+              <p className="font-semibold">Pindahkan ke {outlet.name}</p>
+              <p className="text-xs opacity-80 font-normal mt-0.5">
+                Hapus dari {conflictUser.outlet?.name ?? "outlet lama"}, assign ke outlet ini
+              </p>
+            </button>
+            <button
+              onClick={() => setConflictUser(null)}
+              className="w-full px-4 py-3 rounded-xl border border-outline-variant text-on-surface text-sm font-semibold hover:bg-surface-container transition-all text-left"
+            >
+              <p className="font-semibold">Batalkan</p>
+              <p className="text-xs text-on-surface-variant font-normal mt-0.5">
+                Pilih staff lain untuk di-assign ke {outlet.name}
+              </p>
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
+  );
+}
+
+// ── Sub-component ─────────────────────────────────────────────────────────────
+
+function CandidateRow({
+  user,
+  justAssigned,
+  isPending,
+  onAssign,
+  currentOutletName,
+}: {
+  user: User;
+  justAssigned: boolean;
+  isPending: boolean;
+  onAssign: () => void;
+  currentOutletName?: string;
+}) {
+  return (
+    <li className="flex items-center justify-between gap-3 p-3 bg-surface border border-outline-variant rounded-lg">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-9 h-9 rounded-full bg-surface-container-high text-on-surface flex items-center justify-center font-semibold flex-shrink-0">
+          {user.full_name.slice(0, 1).toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-on-surface truncate">{user.full_name}</p>
+          <p className="text-xs text-on-surface-variant truncate">
+            {user.email} · <span className="capitalize">{user.role.replace(/_/g, " ")}</span>
+          </p>
+          {currentOutletName && (
+            <p className="text-xs text-amber-600 mt-0.5">📍 {currentOutletName}</p>
+          )}
+        </div>
+      </div>
+      <button
+        onClick={onAssign}
+        disabled={isPending}
+        className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-all flex-shrink-0 ${
+          justAssigned
+            ? "bg-primary/10 text-primary"
+            : currentOutletName
+            ? "bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-60"
+            : "bg-primary text-on-primary hover:opacity-90 disabled:opacity-60"
+        }`}
+      >
+        {justAssigned ? (
+          <><CheckCircle className="w-4 h-4" /> Terassign</>
+        ) : (
+          <><UserPlus className="w-4 h-4" /> Assign</>
+        )}
+      </button>
+    </li>
   );
 }
