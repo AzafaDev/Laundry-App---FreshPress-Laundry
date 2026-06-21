@@ -156,7 +156,7 @@ export default function ProfilePage() {
 
     setPwdLoading(true);
     try {
-      await axiosInstance.patch("/v1/customer/profile/password", { currentPassword: pwdForm.currentPassword, newPassword: pwdForm.newPassword });
+      await axiosInstance.patch("/v1/customer/profile/password", { current_password: pwdForm.currentPassword, new_password: pwdForm.newPassword });
       setPwdSuccess("Password berhasil diubah.");
       setPwdForm({ currentPassword: "", newPassword: "", confirm: "" });
     } catch (err: unknown) {

@@ -14,8 +14,15 @@ function getParamId(value: string | string[] | undefined): string {
 
 export const listAddresses = asyncHandler(async (req: Request, res: Response) => {
   const customerId = req.user!.userId;
-  const addresses = await AddressService.listAddresses(customerId);
-  ok(res, addresses, "Daftar alamat berhasil diambil.");
+  const { page, limit } = req.query as { page?: string; limit?: string };
+
+  if (page && limit) {
+    const result = await AddressService.listAddressesPaginated(customerId, Number(page), Number(limit));
+    ok(res, result, "Daftar alamat berhasil diambil.");
+  } else {
+    const addresses = await AddressService.listAddresses(customerId);
+    ok(res, addresses, "Daftar alamat berhasil diambil.");
+  }
 });
 
 export const createAddress = asyncHandler(async (req: Request, res: Response) => {
