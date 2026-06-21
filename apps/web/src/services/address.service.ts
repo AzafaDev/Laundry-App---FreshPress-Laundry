@@ -67,10 +67,25 @@ export interface DeliveryEstimate {
 
 type Envelope<T> = { success: true; data: T; message: string };
 
+export interface AddressPaginatedResult {
+  addresses: CustomerAddress[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export const addressService = {
   list: async (): Promise<CustomerAddress[]> => {
     const { data } = await axiosInstance.get<Envelope<CustomerAddress[]>>(
       "/v1/customer/addresses",
+    );
+    return data.data;
+  },
+
+  listPaginated: async (page: number, limit: number): Promise<AddressPaginatedResult> => {
+    const { data } = await axiosInstance.get<Envelope<AddressPaginatedResult>>(
+      `/v1/customer/addresses?page=${page}&limit=${limit}`,
     );
     return data.data;
   },

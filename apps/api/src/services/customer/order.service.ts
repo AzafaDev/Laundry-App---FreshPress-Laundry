@@ -1,219 +1,11 @@
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
-import { notifyCustomer, notifyOutletEmployees } from "../../lib/notification.js";
-import { emitToRoom } from "../../lib/socket.js";
+import { notifyCustomer } from "../../lib/notification.js";
 
-const FREE_RADIUS_KM = Number(5);
-const FLAT_RATE_ONGKIR = Number(10_000);
-
-function haversineKm(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function generateInvoiceNumber(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  const random = Math.floor(Math.random() * 900_000) + 100_000;
-  return `INV-${y}${m}${d}-${random}`;
-}
-
-function calculateDeliveryFee(distanceKm: number): number {
-  if (distanceKm <= FREE_RADIUS_KM) return 0;
-  return FLAT_RATE_ONGKIR;
-}
-
-export interface CreateCustomerOrderInput {
-  pickup_address_id: string;
-  pickup_date: string;
-  service_type: "wash-and-fold" | "dry-cleaning";
-  estimated_weight_kg?: number;
-  notes?: string;
-}
-
-export const createCustomerOrder = async (
-  customerId: string,
-  input: CreateCustomerOrderInput,
-) => {
-  const customer = await prisma.customer.findUnique({
-    where: { id: customerId },
-    select: { is_verified: true },
-  });
-  if (!customer?.is_verified) {
-    throw new AppError("Akun belum terverifikasi. Silakan verifikasi email terlebih dahulu.", 403);
-  }
-
-  const pickupAddress = await prisma.customerAddress.findFirst({
-    where: { id: input.pickup_address_id, customer_id: customerId },
-    select: {
-      id: true,
-      latitude: true,
-      longitude: true,
-    },
-  });
-
-  if (!pickupAddress) {
-    throw new AppError("Alamat pickup tidak ditemukan.", 404);
-  }
-
-  const outlets = await prisma.outlet.findMany({
-    where: { is_active: true, deleted_at: null },
-    select: { id: true, latitude: true, longitude: true, service_radius_km: true },
-  });
-
-  if (outlets.length === 0) {
-    throw new AppError("Tidak ada outlet aktif.", 404);
-  }
-
-  const nearestOutlet = outlets
-    .map((outlet) => ({
-      id: outlet.id,
-      distance: haversineKm(
-        Number(pickupAddress.latitude),
-        Number(pickupAddress.longitude),
-        Number(outlet.latitude),
-        Number(outlet.longitude),
-      ),
-      service_radius_km: Number(outlet.service_radius_km),
-    }))
-    .filter((outlet) => outlet.distance <= outlet.service_radius_km)
-    .sort((a, b) => a.distance - b.distance)[0];
-
-  if (!nearestOutlet) {
-    throw new AppError("Alamat berada di luar jangkauan outlet.", 400);
-  }
-
-  const pickupDate = new Date(`${input.pickup_date}T00:00:00.000Z`);
-  if (Number.isNaN(pickupDate.getTime())) {
-    throw new AppError("Tanggal pickup tidak valid.", 400);
-  }
-
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  if (pickupDate < todayStart) {
-    throw new AppError("Jadwal pickup tidak boleh di masa lalu.", 400);
-  }
-
-  const maxDate = new Date();
-  maxDate.setDate(maxDate.getDate() + 7);
-  maxDate.setHours(23, 59, 59, 999);
-  if (pickupDate > maxDate) {
-    throw new AppError("Jadwal pickup maksimal 7 hari ke depan.", 400);
-  }
-
-  const estimatedWeightKg =
-    input.service_type === "dry-cleaning"
-      ? 0
-      : Number(input.estimated_weight_kg ?? 0);
-
-  const invoiceNumber = generateInvoiceNumber();
-
-  const order = await prisma.$transaction(async (tx) => {
-    const createdOrder = await tx.order.create({
-      data: {
-        invoice_number: invoiceNumber,
-        customer_id: customerId,
-        outlet_id: nearestOutlet.id,
-        pickup_address_id: input.pickup_address_id,
-        status: "waiting_pickup_driver",
-        pickup_date: pickupDate,
-        total_weight_kg: estimatedWeightKg,
-        delivery_fee: calculateDeliveryFee(nearestOutlet.distance),
-        total_price: 0,
-        notes: input.notes
-          ? `[service:${input.service_type}] ${input.notes}`
-          : `[service:${input.service_type}]`,
-      },
-    });
-
-    await tx.orderStatusHistory.create({
-      data: {
-        order_id: createdOrder.id,
-        old_status: null,
-        new_status: "waiting_pickup_driver",
-        changed_by_type: "customer",
-        changed_by_id: customerId,
-        note: "Customer membuat permintaan pickup.",
-      },
-    });
-
-    await tx.driverTask.create({
-      data: {
-        order_id: createdOrder.id,
-        task_type: "pickup",
-        status: "available",
-      },
-    });
-
-    return tx.order.findUnique({
-      where: { id: createdOrder.id },
-      include: {
-        outlet: {
-          select: { id: true, name: true, city: true },
-        },
-        pickup_address: {
-          select: {
-            id: true,
-            label: true,
-            address: true,
-            city: true,
-            district: true,
-            province: true,
-          },
-        },
-        status_histories: {
-          orderBy: { created_at: "desc" },
-          take: 20,
-        },
-        payment: {
-          select: {
-            status: true,
-            amount: true,
-            created_at: true,
-          },
-        },
-        customer: {
-          select: { full_name: true },
-        },
-      },
-    });
-  });
-
-  if (order) {
-    emitToRoom(`outlet:${nearestOutlet.id}`, "order:new-pickup-request", {
-      orderId: order.id,
-      invoiceNumber: order.invoice_number,
-      customerName: order.customer?.full_name,
-      pickupAddress: order.pickup_address?.address,
-      timestamp: new Date(),
-    });
-
-    await notifyOutletEmployees(
-      nearestOutlet.id,
-      ["outlet_admin", "driver"],
-      "Permintaan pickup baru",
-      `${order.customer?.full_name ?? "Customer"} memesan pickup (${order.invoice_number})`,
-      "new_pickup_request",
-      order.id,
-    );
-  }
-
-  return order;
-};
+// Re-export from split files so controllers' namespace imports still work
+export { createCustomerOrder } from "./order.create.service.js";
+export { createCustomerComplaint, type CreateComplaintInput } from "./order.complaint.service.js";
+export type { CreateCustomerOrderInput } from "./order.helpers.js";
 
 export interface ListCustomerOrdersOptions {
   status?: string;
@@ -224,10 +16,7 @@ export interface ListCustomerOrdersOptions {
   limit?: number;
 }
 
-export const listCustomerOrders = async (
-  customerId: string,
-  options: ListCustomerOrdersOptions = {},
-) => {
+export const listCustomerOrders = async (customerId: string, options: ListCustomerOrdersOptions = {}) => {
   const { status, search, date_from, date_to, page = 1, limit = 10 } = options;
   const skip = (page - 1) * limit;
 
@@ -235,11 +24,7 @@ export const listCustomerOrders = async (
   const where: OrderWhere = { customer_id: customerId, deleted_at: null };
 
   if (status) where.status = status as never;
-
-  if (search) {
-    where.invoice_number = { contains: search, mode: "insensitive" };
-  }
-
+  if (search) where.invoice_number = { contains: search, mode: "insensitive" };
   if (date_from || date_to) {
     const range: Record<string, Date> = {};
     if (date_from) range.gte = new Date(`${date_from}T00:00:00`);
@@ -251,9 +36,7 @@ export const listCustomerOrders = async (
     outlet: { select: { id: true, name: true, city: true, phone: true } },
     status_histories: { orderBy: { created_at: "desc" as const }, take: 20 },
     payment: { select: { status: true, amount: true, paid_at: true } },
-    order_items: {
-      include: { laundry_item: { select: { id: true, name: true, unit: true } } },
-    },
+    order_items: { include: { laundry_item: { select: { id: true, name: true, unit: true } } } },
     complaints: { select: { id: true, status: true, resolution_notes: true } },
   };
 
@@ -261,7 +44,6 @@ export const listCustomerOrders = async (
     prisma.order.findMany({ where, skip, take: limit, orderBy: { created_at: "desc" }, include }),
     prisma.order.count({ where }),
   ]);
-
   return { orders, total, page, limit, totalPages: Math.ceil(total / limit) };
 };
 
@@ -269,39 +51,18 @@ export const completeCustomerOrder = async (customerId: string, orderId: string)
   const order = await prisma.order.findFirst({
     where: { id: orderId, customer_id: customerId, deleted_at: null },
   });
-
-  if (!order) {
-    throw new AppError("Order tidak ditemukan.", 404);
-  }
-
-  if (order.status !== "received_by_customer") {
-    throw new AppError("Order belum bisa diselesaikan.", 400);
-  }
+  if (!order) throw new AppError("Order tidak ditemukan.", 404);
+  if (order.status !== "received_by_customer") throw new AppError("Order belum bisa diselesaikan.", 400);
 
   await prisma.$transaction([
-    prisma.order.update({
-      where: { id: order.id },
-      data: { status: "completed" },
-    }),
+    prisma.order.update({ where: { id: order.id }, data: { status: "completed" } }),
     prisma.orderStatusHistory.create({
-      data: {
-        order_id: order.id,
-        old_status: "received_by_customer",
-        new_status: "completed",
-        changed_by_type: "customer",
-        changed_by_id: customerId,
-        note: "Customer mengonfirmasi pesanan telah selesai.",
-      },
+      data: { order_id: order.id, old_status: "received_by_customer", new_status: "completed", changed_by_type: "customer", changed_by_id: customerId, note: "Customer mengonfirmasi pesanan telah selesai." },
     }),
   ]);
 
-  await notifyCustomer(
-    customerId,
-    "Pesanan selesai",
-    `Pesanan ${order.invoice_number} telah selesai. Terima kasih telah menggunakan layanan kami.`,
-    "order_completed",
-    order.id,
-  );
+  await notifyCustomer(customerId, "Pesanan selesai",
+    `Pesanan ${order.invoice_number} telah selesai. Terima kasih telah menggunakan layanan kami.`, "order_completed", order.id);
 
   return prisma.order.findUnique({
     where: { id: order.id },
@@ -309,117 +70,22 @@ export const completeCustomerOrder = async (customerId: string, orderId: string)
       outlet: { select: { id: true, name: true, city: true } },
       status_histories: { orderBy: { created_at: "desc" }, take: 20 },
       payment: { select: { status: true, amount: true, paid_at: true } },
-      order_items: {
-        include: {
-          laundry_item: { select: { id: true, name: true, unit: true } },
-        },
-      },
+      order_items: { include: { laundry_item: { select: { id: true, name: true, unit: true } } } },
     },
   });
-};
-
-export interface CreateComplaintInput {
-  complaint_type: string;
-  description: string;
-  photo_urls?: string[];
-}
-
-export const createCustomerComplaint = async (
-  customerId: string,
-  orderId: string,
-  input: CreateComplaintInput,
-) => {
-  const order = await prisma.order.findFirst({
-    where: { id: orderId, customer_id: customerId, deleted_at: null },
-    include: {
-      customer: { select: { full_name: true } },
-    },
-  });
-
-  if (!order) {
-    throw new AppError("Order tidak ditemukan.", 404);
-  }
-
-  if (order.status !== "received_by_customer") {
-    throw new AppError("Komplain hanya bisa diajukan untuk pesanan yang sudah diterima.", 400);
-  }
-
-  const existingComplaint = await prisma.complaint.findFirst({
-    where: { order_id: orderId },
-  });
-
-  if (existingComplaint) {
-    throw new AppError("Komplain untuk pesanan ini sudah pernah diajukan.", 400);
-  }
-
-  const complaint = await prisma.complaint.create({
-    data: {
-      order_id: order.id,
-      customer_id: customerId,
-      complaint_type: input.complaint_type,
-      description: input.description,
-      photo_urls: input.photo_urls ?? [],
-    },
-  });
-
-  if (order.outlet_id) {
-    emitToRoom(`outlet:${order.outlet_id}`, "order:complaint-submitted", {
-      orderId: order.id,
-      invoiceNumber: order.invoice_number,
-      customerName: order.customer?.full_name,
-      complaintType: complaint.complaint_type,
-      timestamp: new Date(),
-    });
-
-    await notifyOutletEmployees(
-      order.outlet_id,
-      ["outlet_admin"],
-      "Komplain baru",
-      `${order.customer?.full_name ?? "Customer"} mengajukan komplain untuk pesanan ${order.invoice_number}`,
-      "complaint_submitted",
-      order.id,
-    );
-  }
-
-  return complaint;
 };
 
 export const getCustomerOrderById = async (customerId: string, orderId: string) => {
   const order = await prisma.order.findFirst({
     where: { id: orderId, customer_id: customerId, deleted_at: null },
     include: {
-      outlet: {
-        select: { id: true, name: true, city: true, address: true },
-      },
-      pickup_address: {
-        select: {
-          id: true,
-          label: true,
-          address: true,
-          city: true,
-          district: true,
-          province: true,
-          postal_code: true,
-        },
-      },
-      status_histories: {
-        orderBy: { created_at: "desc" },
-        take: 50,
-      },
+      outlet: { select: { id: true, name: true, city: true, address: true } },
+      pickup_address: { select: { id: true, label: true, address: true, city: true, district: true, province: true, postal_code: true } },
+      status_histories: { orderBy: { created_at: "desc" }, take: 50 },
       payment: true,
-      order_items: {
-        include: {
-          laundry_item: {
-            select: { id: true, name: true, unit: true },
-          },
-        },
-      },
+      order_items: { include: { laundry_item: { select: { id: true, name: true, unit: true } } } },
     },
   });
-
-  if (!order) {
-    throw new AppError("Order tidak ditemukan.", 404);
-  }
-
+  if (!order) throw new AppError("Order tidak ditemukan.", 404);
   return order;
 };
