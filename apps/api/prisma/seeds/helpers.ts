@@ -15,6 +15,12 @@ export function getRandomDateInRange(startDaysAgo: number, endDaysAgo: number): 
   return subDays(today, endDaysAgo + randomDays);
 }
 
+export function getRandomDateInAbsoluteRange(start: Date, end: Date): Date {
+  const startMs = start.getTime();
+  const endMs = end.getTime();
+  return new Date(startMs + Math.random() * (endMs - startMs));
+}
+
 export function formatLocalTime(date: Date | null): string | null {
   if (!date) return null;
   const hours = String(date.getHours()).padStart(2, '0');

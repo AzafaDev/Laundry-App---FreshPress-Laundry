@@ -124,6 +124,12 @@ export const BottomNav = () => {
           href="/dashboard/driver/history"
           active={pathname.startsWith("/dashboard/driver/history")}
         />
+        <NavItem
+          icon={Bell}
+          label="Notifikasi"
+          href="/dashboard/driver/notifications"
+          active={pathname.startsWith("/dashboard/driver/notifications")}
+        />
       </nav>
     );
   }

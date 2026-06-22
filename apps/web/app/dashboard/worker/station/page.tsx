@@ -5,7 +5,6 @@ import { useWorkerStation } from "@/hooks/useWorkerStation";
 import { useWorkerStationSocket } from "@/hooks/useWorkerStationSocket";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { useAttendance } from "@/hooks/useAttendance";
-import { useQueryClient } from "@tanstack/react-query";
 import { WorkerSidebar } from "@/components/dashboard/WorkerSidebar";
 import { WorkerTopBar } from "@/components/dashboard/WorkerTopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -18,7 +17,6 @@ import { stationConfig, type BypassState } from "@/components/worker/stationConf
 import { Loader2, AlertCircle, Wifi, WifiOff } from "lucide-react";
 import toast from "react-hot-toast";
 import type { Discrepancy } from "@/services/workerStation.service";
-import { workerStationService } from "@/services/workerStation.service";
 
 export default function WorkerStationPage() {
   const { user, _hasHydrated } = useEmployeeAuthStore();
@@ -43,8 +41,7 @@ export default function WorkerStationPage() {
   else if (user?.role === "packing_worker") station = "packing";
 
   const { checkedIn } = useAttendance();
-  const { stationOrders, isLoading } = useWorkerStation();
-  const queryClient = useQueryClient();
+  const { stationOrders, isLoading, submitItems } = useWorkerStation();
 
   useWorkerStationSocket({ station, setIsConnected, setBypassState });
 
@@ -122,21 +119,9 @@ export default function WorkerStationPage() {
 
     setProcessingId(orderId);
     try {
-      const result = await workerStationService.submitItems(station, orderId, actual_items, actual_satuan_items);
+      await submitItems({ stationType: station, orderId, actual_items, actual_satuan_items });
 
       setModalOpen(false);
-
-      if ("requiresBypass" in result && result.requiresBypass) {
-        setVerificationResult({
-          type: "mismatch",
-          orderId,
-          invoiceNumber: order.invoice_number,
-          discrepancies: result.discrepancies,
-          actualItems: { breakdown: actual_items, satuan: actual_satuan_items },
-        });
-        return;
-      }
-
       setVerificationResult({ type: "success", orderId, invoiceNumber: order.invoice_number });
       setBypassState((prev) => {
         const next = { ...prev };
@@ -166,7 +151,6 @@ export default function WorkerStationPage() {
   const handleVerificationClose = () => {
     if (verificationResult?.type === "success" && station) {
       toast.success(`Order #${verificationResult.invoiceNumber} berhasil diverifikasi`);
-      queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     }
     setVerificationResult(null);
   };

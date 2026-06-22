@@ -1,7 +1,14 @@
 import { prisma as defaultPrisma } from '../../src/lib/prisma.js';
-import { getRandomDateInRange } from './helpers.js';
 import type { EmployeeModel, WorkShiftModel } from '../../generated/prisma/models.js';
 import type { PrismaClient } from '../../generated/prisma/client.js';
+
+const ATTENDANCE_RANGE_START = new Date('2025-01-01T00:00:00.000Z');
+const todayStart = new Date();
+todayStart.setUTCHours(0, 0, 0, 0);
+const ATTENDANCE_RANGE_END = new Date(Math.min(
+  new Date('2026-06-30T23:59:59.999Z').getTime(),
+  todayStart.getTime() - 1, // akhir hari kemarin — hari ini sengaja dikosongkan buat manual test
+));
 
 const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
 
@@ -53,10 +60,13 @@ export async function seedAttendances(
     const shiftName = emp.email.includes('.afternoon.') ? 'Afternoon' : 'Morning';
     const shift = shiftMap[shiftName];
 
-    const totalRecords = Math.floor(Math.random() * 15) + 12;
     const records = [];
-    for (let i = 0; i < totalRecords; i++) {
-      const randomDate = getRandomDateInRange(90, 1);
+    for (
+      let day = new Date(ATTENDANCE_RANGE_START);
+      day <= ATTENDANCE_RANGE_END;
+      day.setUTCDate(day.getUTCDate() + 1)
+    ) {
+      const randomDate = new Date(day);
       const dayOfWeek = randomDate.getUTCDay();
       if (dayOfWeek === 0 || dayOfWeek === 6) continue;
 

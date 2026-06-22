@@ -1,15 +1,10 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, CheckCheck, Loader2, RefreshCw } from "lucide-react";
 import { DriverSidebar } from "@/components/dashboard/DriverSidebar";
 import { DriverTopBar } from "@/components/dashboard/DriverTopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
-import {
-  driverNotificationService,
-  type CustomerNotification,
-} from "@/services/notification.service";
-import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { useEmployeeNotifications } from "@/hooks/useEmployeeNotifications";
 
 const formatDateTime = (value: string) =>
   new Intl.DateTimeFormat("id-ID", {
@@ -21,36 +16,15 @@ const formatDateTime = (value: string) =>
   }).format(new Date(value));
 
 export default function DriverNotificationsPage() {
-  const { user, _hasHydrated } = useEmployeeAuthStore();
-  const queryClient = useQueryClient();
-
   const {
-    data: notifications = [],
+    notifications,
     isLoading,
     isError,
     refetch,
-  } = useQuery<CustomerNotification[]>({
-    queryKey: ["driver", "notifications"],
-    queryFn: driverNotificationService.list,
-    enabled: _hasHydrated && !!user,
-    refetchInterval: 30_000,
-  });
-
-  const markAsReadMutation = useMutation({
-    mutationFn: (id: string) => driverNotificationService.markAsRead(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["driver", "notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["driver", "notifications", "unread"] });
-    },
-  });
-
-  const markAllAsReadMutation = useMutation({
-    mutationFn: () => driverNotificationService.markAllAsRead(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["driver", "notifications"] });
-      queryClient.invalidateQueries({ queryKey: ["driver", "notifications", "unread"] });
-    },
-  });
+    markAsRead,
+    markAllAsRead,
+    isMarkingAllAsRead,
+  } = useEmployeeNotifications();
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
@@ -60,7 +34,7 @@ export default function DriverNotificationsPage() {
       <DriverTopBar />
 
       <main className="lg:pl-72 pb-24 lg:pb-8">
-        <div className="p-4 md:p-6 max-w-2xl space-y-4">
+        <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-4">
 
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -74,11 +48,11 @@ export default function DriverNotificationsPage() {
             </div>
             {unreadCount > 0 && (
               <button
-                onClick={() => markAllAsReadMutation.mutate()}
-                disabled={markAllAsReadMutation.isPending}
+                onClick={() => markAllAsRead()}
+                disabled={isMarkingAllAsRead}
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-outline-variant text-sm font-medium text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50"
               >
-                {markAllAsReadMutation.isPending
+                {isMarkingAllAsRead
                   ? <Loader2 className="w-4 h-4 animate-spin" />
                   : <CheckCheck className="w-4 h-4" />
                 }
@@ -130,7 +104,7 @@ export default function DriverNotificationsPage() {
                   key={notif.id}
                   type="button"
                   onClick={() => {
-                    if (!notif.is_read) markAsReadMutation.mutate(notif.id);
+                    if (!notif.is_read) markAsRead(notif.id);
                   }}
                   className={`w-full text-left rounded-xl border p-4 flex gap-3 items-start transition-colors ${
                     notif.is_read

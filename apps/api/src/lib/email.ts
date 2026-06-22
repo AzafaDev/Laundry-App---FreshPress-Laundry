@@ -112,3 +112,28 @@ export const sendEmployeeInviteEmail = async (
     `,
   });
 };
+
+export const sendPaymentReminderEmail = async (
+  to: string,
+  customerName: string,
+  invoiceNumber: string,
+  amount: number,
+  orderId: string,
+): Promise<void> => {
+  const link = `${env.CLIENT_URL}/customer/payment/${orderId}`;
+  const fmt = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount);
+  await getResend().emails.send({
+    from: FROM,
+    to,
+    subject: `Pembayaran Diperlukan — Pesanan ${invoiceNumber}`,
+    html: `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+        <h2 style="color:#00685f;">Pesanan Anda Sudah Selesai Diproses</h2>
+        <p>Halo <strong>${customerName}</strong>,</p>
+        <p>Pesanan <strong>${invoiceNumber}</strong> sudah selesai dikemas dan siap diproses lebih lanjut. Total pembayaran: <strong>${fmt}</strong>.</p>
+        <a href="${link}" style="display:inline-block;background:#00685f;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0;">Bayar Sekarang</a>
+        <p style="color:#666;font-size:13px;">Jika Anda sudah melakukan pembayaran, abaikan email ini.</p>
+      </div>
+    `,
+  });
+};

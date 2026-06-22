@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { X, Flag, Loader2, ImageIcon, Shirt, Tag } from "lucide-react";
-import { workerStationService, type BypassDetail } from "@/services/workerStation.service";
+import { useBypassDetail } from "@/hooks/useWorkerStation";
 
 interface BypassViewModalProps {
   open: boolean;
@@ -24,16 +23,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function BypassViewModal({ open, orderId, invoiceNumber, onClose }: BypassViewModalProps) {
-  const [bypass, setBypass] = useState<BypassDetail | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!open) { setBypass(null); return; }
-    setLoading(true);
-    workerStationService.getBypassDetail(orderId)
-      .then(setBypass)
-      .finally(() => setLoading(false));
-  }, [open, orderId]);
+  const { data: bypass, isLoading: loading } = useBypassDetail(orderId, open);
 
   if (!open) return null;
 
