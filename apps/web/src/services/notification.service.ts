@@ -57,30 +57,3 @@ export const notificationService = {
     await axiosInstance.patch("/v1/customer/notifications/read-all");
   },
 };
-
-export const driverNotificationService = {
-  list: async (): Promise<CustomerNotification[]> => {
-    const { data } = await axiosInstance.get<Envelope<CustomerNotification[]>>(
-      "/v1/driver/notifications",
-    );
-    return data.data;
-  },
-
-  getUnreadCount: async (): Promise<number> => {
-    const { data } = await axiosInstance.get<Envelope<{ count: number }>>(
-      "/v1/driver/notifications/unread-count",
-    );
-    return data.data.count;
-  },
-
-  markAsRead: async (notificationId: string): Promise<CustomerNotification> => {
-    const { data } = await axiosInstance.patch<Envelope<CustomerNotification>>(
-      `/v1/driver/notifications/${notificationId}/read`,
-    );
-    return data.data;
-  },
-
-  markAllAsRead: async (): Promise<void> => {
-    await axiosInstance.patch("/v1/driver/notifications/read-all");
-  },
-};

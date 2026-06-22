@@ -89,23 +89,6 @@ export function OrderCard({
         {order.order_item_breakdowns.length} jenis item
         {order.total_weight_kg ? ` • ${order.total_weight_kg} kg` : ""}
       </p>
-
-      <div className="flex flex-wrap gap-1.5 mb-4">
-        {order.order_item_breakdowns.slice(0, 3).map((item) => (
-          <span
-            key={item.id}
-            className="text-xs bg-surface-container-low text-on-surface-variant px-2 py-0.5 rounded-md border border-outline-variant"
-          >
-            {item.clothing_type.name} ×{item.quantity}
-          </span>
-        ))}
-        {order.order_item_breakdowns.length > 3 && (
-          <span className="text-xs text-on-surface-variant px-1">
-            +{order.order_item_breakdowns.length - 3} lagi
-          </span>
-        )}
-      </div>
-
       {isPendingBypass ? (
         <>
           <PendingBypassBanner />

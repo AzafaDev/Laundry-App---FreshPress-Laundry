@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { workerStationService, type StationType, type StationOrder } from "@/services/workerStation.service";
+import { workerStationService, type StationType, type StationOrder, type BypassDetail, type WorkerTaskHistoryResponse } from "@/services/workerStation.service";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
 const ROLE_TO_STATION: Record<string, StationType> = {
@@ -26,9 +26,25 @@ export function useWorkerStation() {
     refetchOnWindowFocus: true,
   });
 
-  const completeStationMutation = useMutation({
-    mutationFn: ({ orderId, stationType }: { orderId: string; stationType: StationType }) =>
-      workerStationService.completeStation(stationType, orderId),
+  const submitItemsMutation = useMutation({
+    mutationFn: ({
+      stationType,
+      orderId,
+      actual_items,
+      actual_satuan_items,
+    }: {
+      stationType: StationType;
+      orderId: string;
+      actual_items: { clothing_type_id: string; actual_quantity: number }[];
+      actual_satuan_items: { laundry_item_id: string; actual_quantity: number }[];
+    }) => workerStationService.submitItems(stationType, orderId, actual_items, actual_satuan_items),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
+    },
+  });
+
+  const createBypassMutation = useMutation({
+    mutationFn: (formData: FormData) => workerStationService.createBypassRequest(formData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     },
@@ -42,8 +58,26 @@ export function useWorkerStation() {
     isLoading: stationOrdersQuery.isLoading,
     isError: stationOrdersQuery.isError,
     isCompleted: !!stationOrdersQuery.data,
-    completeStation: completeStationMutation.mutateAsync,
-    isCompleting: completeStationMutation.isPending,
+    submitItems: submitItemsMutation.mutateAsync,
+    isSubmittingItems: submitItemsMutation.isPending,
+    createBypassRequest: createBypassMutation.mutateAsync,
+    isCreatingBypass: createBypassMutation.isPending,
     refetch: stationOrdersQuery.refetch,
   };
+}
+
+export function useBypassDetail(orderId: string | null, enabled = true) {
+  return useQuery<BypassDetail | null>({
+    queryKey: ["worker", "bypass", orderId],
+    queryFn: () => workerStationService.getBypassDetail(orderId!),
+    enabled: !!orderId && enabled,
+    refetchOnMount: "always",
+  });
+}
+
+export function useTaskHistory(page: number, limit: number) {
+  return useQuery<WorkerTaskHistoryResponse>({
+    queryKey: ["worker", "task-history", page],
+    queryFn: () => workerStationService.getTaskHistory(page, limit),
+  });
 }

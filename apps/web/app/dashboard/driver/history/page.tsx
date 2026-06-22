@@ -28,7 +28,8 @@ export default function DriverHistoryPage() {
     <div className="min-h-screen bg-background pb-24 lg:pb-0">
       <DriverSidebar />
       <DriverTopBar />
-      <main className="lg:pl-72 p-4 md:p-8 space-y-5">
+      <main className="lg:pl-72 p-4 md:p-8">
+        <div className="max-w-4xl mx-auto space-y-5">
         <div>
           <h1 className="text-xl font-bold text-on-surface mb-1">Riwayat</h1>
           <p className="text-sm text-on-surface-variant">Rekap aktivitas kamu sebagai driver</p>
@@ -60,6 +61,7 @@ export default function DriverHistoryPage() {
             pageTitle="Riwayat Absensi Driver"
           />
         )}
+        </div>
       </main>
       <BottomNav />
     </div>

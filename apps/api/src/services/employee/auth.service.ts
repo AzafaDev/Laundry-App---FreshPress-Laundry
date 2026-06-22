@@ -2,12 +2,8 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
-import {
-  signAccessToken,
-  signRefreshToken,
-  verifyRefreshToken,
-} from "../../utils/jwt.util.js";
-import { parseDuration, storeRefreshToken, revokeRefreshToken, hashToken } from "../../utils/token.util.js";
+import { verifyRefreshToken } from "../../utils/jwt.util.js";
+import { revokeRefreshToken, hashToken, issueAuthTokens, buildAuthCookieOptions } from "../../utils/token.util.js";
 import { sendEmployeeResetPasswordEmail } from "../../lib/email.js";
 import { Response } from "express";
 
@@ -34,42 +30,12 @@ export const loginEmployee = async (
     throw new AppError("Akun Anda tidak aktif.", 403);
   }
 
-  const accessToken = signAccessToken({
+  await issueAuthTokens(res, {
     userId: employee.id,
     role: employee.role,
     email: employee.email,
     outletId: employee.outlet_id,
     tokenVersion: employee.token_version,
-  });
-
-  const refreshToken = signRefreshToken({
-    userId: employee.id,
-    role: employee.role,
-    email: employee.email,
-    outletId: employee.outlet_id,
-    tokenVersion: employee.token_version,
-  });
-
-  const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
-  const expiresMs = parseDuration(expiresIn);
-  const expiresAt = new Date(Date.now() + expiresMs);
-
-  await storeRefreshToken(employee.id, refreshToken, expiresAt, "employee");
-
-  const accessExpiresMs = parseDuration(process.env.JWT_EXPIRES_IN || "15m");
-
-  res.cookie("accessToken", accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    maxAge: accessExpiresMs,
-  });
-
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    maxAge: expiresMs,
   });
 
   const { password_hash: _, outlet, ...employeeWithoutPassword } = employee;
@@ -111,43 +77,7 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
 
   await revokeRefreshToken(refreshToken);
 
-  const newAccessToken = signAccessToken({
-    userId: payload.userId,
-    role: payload.role,
-    email: payload.email,
-    outletId: payload.outletId,
-    tokenVersion: payload.tokenVersion,
-  });
-
-  const newRefreshToken = signRefreshToken({
-    userId: payload.userId,
-    role: payload.role,
-    email: payload.email,
-    outletId: payload.outletId,
-    tokenVersion: payload.tokenVersion,
-  });
-
-  const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
-  const expiresMs = parseDuration(expiresIn);
-  const expiresAt = new Date(Date.now() + expiresMs);
-
-  await storeRefreshToken(payload.userId, newRefreshToken, expiresAt, "employee");
-
-  const accessExpiresMs = parseDuration(process.env.JWT_EXPIRES_IN || "15m");
-
-  res.cookie("accessToken", newAccessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    maxAge: accessExpiresMs,
-  });
-
-  res.cookie("refreshToken", newRefreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    maxAge: expiresMs,
-  });
+  await issueAuthTokens(res, payload);
 
   return {};
 };
@@ -158,17 +88,8 @@ export const logoutEmployee = async (req: any, res: Response) => {
     await revokeRefreshToken(refreshToken);
   }
 
-  res.clearCookie("accessToken", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-  });
-
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-  });
+  res.clearCookie("accessToken", buildAuthCookieOptions());
+  res.clearCookie("refreshToken", buildAuthCookieOptions());
 
   return { message: "Logout berhasil"}
 };
@@ -204,7 +125,7 @@ export const resetPassword = async (rawToken: string, newPassword: string, res: 
   if (!record) throw new AppError("Token tidak valid atau sudah kadaluarsa.", 400);
 
   const password_hash = await bcrypt.hash(newPassword, 10);
-  await prisma.$transaction([
+  const [updatedEmployee] = await prisma.$transaction([
     prisma.employee.update({
       where: { id: record.employee_id },
       data: { password_hash, token_version: { increment: 1 } },
@@ -217,48 +138,18 @@ export const resetPassword = async (rawToken: string, newPassword: string, res: 
 
   // Auto-login: issue tokens so the frontend can redirect to the correct dashboard
   const employee = record.employee;
-  const newTokenVersion = employee.token_version + 1;
-
-  const accessToken = signAccessToken({
-    userId: employee.id,
-    role: employee.role,
-    email: employee.email,
-    outletId: employee.outlet_id,
-    tokenVersion: newTokenVersion,
-  });
-
-  const refreshToken = signRefreshToken({
-    userId: employee.id,
-    role: employee.role,
-    email: employee.email,
-    outletId: employee.outlet_id,
-    tokenVersion: newTokenVersion,
-  });
 
   await prisma.refreshToken.updateMany({
     where: { user_id: employee.id, user_type: "employee", revoked_at: null },
     data: { revoked_at: new Date() },
   });
 
-  const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
-  const expiresMs = parseDuration(expiresIn);
-  const expiresAt = new Date(Date.now() + expiresMs);
-  await storeRefreshToken(employee.id, refreshToken, expiresAt, "employee");
-
-  const accessExpiresMs = parseDuration(process.env.JWT_EXPIRES_IN || "15m");
-
-  res.cookie("accessToken", accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    maxAge: accessExpiresMs,
-  });
-
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    maxAge: expiresMs,
+  await issueAuthTokens(res, {
+    userId: employee.id,
+    role: employee.role,
+    email: employee.email,
+    outletId: employee.outlet_id,
+    tokenVersion: updatedEmployee.token_version,
   });
 
   // Fetch outlet name for store hydration
@@ -291,53 +182,17 @@ export const changePassword = async (
     select: { id: true, role: true, email: true, outlet_id: true, token_version: true },
   });
 
-  const accessToken = signAccessToken({
-    userId: updated.id,
-    role: updated.role,
-    email: updated.email,
-    outletId: updated.outlet_id,
-    tokenVersion: updated.token_version,
-  });
-
-  const newRefreshToken = signRefreshToken({
-    userId: updated.id,
-    role: updated.role,
-    email: updated.email,
-    outletId: updated.outlet_id,
-    tokenVersion: updated.token_version,
-  });
-
-  const expiresIn = process.env.JWT_REFRESH_EXPIRES_IN || "7d";
-  const expiresMs = parseDuration(expiresIn);
-
   await prisma.refreshToken.updateMany({
     where: { user_id: employeeId, user_type: "employee", revoked_at: null },
     data: { revoked_at: new Date() },
   });
 
-  await prisma.refreshToken.create({
-    data: {
-      token: hashToken(newRefreshToken),
-      user_id: updated.id,
-      user_type: "employee",
-      expires_at: new Date(Date.now() + expiresMs),
-    },
-  });
-
-  const accessExpiresMs = parseDuration(process.env.JWT_EXPIRES_IN || "15m");
-
-  res.cookie("accessToken", accessToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    maxAge: accessExpiresMs,
-  });
-
-  res.cookie("refreshToken", newRefreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    maxAge: expiresMs,
+  await issueAuthTokens(res, {
+    userId: updated.id,
+    role: updated.role,
+    email: updated.email,
+    outletId: updated.outlet_id,
+    tokenVersion: updated.token_version,
   });
 
   return { message: "Password berhasil diubah." };

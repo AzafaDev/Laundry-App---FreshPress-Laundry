@@ -1,123 +1,18 @@
 import { prisma } from "../../lib/prisma.js";
 import { emitToRoom, emitToUser } from "../../lib/socket.js";
-import { notifyCustomer, notifyOutletAdmins } from "../../lib/notification.js";
+import { notifyOutletAdmins } from "../../lib/notification.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { OrderStatus, StationType } from "../../../generated/prisma/client.js";
 import { getEmployeeOutlet } from "../../repositories/driver-worker/attendance.repository.js";
+import { runCompleteStationTransaction } from "../../repositories/driver-worker/worker.repository.js";
 import { assertShiftEligibility } from "../../guards/driver-worker/shift.guard.js";
 import {
   resolveNextStatus,
   buildExpectedItems,
   buildActualItems,
   compareItems,
+  emitStationEvents,
 } from "../../helpers/driver-worker/worker.helpers.js";
-
-async function runCompleteStationTransaction(
-  orderId: string,
-  employeeId: string,
-  station: "washing" | "ironing" | "packing",
-  currentStatus: OrderStatus,
-  finalStatus: OrderStatus,
-  checkPendingBypass: boolean,
-  actualItems?: { clothing_type_id: string; actual_quantity: number }[],
-  bypassRequestId?: string,
-) {
-  await prisma.$transaction(async (tx) => {
-    if (checkPendingBypass) {
-      const pendingBypass = await tx.bypassRequest.findFirst({
-        where: { order_id: orderId, station: station as StationType, status: "pending" },
-      });
-      if (pendingBypass) throw new AppError("Terdapat BypassRequest pending untuk order ini, tunggu review admin", 409);
-    }
-
-    const updateResult = await tx.order.updateMany({
-      where: { id: orderId, status: currentStatus },
-      data: { status: finalStatus },
-    });
-    if (updateResult.count === 0) throw new AppError(`Station ${station} sudah diproses`, 409);
-
-    await tx.orderStatusHistory.create({
-      data: {
-        order_id: orderId,
-        old_status: currentStatus,
-        new_status: finalStatus,
-        changed_by_type: "employee",
-        changed_by_id: employeeId,
-        note: `Station ${station} completed by worker`,
-      },
-    });
-
-    await tx.processLog.create({
-      data: {
-        order_id: orderId,
-        station: station as StationType,
-        employee_id: employeeId,
-        input_items: actualItems ?? [],
-        completed_at: new Date(),
-        is_bypassed: !!bypassRequestId,
-        bypass_request_id: bypassRequestId ?? null,
-      },
-    });
-  });
-}
-
-async function emitStationEvents(
-  order: { id: string; invoice_number: string; outlet_id: string | null; customer: { id: string } | null },
-  station: "washing" | "ironing" | "packing",
-  finalStatus: OrderStatus,
-  employeeId: string,
-) {
-  if (order.outlet_id) {
-    emitToRoom(`outlet:${order.outlet_id}`, "station:order-completed", {
-      orderId: order.id, station, newStatus: finalStatus, workerId: employeeId,
-      outletId: order.outlet_id, timestamp: new Date(),
-    });
-    const nextStation = ({ washing: "ironing", ironing: "packing" } as Record<string, string>)[station];
-    if (nextStation) {
-      emitToRoom(`outlet:${order.outlet_id}`, "station:new-order", { station: nextStation, orderId: order.id });
-    }
-    if (station === "packing") {
-      const statusMsg = finalStatus === "waiting_payment"
-        ? "Pesanan menunggu pembayaran dari customer."
-        : "Pesanan siap untuk dikirim.";
-      await notifyOutletAdmins(
-        order.outlet_id,
-        "Pengemasan Selesai",
-        `Pesanan ${order.invoice_number} telah selesai dikemas. ${statusMsg}`,
-        "order_update",
-        order.id,
-      );
-    }
-  }
-
-  if (order.customer?.id) {
-    emitToUser(order.customer.id, "order:status-updated", {
-      orderId: order.id,
-      status: finalStatus,
-      ...(station === "packing" && { message: `Pesanan Anda telah selesai diproses` }),
-    });
-
-    if (station === "packing") {
-      if (finalStatus === "waiting_payment") {
-        await notifyCustomer(
-          order.customer.id,
-          "Pembayaran Diperlukan",
-          `Pesanan ${order.invoice_number} sudah selesai diproses. Silakan lakukan pembayaran.`,
-          "order_update",
-          order.id,
-        );
-      } else if (finalStatus === "ready_for_delivery") {
-        await notifyCustomer(
-          order.customer.id,
-          "Pesanan Siap Dikirim",
-          `Pesanan ${order.invoice_number} sudah selesai dan siap untuk dikirim.`,
-          "order_update",
-          order.id,
-        );
-      }
-    }
-  }
-}
 
 async function buildBypassData(
   orderId: string,
@@ -159,6 +54,7 @@ export const workerService = {
         },
       },
       orderBy: { created_at: "asc" },
+      take: 200,
     });
     return orders.map((o) => ({
       ...o,
@@ -179,7 +75,7 @@ export const workerService = {
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { payment: true, customer: { select: { id: true, full_name: true } } },
+      include: { customer: { select: { id: true, full_name: true, email: true } } },
     });
     if (!order) throw new AppError("Order tidak ditemukan", 404);
     if (order.outlet_id !== outletId) throw new AppError("Order bukan dari outlet Anda", 403);
@@ -265,7 +161,7 @@ export const workerService = {
   ) {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: { payment: true, customer: { select: { id: true, full_name: true } } },
+      include: { customer: { select: { id: true, full_name: true, email: true } } },
     });
     if (!order) throw new AppError("Order tidak ditemukan", 404);
     if (order.status !== station) {

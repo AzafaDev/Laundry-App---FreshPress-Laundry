@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { X, Flag, Upload, Trash2, Loader2, AlertTriangle, ImagePlus, Shirt, Tag } from "lucide-react";
 import { z } from "zod";
-import { workerStationService } from "@/services/workerStation.service";
+import { useWorkerStation } from "@/hooks/useWorkerStation";
+import { useMultiFileValidation } from "@/hooks/useMultiFileValidation";
 import toast from "react-hot-toast";
 import type { Discrepancy } from "@/services/workerStation.service";
 
@@ -27,11 +28,6 @@ interface WorkerBypassModalProps {
   onSuccess: () => void;
 }
 
-interface PhotoPreview {
-  file: File;
-  url: string;
-}
-
 export function WorkerBypassModal({
   open,
   orderId,
@@ -42,49 +38,24 @@ export function WorkerBypassModal({
   onSuccess,
 }: WorkerBypassModalProps) {
   const [description, setDescription] = useState("");
-  const [photos, setPhotos] = useState<PhotoPreview[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [descError, setDescError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const revokeAll = useCallback((list: PhotoPreview[]) => {
-    list.forEach((p) => URL.revokeObjectURL(p.url));
-  }, []);
+  const { createBypassRequest, isCreatingBypass: isSubmitting } = useWorkerStation();
+  const { files: photos, addFiles, removeFile, reset: resetPhotos } = useMultiFileValidation({
+    maxCount: 5,
+    maxSizeBytes: 5 * 1024 * 1024, // 5 MB — harus tetap sinkron manual dengan apps/api/src/config/constants.ts
+    allowedTypes: ["image/jpeg", "image/png", "image/webp"],
+  });
 
   useEffect(() => {
     if (!open) {
       setDescription("");
       setDescError("");
-      setIsSubmitting(false);
-      setPhotos((prev) => { revokeAll(prev); return []; });
+      resetPhotos();
     }
-  }, [open, revokeAll]);
-
-  useEffect(() => {
-    return () => {
-      setPhotos((prev) => { revokeAll(prev); return prev; });
-    };
-  }, [revokeAll]);
+  }, [open, resetPhotos]);
 
   if (!open) return null;
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    if (!files.length) return;
-    const newPreviews: PhotoPreview[] = files.map((file) => ({
-      file,
-      url: URL.createObjectURL(file),
-    }));
-    setPhotos((prev) => [...prev, ...newPreviews]);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const removePhoto = (index: number) => {
-    setPhotos((prev) => {
-      URL.revokeObjectURL(prev[index].url);
-      return prev.filter((_, i) => i !== index);
-    });
-  };
 
   const handleSubmit = async () => {
     const result = bypassSchema.safeParse({ description: description.trim() });
@@ -94,7 +65,6 @@ export function WorkerBypassModal({
     }
     setDescError("");
 
-    setIsSubmitting(true);
     try {
       const formData = new FormData();
       formData.append("order_id", orderId);
@@ -103,15 +73,13 @@ export function WorkerBypassModal({
       formData.append("actual_satuan_items", JSON.stringify(actualItems.satuan));
       photos.forEach((p) => formData.append("photo_evidence", p.file));
 
-      await workerStationService.createBypassRequest(formData);
+      await createBypassRequest(formData);
       toast.success("Bypass request berhasil dikirim");
       onSuccess();
       onClose();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       toast.error(error?.response?.data?.message ?? "Gagal mengirim bypass request");
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -249,7 +217,10 @@ export function WorkerBypassModal({
               accept="image/jpeg,image/png,image/webp"
               multiple
               className="hidden"
-              onChange={handleFileChange}
+              onChange={(e) => {
+                addFiles(Array.from(e.target.files ?? []));
+                if (fileInputRef.current) fileInputRef.current.value = "";
+              }}
             />
 
 
@@ -268,7 +239,7 @@ export function WorkerBypassModal({
                     />
                     <button
                       type="button"
-                      onClick={() => removePhoto(idx)}
+                      onClick={() => removeFile(idx)}
                       className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-error"
                     >
                       <Trash2 className="w-3 h-3" />
