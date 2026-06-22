@@ -193,10 +193,17 @@ export const OrderDataTable = () => {
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              {Array.from(
-                { length: Math.min(pagination.totalPages, 5) },
-                (_, i) => i + 1,
-              ).map((p) => (
+              {(() => {
+                const maxVisible = 5;
+                const total = pagination.totalPages;
+                let start = Math.max(1, page - Math.floor(maxVisible / 2));
+                let end = start + maxVisible - 1;
+                if (end > total) {
+                  end = total;
+                  start = Math.max(1, end - maxVisible + 1);
+                }
+                return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+              })().map((p) => (
                 <button
                   key={p}
                   onClick={() => setPage(p)}

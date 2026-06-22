@@ -91,12 +91,6 @@ const NAV: NavItem[] = [
     roles: ["super_admin", "outlet_admin"],
   },
   {
-    href: "/dashboard/admin/reports",
-    label: "Reports",
-    icon: BarChart3,
-    roles: ["super_admin", "outlet_admin"],
-  },
-  {
     href: "/dashboard/admin/staff/shifts",
     label: "Work Shift Schedule",
     icon: CalendarDays,
@@ -107,6 +101,12 @@ const NAV: NavItem[] = [
     label: "Attendance Report",
     icon: CalendarCheck,
     roles: ["outlet_admin"],
+  },
+  {
+    href: "/dashboard/admin/reports",
+    label: "Reports",
+    icon: BarChart3,
+    roles: ["super_admin", "outlet_admin"],
   },
 ];
 
