@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Mail, Lock, EyeOff, Eye, ArrowRight } from "lucide-react";
+import { Mail, Lock, EyeOff, Eye, ArrowRight, ArrowLeft } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -96,6 +96,15 @@ export default function EmployeeLoginPage() {
           </AuthSubmitButton>
         </form>
       </AuthCard>
+
+      <div className="text-center mt-5">
+        <Link
+          href="/login"
+          className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Kembali ke Login Pelanggan
+        </Link>
+      </div>
     </AuthPageShell>
   );
 }

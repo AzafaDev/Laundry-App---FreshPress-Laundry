@@ -103,7 +103,7 @@ export function AttendanceLog({ records, pagination, onPageChange, isLoading }: 
 
             {/* Time info */}
             <div className="flex-1 min-w-0">
-              <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                 <span className="flex items-center gap-1 text-xs text-on-surface-variant whitespace-nowrap">
                   <LogIn className="w-3 h-3 text-emerald-500 shrink-0" />
                   {record.checkIn}

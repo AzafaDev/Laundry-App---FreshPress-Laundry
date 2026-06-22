@@ -1,5 +1,5 @@
 import { LATE_THRESHOLD_MINUTES } from "../../config/constants.js";
-import { formatShiftHHMM } from "../../utils/format.util.js";
+import { formatShiftHHMM, formatLocalDate, formatLocalTime } from "../../utils/format.util.js";
 
 export function canCheckIn(now: Date, shiftStart: Date, shiftEnd: Date, toleranceMinutes = 15): boolean {
   const allowedStart = new Date(shiftStart.getTime() - toleranceMinutes * 60000);
@@ -27,6 +27,17 @@ export function determineAttendanceStatus(
   if (!checkInTime) return "absent";
   if (!shiftStartTime) return "on_time";
   return isLate(checkInTime, shiftStartTime) ? "late" : "on_time";
+}
+
+export function formatAttendanceRecord<T extends { date: Date; check_in_time: Date | null; check_out_time: Date | null }>(
+  record: T,
+): Omit<T, "date" | "check_in_time" | "check_out_time"> & { date: string; check_in_time: string | null; check_out_time: string | null } {
+  return {
+    ...record,
+    date: formatLocalDate(record.date),
+    check_in_time: formatLocalTime(record.check_in_time),
+    check_out_time: formatLocalTime(record.check_out_time),
+  };
 }
 
 export function buildShiftPayload(

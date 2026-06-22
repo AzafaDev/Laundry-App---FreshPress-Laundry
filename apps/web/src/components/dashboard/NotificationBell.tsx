@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   CheckCheck,
@@ -11,13 +10,8 @@ import {
   PackageCheck,
   Truck,
 } from "lucide-react";
-import {
-  employeeNotificationService,
-  type EmployeeNotification,
-  type EmployeeNotificationType,
-} from "@/services/employeeNotification.service";
-import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
-import { useSocket } from "@/hooks/useSocket";
+import type { EmployeeNotificationType } from "@/services/employeeNotification.service";
+import { useEmployeeNotifications } from "@/hooks/useEmployeeNotifications";
 
 const NOTIFICATION_ICONS: Record<EmployeeNotificationType, typeof Bell> = {
   driver_pickup_started: Truck,
@@ -46,32 +40,15 @@ const formatRelativeTime = (value: string) => {
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { user } = useEmployeeAuthStore();
-  const { on } = useSocket();
-  const queryClient = useQueryClient();
 
-  const { data: notifications = [] } = useQuery<EmployeeNotification[]>({
-    queryKey: ["employee", "notifications"],
-    queryFn: employeeNotificationService.list,
-    enabled: !!user,
-    refetchInterval: 20_000,
-  });
+  const {
+    notifications,
+    markAsRead,
+    markAllAsRead,
+    isMarkingAllAsRead,
+  } = useEmployeeNotifications();
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
-
-  const markAsReadMutation = useMutation({
-    mutationFn: (id: string) => employeeNotificationService.markAsRead(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employee", "notifications"] });
-    },
-  });
-
-  const markAllAsReadMutation = useMutation({
-    mutationFn: () => employeeNotificationService.markAllAsRead(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employee", "notifications"] });
-    },
-  });
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -83,14 +60,6 @@ export function NotificationBell() {
     else document.removeEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
-
-  useEffect(() => {
-    if (!user) return;
-    const unsub = on("notification:new", () => {
-      queryClient.invalidateQueries({ queryKey: ["employee", "notifications"] });
-    });
-    return () => unsub();
-  }, [user, on, queryClient]);
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -108,13 +77,13 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto bg-surface border border-outline-variant rounded-xl shadow-lg z-50">
+        <div className="fixed inset-x-4 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-80 max-h-96 overflow-y-auto bg-surface border border-outline-variant rounded-xl shadow-lg z-50">
           <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant">
             <span className="text-sm font-semibold text-on-surface">Notifikasi</span>
             {unreadCount > 0 && (
               <button
-                onClick={() => markAllAsReadMutation.mutate()}
-                disabled={markAllAsReadMutation.isPending}
+                onClick={() => markAllAsRead()}
+                disabled={isMarkingAllAsRead}
                 className="flex items-center gap-1 text-xs font-medium text-primary hover:underline disabled:opacity-50"
               >
                 <CheckCheck className="w-3.5 h-3.5" />
@@ -134,7 +103,7 @@ export function NotificationBell() {
                 <button
                   key={notification.id}
                   onClick={() => {
-                    if (!notification.is_read) markAsReadMutation.mutate(notification.id);
+                    if (!notification.is_read) markAsRead(notification.id);
                   }}
                   className={`w-full flex items-start gap-3 px-4 py-3 text-left border-b border-outline-variant last:border-b-0 hover:bg-surface-container-low transition-colors ${
                     !notification.is_read ? "bg-primary/5" : ""

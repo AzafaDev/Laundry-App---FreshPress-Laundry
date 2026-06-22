@@ -1,3 +1,85 @@
+import { emitToRoom, emitToUser } from "../../lib/socket.js";
+import { notifyCustomer } from "../../lib/notification.js";
+import { calcEtaText } from "../../utils/distance.util.js";
+import type { OrderStatus } from "../../../generated/prisma/client.js";
+import type { DriverTaskDetail } from "../../repositories/driver-worker/driver.repository.js";
+
+export async function emitClaimEvents(task: DriverTaskDetail, employeeId: string, driverName: string) {
+  emitToRoom(`outlet:${task.order.outlet_id}`, "driver:task-claimed", {
+    taskId: task.id,
+    driverId: employeeId,
+    order_id: task.order_id,
+    task_type: task.task_type,
+  });
+
+  const outlet = task.order.outlet;
+  const addr = task.order.pickup_address;
+  const etaText =
+    outlet?.latitude && outlet?.longitude && addr?.latitude && addr?.longitude
+      ? calcEtaText(Number(outlet.latitude), Number(outlet.longitude), Number(addr.latitude), Number(addr.longitude))
+      : null;
+  const etaSuffix = etaText ? `, estimasi ${etaText}` : "";
+
+  if (task.task_type === "pickup") {
+    await notifyCustomer(
+      task.order.customer_id,
+      "Driver dalam perjalanan",
+      `Driver ${driverName} sedang menuju lokasi penjemputan${etaSuffix} untuk pesanan ${task.order.invoice_number}.`,
+      "driver_pickup_started",
+      task.order_id,
+    );
+  } else if (task.task_type === "delivery") {
+    await notifyCustomer(
+      task.order.customer_id,
+      "Driver dalam perjalanan",
+      `Driver ${driverName} sedang mengantarkan pesanan ${task.order.invoice_number} ke lokasi Anda${etaSuffix}.`,
+      "driver_delivery_started",
+      task.order_id,
+    );
+  }
+}
+
+export async function emitCompleteEvents(
+  task: { id: string; order_id: string; task_type: string; order: { outlet_id: string; customer_id: string } },
+  employeeId: string,
+  newOrderStatus: OrderStatus,
+) {
+  emitToRoom(`outlet:${task.order.outlet_id}`, "driver:task-completed", {
+    taskId: task.id,
+    taskType: task.task_type,
+    orderId: task.order_id,
+    driverId: employeeId,
+    completedAt: new Date(),
+  });
+
+  emitToUser(task.order.customer_id, "order:status-updated", {
+    orderId: task.order_id,
+    status: newOrderStatus,
+    message:
+      task.task_type === "pickup"
+        ? "Laundry Anda telah tiba di outlet dan akan segera diproses."
+        : "Driver telah tiba di lokasi Anda dengan pesanan laundry Anda.",
+  });
+
+  if (task.task_type === "pickup") {
+    await notifyCustomer(
+      task.order.customer_id,
+      "Driver telah tiba di outlet",
+      "Laundry Anda telah tiba di outlet dan akan segera diproses.",
+      "driver_arrived_outlet",
+      task.order_id,
+    );
+  } else if (task.task_type === "delivery") {
+    await notifyCustomer(
+      task.order.customer_id,
+      "Driver telah tiba",
+      "Driver telah tiba di lokasi Anda dengan pesanan laundry Anda.",
+      "driver_arrived_customer",
+      task.order_id,
+    );
+  }
+}
+
 export function mapTaskHistoryItem(task: {
   id: string;
   task_type: string;

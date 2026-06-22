@@ -11,6 +11,7 @@ import { seedLaundryItems } from './laundryItems.seed.js';
 import { seedBypassRequests } from './bypassRequests.seed.js';
 import { seedDriverNotifications } from './driverNotifications.seed.js';
 import { seedTaskHistory } from './taskHistory.seed.js';
+import { seedReportData } from './reportData.seed.js';
 
 export async function runAllSeeds() {
   console.log('🌱 Starting database seeding...\n');
@@ -58,6 +59,10 @@ export async function runAllSeeds() {
   await seedLaundryItems();
 
   await seedOrders(mainOutlet, employees, customers);
+
+  for (const outlet of outlets) {
+    await seedReportData(outlet, employees, customers[0]);
+  }
 
   await seedBypassRequests();
 

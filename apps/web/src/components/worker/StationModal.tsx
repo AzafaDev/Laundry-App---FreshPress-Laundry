@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Package, Loader2, Shirt, Tag } from "lucide-react";
+import toast from "react-hot-toast";
 import type { StationOrder } from "@/services/workerStation.service";
 
 interface StationModalProps {
@@ -42,6 +43,18 @@ export function StationModal({ orderId, orders, onClose, onConfirm, isProcessing
 
   const handleSatuanChange = (laundryItemId: string, value: number) => {
     setReceivedSatuan((prev) => ({ ...prev, [laundryItemId]: Math.max(0, value) }));
+  };
+
+  const hasAnyReceivedItem =
+    Object.values(receivedBreakdown).some((v) => v > 0) ||
+    Object.values(receivedSatuan).some((v) => v > 0);
+
+  const handleConfirm = () => {
+    if (!hasAnyReceivedItem) {
+      toast.error("Masukkan jumlah item yang diterima terlebih dahulu — tidak bisa semua kosong.");
+      return;
+    }
+    onConfirm(order.id, { breakdown: receivedBreakdown, satuan: receivedSatuan });
   };
 
   return (
@@ -168,7 +181,7 @@ export function StationModal({ orderId, orders, onClose, onConfirm, isProcessing
             Batal
           </button>
           <button
-            onClick={() => onConfirm(order.id, { breakdown: receivedBreakdown, satuan: receivedSatuan })}
+            onClick={handleConfirm}
             disabled={isProcessing}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 disabled:opacity-60 bg-primary text-on-primary hover:opacity-90"
           >

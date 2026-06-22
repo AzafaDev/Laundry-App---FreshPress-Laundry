@@ -2,7 +2,7 @@ import { prisma } from "../../lib/prisma.js";
 import { emitToRoom, emitToRole } from "../../lib/socket.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { getNow, getTodayLocalStart } from "../../utils/time.util.js";
-import { formatLocalDate, formatLocalTime } from "../../utils/format.util.js";
+import { formatLocalTime } from "../../utils/format.util.js";
 import {
   canCheckIn,
   canCheckOut,
@@ -10,6 +10,7 @@ import {
   calcLateMinutes,
   determineAttendanceStatus,
   buildShiftPayload,
+  formatAttendanceRecord,
 } from "../../helpers/driver-worker/attendance.helpers.js";
 import {
   getEmployeeShiftForDate,
@@ -146,12 +147,7 @@ export const attendanceService = {
     ]);
 
     return {
-      data: logs.map((log) => ({
-        ...log,
-        date: formatLocalDate(log.date),
-        check_in_time: formatLocalTime(log.check_in_time),
-        check_out_time: formatLocalTime(log.check_out_time),
-      })),
+      data: logs.map(formatAttendanceRecord),
       pagination: { page, limit, total, total_pages: Math.ceil(total / limit) },
     };
   },
@@ -187,15 +183,10 @@ export const attendanceService = {
     ]);
 
     return {
-      data: logs.map((log) => ({
-        ...log,
-        user: log.employee,
-        user_id: log.employee_id,
-        attendance_date: formatLocalDate(log.date),
-        date: formatLocalDate(log.date),
-        check_in_time: formatLocalTime(log.check_in_time),
-        check_out_time: formatLocalTime(log.check_out_time),
-      })),
+      data: logs.map((log) => {
+        const formatted = formatAttendanceRecord(log);
+        return { ...formatted, user: log.employee, user_id: log.employee_id, attendance_date: formatted.date };
+      }),
       pagination: { page, limit, total, total_pages: Math.ceil(total / limit) },
     };
   },
@@ -206,12 +197,7 @@ export const attendanceService = {
       where: { employee_id_date: { employee_id: employeeId, date: today } },
     });
     if (!attendance) return null;
-    return {
-      ...attendance,
-      date: formatLocalDate(attendance.date),
-      check_in_time: formatLocalTime(attendance.check_in_time),
-      check_out_time: formatLocalTime(attendance.check_out_time),
-    };
+    return formatAttendanceRecord(attendance);
   },
 
   async getUpcomingOrActiveShift(employeeId: string) {

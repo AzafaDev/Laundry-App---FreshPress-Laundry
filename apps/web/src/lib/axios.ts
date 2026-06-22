@@ -7,19 +7,20 @@ export const axiosInstance = axios.create({
   withCredentials: true,
 });
 
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: unknown) => void;
-  reject: (reason?: unknown) => void;
-}> = [];
+let inFlightRefresh: Promise<boolean> | null = null;
 
-const processQueue = (error: Error | null) => {
-  failedQueue.forEach((prom) => {
-    if (error) prom.reject(error);
-    else prom.resolve();
-  });
-  failedQueue = [];
-};
+export function performSilentRefresh(authType: "employee" | "customer"): Promise<boolean> {
+  if (inFlightRefresh) return inFlightRefresh;
+  const refreshUrl = authType === "employee" ? "/v1/employee/auth/refresh" : "/v1/customer/auth/refresh";
+  inFlightRefresh = axios
+    .post(`${process.env.NEXT_PUBLIC_URL || "http://localhost:8080/api"}${refreshUrl}`, {}, { withCredentials: true })
+    .then(() => true)
+    .catch(() => false)
+    .finally(() => {
+      inFlightRefresh = null;
+    });
+  return inFlightRefresh;
+}
 
 const getAuthType = () => {
   const { user: employeeUser } = useEmployeeAuthStore.getState();
@@ -75,40 +76,11 @@ axiosInstance.interceptors.response.use(
     const authType = getAuthType();
     if (!authType) return Promise.reject(error);
 
-    if (isRefreshing) {
-      try {
-        await new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        });
-        return axiosInstance(originalRequest);
-      } catch (err) {
-        return Promise.reject(err);
-      }
-    }
+    originalRequest._retry = true;
+    const refreshed = await performSilentRefresh(authType);
+    if (refreshed) return axiosInstance(originalRequest);
 
-    isRefreshing = true;
-
-    const refreshUrl =
-      authType === "employee"
-        ? "/v1/employee/auth/refresh"
-        : "/v1/customer/auth/refresh";
-
-    try {
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_URL || "http://localhost:8080/api"}${refreshUrl}`,
-        {},
-        { withCredentials: true },
-      );
-
-      processQueue(null);
-      originalRequest._retry = true;
-      return axiosInstance(originalRequest);
-    } catch (refreshError) {
-      processQueue(refreshError as Error);
-      clearAuthByType(authType);
-      return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
-    }
+    clearAuthByType(authType);
+    return Promise.reject(error);
   },
 );

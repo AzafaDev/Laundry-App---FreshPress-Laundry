@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, CheckCircle2, Clock, PackageCheck } from "lucide-react";
-import { workerStationService } from "@/services/workerStation.service";
+import { useTaskHistory } from "@/hooks/useWorkerStation";
 import { stationConfig } from "./stationConfig";
 import type { StationType } from "@/services/workerStation.service";
 
@@ -63,10 +62,7 @@ function HistorySkeleton() {
 export function WorkerTaskHistory() {
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["worker", "task-history", page],
-    queryFn: () => workerStationService.getTaskHistory(page, LIMIT),
-  });
+  const { data, isLoading } = useTaskHistory(page, LIMIT);
 
   if (isLoading) return <HistorySkeleton />;
 
