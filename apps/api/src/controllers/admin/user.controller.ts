@@ -57,6 +57,19 @@ export const updateUser = async (
   }
 };
 
+export const resendInvite = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const result = await UserService.resendInvite(req.params.id as string);
+    res.json({ success: true, data: result, message: `Email verifikasi dikirim ke ${result.email}.` });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const hardDeleteUser = async (
   req: Request,
   res: Response,

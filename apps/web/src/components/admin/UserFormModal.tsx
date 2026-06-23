@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, UserPlus, Mail } from "lucide-react";
+import { X, UserPlus, Mail, AlertTriangle, Send, ShieldOff } from "lucide-react";
 import { z } from "zod";
-import { useCreateUser, useUpdateUser } from "@/hooks/useUsers";
+import { useCreateUser, useUpdateUser, useResendInvite } from "@/hooks/useUsers";
 import { useOutlets } from "@/hooks/useOutlets";
 import type {
   CreateUserPayload,
@@ -48,6 +48,7 @@ export function UserFormModal({ user, onClose }: Props) {
   const isEdit = !!user;
   const create = useCreateUser();
   const update = useUpdateUser();
+  const resendInvite = useResendInvite();
 
   // Fetch all active outlets for the dropdown
   const { data: outletsData } = useOutlets({ limit: 100, is_active: true });
@@ -60,9 +61,9 @@ export function UserFormModal({ user, onClose }: Props) {
     role: "outlet_admin" as UserRole,
     outlet_id: "",
     password: "",
-    is_active: true, // only used in edit mode
   });
   const [error, setError] = useState<string | null>(null);
+  const [inviteSent, setInviteSent] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -73,7 +74,6 @@ export function UserFormModal({ user, onClose }: Props) {
         role: user.role,
         outlet_id: user.outlet_id ?? "",
         password: "",
-        is_active: user.is_active ?? true,
       });
     }
   }, [user]);
@@ -87,6 +87,7 @@ export function UserFormModal({ user, onClose }: Props) {
 
   const needsOutlet = OUTLET_REQUIRED_ROLES.includes(form.role);
   const pending = create.isPending || update.isPending;
+  const isInactive = isEdit && user?.is_active === false;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,7 +116,6 @@ export function UserFormModal({ user, onClose }: Props) {
           phone: form.phone || undefined,
           role: form.role,
           outlet_id: form.outlet_id || undefined,
-          is_active: form.is_active,
           ...(form.password ? { password: form.password } : {}),
         };
         await update.mutateAsync({ id: user.id, payload });
@@ -136,6 +136,29 @@ export function UserFormModal({ user, onClose }: Props) {
       const msg =
         (err as { response?: { data?: { message?: string } } }).response?.data
           ?.message ?? "Terjadi kesalahan.";
+      setError(msg);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!user) return;
+    if (!confirm(`Nonaktifkan akun ${user.full_name}? User tidak bisa login sampai verifikasi ulang.`)) return;
+    try {
+      await update.mutateAsync({ id: user.id, payload: { is_active: false } });
+      onClose();
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } }).response?.data?.message ?? "Gagal menonaktifkan.";
+      setError(msg);
+    }
+  };
+
+  const handleResendInvite = async () => {
+    if (!user) return;
+    try {
+      await resendInvite.mutateAsync(user.id);
+      setInviteSent(true);
+    } catch (err) {
+      const msg = (err as { response?: { data?: { message?: string } } }).response?.data?.message ?? "Gagal mengirim email.";
       setError(msg);
     }
   };
@@ -244,16 +267,62 @@ export function UserFormModal({ user, onClose }: Props) {
             </Field>
           )}
 
-          {/* is_active toggle — only shown in edit mode */}
+          {/* Status section — only in edit mode */}
           {isEdit && (
-            <label className="flex items-center gap-2 text-sm text-on-surface-variant">
-              <input
-                type="checkbox"
-                checked={form.is_active}
-                onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-              />
-              Akun aktif
-            </label>
+            <div className="rounded-xl border border-outline-variant overflow-hidden">
+              <div className="px-4 py-2.5 bg-surface-container-low border-b border-outline-variant">
+                <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Status Akun</p>
+              </div>
+
+              {isInactive ? (
+                /* ── User INACTIVE ── */
+                <div className="p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-on-surface">Akun Nonaktif</p>
+                      <p className="text-xs text-on-surface-variant mt-0.5">
+                        User tidak dapat login. Kirim email verifikasi agar user dapat membuat password baru dan akun aktif kembali secara otomatis.
+                      </p>
+                    </div>
+                  </div>
+
+                  {inviteSent ? (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-secondary-container/40 border border-secondary/20 rounded-lg text-sm text-on-secondary-container">
+                      <Mail className="w-4 h-4 shrink-0" />
+                      Email verifikasi berhasil dikirim ke <strong>{user?.email}</strong>.
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleResendInvite}
+                      disabled={resendInvite.isPending}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-60 transition-all"
+                    >
+                      <Send className="w-4 h-4" />
+                      {resendInvite.isPending ? "Mengirim..." : "Kirim Email Verifikasi"}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                /* ── User ACTIVE ── */
+                <div className="p-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary" />
+                    <p className="text-sm text-on-surface">Akun <span className="font-semibold">Aktif</span></p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDeactivate}
+                    disabled={update.isPending}
+                    className="flex items-center gap-1.5 px-3 py-1.5 border border-error text-error rounded-lg text-xs font-semibold hover:bg-error-container/30 disabled:opacity-60 transition-all"
+                  >
+                    <ShieldOff className="w-3.5 h-3.5" />
+                    Nonaktifkan
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {error && (

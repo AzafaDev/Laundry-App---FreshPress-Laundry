@@ -59,3 +59,11 @@ export const useHardDeleteUser = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: USERS_KEY }),
   });
 };
+
+export const useResendInvite = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => userService.resendInvite(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: USERS_KEY }),
+  });
+};

@@ -179,6 +179,37 @@ export const hardDeleteUser = async (id: string, requesterId: string) => {
   return { id };
 };
 
+/**
+ * Resend an invite / re-verification email so an inactive user can set (or reset)
+ * their password. Works for both first-time invites and admin-deactivated accounts.
+ * When the user clicks the link and sets a password, `is_active` becomes true automatically.
+ */
+export const resendInvite = async (id: string) => {
+  const target = await prisma.employee.findFirst({ where: { id, deleted_at: null } });
+  if (!target) throw new AppError("User tidak ditemukan.", 404);
+  if (target.is_active) throw new AppError("User sudah aktif. Tidak perlu kirim undangan ulang.", 400);
+
+  // Invalidate all existing unused tokens first
+  await prisma.passwordResetToken.deleteMany({
+    where: { employee_id: id, used_at: null },
+  });
+
+  // Create a fresh 24-hour token
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  await prisma.passwordResetToken.create({
+    data: { employee_id: id, token_hash: tokenHash, expires_at: expiresAt },
+  });
+
+  sendEmployeeInviteEmail(target.email, target.full_name, rawToken).catch((err) =>
+    console.error("Failed to send re-invite email:", err),
+  );
+
+  return { id, email: target.email };
+};
+
 /** Soft-delete: mark deleted_at instead of removing the row. */
 export const softDeleteUser = async (id: string, requesterId: string) => {
   if (id === requesterId) {

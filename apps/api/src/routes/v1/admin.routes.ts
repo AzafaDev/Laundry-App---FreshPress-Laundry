@@ -82,6 +82,11 @@ router.delete(
   requireRole("super_admin"),
   UserCtrl.hardDeleteUser,
 );
+router.post(
+  "/admin/users/:id/resend-invite",
+  requireRole("super_admin"),
+  UserCtrl.resendInvite,
+);
 
 // Employee shift assignments
 router.get(
