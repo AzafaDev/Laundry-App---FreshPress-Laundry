@@ -192,8 +192,7 @@ export const OrderDataTable = () => {
                 className="p-1 bg-surface border border-outline-variant rounded-lg disabled:opacity-40"
               >
                 <ChevronLeft className="w-5 h-5" />
-              </button>
-              {(() => {
+              </button>              {(() => {
                 const maxVisible = 5;
                 const total = pagination.totalPages;
                 let start = Math.max(1, page - Math.floor(maxVisible / 2));

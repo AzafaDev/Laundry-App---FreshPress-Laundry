@@ -61,7 +61,7 @@ export function UserFormModal({ user, onClose }: Props) {
     role: "outlet_admin" as UserRole,
     outlet_id: "",
     password: "",
-    is_active: true,
+    is_active: true, // only used in edit mode
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -128,8 +128,7 @@ export function UserFormModal({ user, onClose }: Props) {
           phone: form.phone || undefined,
           role: form.role,
           outlet_id: form.outlet_id || undefined,
-          is_active: form.is_active,
-          // no password — backend will send invite email
+          // is_active not sent — account activates automatically after email verification
         };
         await create.mutateAsync(payload);
         onClose();
@@ -245,14 +244,17 @@ export function UserFormModal({ user, onClose }: Props) {
             </Field>
           )}
 
-          <label className="flex items-center gap-2 text-sm text-on-surface-variant">
-            <input
-              type="checkbox"
-              checked={form.is_active}
-              onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
-            />
-            Akun aktif
-          </label>
+          {/* is_active toggle — only shown in edit mode */}
+          {isEdit && (
+            <label className="flex items-center gap-2 text-sm text-on-surface-variant">
+              <input
+                type="checkbox"
+                checked={form.is_active}
+                onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+              />
+              Akun aktif
+            </label>
+          )}
 
           {error && (
             <p className="text-sm text-error bg-error-container/30 px-3 py-2 rounded-md">

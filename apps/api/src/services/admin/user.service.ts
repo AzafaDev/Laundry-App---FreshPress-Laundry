@@ -99,7 +99,8 @@ export const createUser = async (input: CreateUserInput) => {
       phone: input.phone ?? null,
       role: input.role as any,
       password_hash,
-      is_active: input.is_active ?? true,
+      // If no password supplied (invite flow), account starts inactive until employee sets password
+      is_active: input.password ? (input.is_active ?? true) : false,
       outlet_id: input.outlet_id ?? null,
     },
     select: PUBLIC_EMPLOYEE_SELECT,
