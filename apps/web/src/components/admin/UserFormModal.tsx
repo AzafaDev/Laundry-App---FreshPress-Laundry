@@ -17,9 +17,8 @@ const userFormSchema = z.object({
   email: z.string().email("Format email tidak valid."),
   phone: z
     .string()
-    .regex(/^[0-9+\-\s]{8,15}$/, "Nomor telepon tidak valid (8-15 digit).")
-    .optional()
-    .or(z.literal("")),
+    .min(1, "Nomor telepon wajib diisi.")
+    .regex(/^[0-9+\-\s]{8,15}$/, "Nomor telepon tidak valid (8-15 digit)."),
 });
 
 const ROLES: Array<{ value: UserRole; label: string }> = [
@@ -96,7 +95,7 @@ export function UserFormModal({ user, onClose }: Props) {
     const result = userFormSchema.safeParse({
       full_name: form.full_name,
       email: form.email,
-      phone: form.phone || undefined,
+      phone: form.phone,
     });
     if (!result.success) {
       setError(result.error.issues[0].message);
@@ -194,9 +193,10 @@ export function UserFormModal({ user, onClose }: Props) {
             />
           </Field>
 
-          <Field label="Nomor Telepon (opsional)">
+          <Field label="Nomor Telepon">
             <input
               type="tel"
+              required
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
               placeholder="08xxxxxxxxxx"
