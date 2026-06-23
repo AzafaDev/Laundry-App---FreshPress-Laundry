@@ -18,8 +18,8 @@ const outletSchema = z.object({
   province: z.string().min(2, "Provinsi wajib diisi."),
   city: z.string().min(2, "Kota wajib diisi."),
   district: z.string().min(2, "Kecamatan wajib diisi."),
-  postal_code: z.string().regex(/^\d{5}$/, "Kode pos harus 5 digit angka.").optional().or(z.literal("")),
-  phone: z.string().min(7, "Nomor telepon wajib diisi.").regex(/^[0-9+\-\s]{7,15}$/, "Format nomor telepon tidak valid."),
+  postal_code: z.string().optional().or(z.literal("")),
+  phone: z.string().min(1, "Nomor telepon wajib diisi.").regex(/^[0-9+\-\s]{8,15}$/, "Nomor telepon tidak valid."),
   service_radius_km: z
     .number({ message: "Radius layanan wajib diisi." })
     .positive("Radius layanan harus lebih dari 0.")

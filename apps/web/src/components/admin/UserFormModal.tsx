@@ -18,7 +18,7 @@ const userFormSchema = z.object({
   phone: z
     .string()
     .min(1, "Nomor telepon wajib diisi.")
-    .regex(/^[0-9+\-\s]{8,15}$/, "Nomor telepon tidak valid (8-15 digit)."),
+    .regex(/^[0-9+\-\s]{8,15}$/, "Nomor telepon tidak valid."),
 });
 
 const ROLES: Array<{ value: UserRole; label: string }> = [

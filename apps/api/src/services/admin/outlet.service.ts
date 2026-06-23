@@ -11,8 +11,6 @@ import type {
   ListOutletQuery,
 } from "../../validations/outlet.validation.js";
 
-type ListOutletQueryExtended = ListOutletQuery & { include_deleted?: boolean };
-
 const OUTLET_SELECT = {
   id: true,
   name: true,
@@ -31,7 +29,7 @@ const OUTLET_SELECT = {
 } satisfies Prisma.OutletSelect;
 
 /** List outlets — paginated, optional search over name/address, optional is_active filter. */
-export const listOutlets = async (query: ListOutletQueryExtended) => {
+export const listOutlets = async (query: ListOutletQuery) => {
   const { page, limit, search, is_active, include_deleted } = query;
   const skip = (page - 1) * limit;
 

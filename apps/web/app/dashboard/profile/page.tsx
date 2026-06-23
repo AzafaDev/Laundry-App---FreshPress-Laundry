@@ -17,7 +17,7 @@ const employeeProfileSchema = z.object({
   full_name: z.string().min(2, "Nama lengkap minimal 2 karakter."),
   phone: z
     .string()
-    .regex(/^[0-9+\-\s]{8,15}$/, "Nomor telepon tidak valid (8-15 digit).")
+    .regex(/^[0-9+\-\s]{8,15}$/, "Nomor telepon tidak valid.")
     .optional()
     .or(z.literal("")),
 });

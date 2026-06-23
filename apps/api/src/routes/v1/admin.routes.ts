@@ -214,6 +214,11 @@ router.delete(
   requireRole("super_admin"),
   LaundryItemCtrl.deleteLaundryItem,
 );
+router.delete(
+  "/admin/laundry-items/:id/permanent",
+  requireRole("super_admin"),
+  LaundryItemCtrl.hardDeleteLaundryItem,
+);
 
 // -- Orders -------------------------------------------------------------------
 router.get(

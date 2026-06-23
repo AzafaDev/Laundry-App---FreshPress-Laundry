@@ -45,3 +45,11 @@ export const useDeleteLaundryItem = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 };
+
+export const useHardDeleteLaundryItem = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => laundryItemService.hardRemove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+};

@@ -10,8 +10,7 @@ export const listOutlets = async (
 ): Promise<void> => {
   try {
     const query = listOutletQuerySchema.parse(req.query);
-    const include_deleted = req.query.include_deleted === "true";
-    const result = await OutletService.listOutlets({ ...query, include_deleted });
+    const result = await OutletService.listOutlets(query);
     res.json({ success: true, ...result });
   } catch (err) {
     next(err);
