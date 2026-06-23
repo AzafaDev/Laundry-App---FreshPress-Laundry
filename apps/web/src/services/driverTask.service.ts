@@ -13,6 +13,7 @@ export interface DriverTask {
   completed_at: string | null;
   created_at: string;
   updated_at: string;
+  distance_km?: number | null;
   order?: {
     id: string;
     invoice_number: string;

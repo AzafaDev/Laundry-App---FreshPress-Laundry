@@ -69,10 +69,14 @@ export function AvailableTaskCard({
         <h3 className="text-base font-bold text-on-surface mb-2 leading-tight">{customerName}</h3>
 
         {/* address */}
-        <div className="flex items-start gap-2 text-sm text-on-surface-variant mb-3">
+        <div className="flex items-start gap-2 text-sm text-on-surface-variant mb-1">
           <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-primary/60" />
           <span className="line-clamp-2 leading-snug">{address || "Alamat tidak tersedia"}</span>
         </div>
+
+        {task.distance_km != null && (
+          <p className="text-xs text-outline mb-3 pl-[22px]">{task.distance_km} km dari outlet</p>
+        )}
 
         {/* timestamp */}
         <div className="flex items-center gap-1.5 text-xs text-outline mb-4">
