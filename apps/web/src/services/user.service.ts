@@ -55,4 +55,11 @@ export const userService = {
     );
     return data.data;
   },
+
+  hardRemove: async (id: string): Promise<{ id: string }> => {
+    const { data } = await axiosInstance.delete<Envelope<{ id: string }>>(
+      `/v1/admin/users/${id}/permanent`,
+    );
+    return data.data;
+  },
 };

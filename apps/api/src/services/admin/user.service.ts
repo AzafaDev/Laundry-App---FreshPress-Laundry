@@ -158,6 +158,27 @@ export const updateUser = async (id: string, input: UpdateUserInput) => {
   });
 };
 
+/** Permanently delete a user that has already been soft-deleted. */
+export const hardDeleteUser = async (id: string, requesterId: string) => {
+  if (id === requesterId) {
+    throw new AppError("Tidak dapat menghapus akun sendiri.", 400);
+  }
+  const target = await prisma.employee.findUnique({ where: { id } });
+  if (!target) throw new AppError("User tidak ditemukan.", 404);
+  if (!target.deleted_at) {
+    throw new AppError("User harus di-soft-delete terlebih dahulu sebelum dihapus permanen.", 400);
+  }
+
+  await prisma.$transaction([
+    prisma.passwordResetToken.deleteMany({ where: { employee_id: id } }),
+    prisma.employeeShift.deleteMany({ where: { employee_id: id } }),
+    prisma.attendance.deleteMany({ where: { employee_id: id } }),
+    prisma.employee.delete({ where: { id } }),
+  ]);
+
+  return { id };
+};
+
 /** Soft-delete: mark deleted_at instead of removing the row. */
 export const softDeleteUser = async (id: string, requesterId: string) => {
   if (id === requesterId) {

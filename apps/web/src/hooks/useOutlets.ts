@@ -85,10 +85,18 @@ export const useUpdateOutlet = () => {
   });
 };
 
-export const useDeactivateOutlet = () => {
+export const useSoftDeleteOutlet = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => outletService.deactivate(id),
+    mutationFn: (id: string) => outletService.softDelete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: OUTLETS_KEY }),
+  });
+};
+
+export const useDeleteOutlet = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => outletService.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: OUTLETS_KEY }),
   });
 };

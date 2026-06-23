@@ -51,3 +51,11 @@ export const useDeleteUser = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: USERS_KEY }),
   });
 };
+
+export const useHardDeleteUser = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => userService.hardRemove(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: USERS_KEY }),
+  });
+};

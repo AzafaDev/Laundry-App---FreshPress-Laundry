@@ -11,6 +11,7 @@ export interface Outlet {
   longitude: number | string | null;
   service_radius_km: number | string | null;
   is_active: boolean;
+  deleted_at?: string | null;
   created_at: string;
 }
 
@@ -31,6 +32,7 @@ export interface OutletListQuery {
   limit?: number;
   search?: string;
   is_active?: boolean;
+  include_deleted?: boolean;
 }
 
 export interface CreateOutletPayload {

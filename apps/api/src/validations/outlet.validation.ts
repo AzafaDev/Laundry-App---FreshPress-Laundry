@@ -17,6 +17,10 @@ export const createOutletSchema = z.object({
   city: z.string().min(2, "Kota wajib diisi."),
   district: z.string().min(2, "Kecamatan wajib diisi."),
   postal_code: z.string().optional(),
+  phone: z
+    .string({ required_error: "Nomor telepon wajib diisi." })
+    .min(1, "Nomor telepon wajib diisi.")
+    .regex(/^[0-9+\-\s]{7,15}$/, "Format nomor telepon tidak valid."),
   latitude: latitudeSchema.optional(),
   longitude: longitudeSchema.optional(),
   service_radius_km: z
@@ -34,7 +38,7 @@ export const updateOutletSchema = z
     city: z.string().min(2).optional(),
     district: z.string().min(2).optional(),
     postal_code: z.string().optional(),
-    phone: z.string().optional(),
+    phone: z.string().min(1, "Nomor telepon wajib diisi.").regex(/^[0-9+\-\s]{7,15}$/, "Format nomor telepon tidak valid.").optional(),
     latitude: latitudeSchema.optional(),
     longitude: longitudeSchema.optional(),
     service_radius_km: z.number().positive().max(100).optional(),

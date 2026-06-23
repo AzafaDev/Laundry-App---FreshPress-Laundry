@@ -57,6 +57,20 @@ export const updateUser = async (
   }
 };
 
+export const hardDeleteUser = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    if (!req.user) throw new AppError("Autentikasi diperlukan.", 401);
+    const result = await UserService.hardDeleteUser(req.params.id as string, req.user.userId);
+    res.json({ success: true, data: result, message: "User dihapus permanen." });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const deleteUser = async (
   req: Request,
   res: Response,

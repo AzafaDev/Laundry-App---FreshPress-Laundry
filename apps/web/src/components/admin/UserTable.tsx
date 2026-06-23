@@ -9,8 +9,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
+  ShieldAlert,
 } from "lucide-react";
-import { useUsers, useDeleteUser } from "@/hooks/useUsers";
+import { useUsers, useDeleteUser, useHardDeleteUser } from "@/hooks/useUsers";
 import { useOutlets } from "@/hooks/useOutlets";
 import type { User, UserRole } from "@/types/user.types";
 import { UserFormModal } from "./UserFormModal";
@@ -34,6 +35,7 @@ export function UserTable() {
   const [editing, setEditing] = useState<User | null>(null);
   const [creating, setCreating] = useState(false);
   const [shiftEmployee, setShiftEmployee] = useState<User | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "deleted">("all");
 
   const { data: outletsData } = useOutlets({ limit: 100 });
   const outlets = outletsData?.items ?? [];
@@ -44,15 +46,28 @@ export function UserTable() {
     search: search.trim() || undefined,
     role: role === "all" ? undefined : role,
     outlet_id: outletFilter === "all" ? undefined : outletFilter,
+    include_deleted: statusFilter === "deleted" || undefined,
   });
   const deleteUser = useDeleteUser();
+  const hardDeleteUser = useHardDeleteUser();
 
-  const items = data?.items ?? [];
+  const allItems = data?.items ?? [];
+  const items = allItems.filter((u) => {
+    if (statusFilter === "deleted") return !!u.deleted_at;
+    if (statusFilter === "active") return !u.deleted_at && u.is_active;
+    if (statusFilter === "inactive") return !u.deleted_at && !u.is_active;
+    return true;
+  });
   const pagination = data?.pagination;
 
   const handleDelete = (user: User) => {
     if (!confirm(`Hapus user ${user.full_name}?`)) return;
     deleteUser.mutate(user.id);
+  };
+
+  const handleHardDelete = (user: User) => {
+    if (!confirm(`Hapus PERMANEN "${user.full_name}"?\n\nData tidak dapat dipulihkan.`)) return;
+    hardDeleteUser.mutate(user.id);
   };
 
   return (
@@ -102,6 +117,16 @@ export function UserTable() {
             ))}
           </select>
         </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value as typeof statusFilter); setPage(1); }}
+          className="px-4 py-2.5 bg-surface border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          <option value="all">Semua Status</option>
+          <option value="active">Aktif</option>
+          <option value="inactive">Nonaktif</option>
+          <option value="deleted">Terhapus</option>
+        </select>
         <button
           onClick={() => setCreating(true)}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-lg text-sm font-semibold hover:opacity-90 transition-all"
@@ -144,68 +169,94 @@ export function UserTable() {
                   </td>
                 </tr>
               )}
-              {items.map((u) => (
-                <tr
-                  key={u.id}
-                  className="border-t border-outline-variant hover:bg-surface-container-low"
-                >
-                  <td className="px-4 py-3 font-medium text-on-surface">
-                    {u.full_name}
-                  </td>
-                  <td className="px-4 py-3 text-on-surface-variant">{u.email}</td>
-                  <td className="px-4 py-3 text-on-surface-variant">
-                    {u.phone ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-1 text-xs rounded-md bg-primary-container/15 text-primary font-medium capitalize">
-                      {u.role.replace(/_/g, " ")}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-on-surface-variant text-sm">
-                    {u.outlet?.name ?? (
-                      <span className="text-outline italic">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {u.is_active ? (
-                      <span className="px-2 py-1 text-xs rounded-md bg-primary/10 text-primary">
-                        Aktif
+              {items.map((u) => {
+                const isDeleted = !!u.deleted_at;
+                return (
+                  <tr
+                    key={u.id}
+                    className={`border-t border-outline-variant ${isDeleted ? "bg-error-container/10 opacity-60" : "hover:bg-surface-container-low"}`}
+                  >
+                    <td className="px-4 py-3 font-medium text-on-surface">
+                      <span className={isDeleted ? "line-through text-on-surface-variant" : ""}>{u.full_name}</span>
+                      {isDeleted && <span className="ml-2 text-xs text-error font-normal">(terhapus)</span>}
+                    </td>
+                    <td className="px-4 py-3 text-on-surface-variant">{u.email}</td>
+                    <td className="px-4 py-3 text-on-surface-variant">
+                      {u.phone ?? "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-1 text-xs rounded-md bg-primary-container/15 text-primary font-medium capitalize">
+                        {u.role.replace(/_/g, " ")}
                       </span>
-                    ) : (
-                      <span className="px-2 py-1 text-xs rounded-md bg-error-container/40 text-on-error-container">
-                        Nonaktif
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => setShiftEmployee(u)}
-                        className="p-2 rounded-md hover:bg-primary/10 text-primary"
-                        aria-label="Jadwal shift"
-                        title="Atur jadwal shift"
-                      >
-                        <Calendar className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setEditing(u)}
-                        className="p-2 rounded-md hover:bg-surface-container-high text-on-surface-variant"
-                        aria-label="Edit user"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(u)}
-                        disabled={deleteUser.isPending}
-                        className="p-2 rounded-md hover:bg-error-container/30 text-error disabled:opacity-50"
-                        aria-label="Hapus user"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3 text-on-surface-variant text-sm">
+                      {u.outlet?.name ?? (
+                        <span className="text-outline italic">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {isDeleted ? (
+                        <span className="px-2 py-1 text-xs rounded-md bg-error/10 text-error">
+                          Terhapus
+                        </span>
+                      ) : u.is_active ? (
+                        <span className="px-2 py-1 text-xs rounded-md bg-primary/10 text-primary">
+                          Aktif
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs rounded-md bg-error-container/40 text-on-error-container">
+                          Nonaktif
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-2">
+                        {!isDeleted && (
+                          <>
+                            {["washing_worker", "ironing_worker", "packing_worker", "driver"].includes(u.role) && (
+                              <button
+                                onClick={() => setShiftEmployee(u)}
+                                className="p-2 rounded-md hover:bg-primary/10 text-primary"
+                                aria-label="Jadwal shift"
+                                title="Atur jadwal shift"
+                              >
+                                <Calendar className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setEditing(u)}
+                              className="p-2 rounded-md hover:bg-surface-container-high text-on-surface-variant"
+                              aria-label="Edit user"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(u)}
+                              disabled={deleteUser.isPending}
+                              className="p-2 rounded-md hover:bg-error-container/30 text-error disabled:opacity-50"
+                              aria-label="Hapus user"
+                              title="Soft delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                        {isDeleted && (
+                          <button
+                            onClick={() => handleHardDelete(u)}
+                            disabled={hardDeleteUser.isPending}
+                            className="p-2 rounded-md hover:bg-error/20 text-error disabled:opacity-50"
+                            aria-label="Hapus permanen"
+                            title="Hapus permanen dari database"
+                          >
+                            <ShieldAlert className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

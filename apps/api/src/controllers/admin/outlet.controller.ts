@@ -10,7 +10,8 @@ export const listOutlets = async (
 ): Promise<void> => {
   try {
     const query = listOutletQuerySchema.parse(req.query);
-    const result = await OutletService.listOutlets(query);
+    const include_deleted = req.query.include_deleted === "true";
+    const result = await OutletService.listOutlets({ ...query, include_deleted });
     res.json({ success: true, ...result });
   } catch (err) {
     next(err);
@@ -59,16 +60,27 @@ export const updateOutlet = async (
   }
 };
 
-export const deactivateOutlet = async (
+export const softDeleteOutlet = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const outlet = await OutletService.deactivateOutlet(
-      req.params.id as string,
-    );
-    res.json({ success: true, data: outlet, message: "Outlet dinonaktifkan." });
+    const outlet = await OutletService.softDeleteOutlet(req.params.id as string);
+    res.json({ success: true, data: outlet, message: "Outlet dihapus." });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteOutlet = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const result = await OutletService.deleteOutlet(req.params.id as string);
+    res.json({ success: true, data: result, message: "Outlet berhasil dihapus." });
   } catch (err) {
     next(err);
   }

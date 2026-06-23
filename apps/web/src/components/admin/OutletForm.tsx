@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { X, Store, MapPin, Search, Loader2 } from "lucide-react";
 import { z } from "zod";
@@ -19,7 +19,7 @@ const outletSchema = z.object({
   city: z.string().min(2, "Kota wajib diisi."),
   district: z.string().min(2, "Kecamatan wajib diisi."),
   postal_code: z.string().regex(/^\d{5}$/, "Kode pos harus 5 digit angka.").optional().or(z.literal("")),
-  phone: z.string().regex(/^[0-9+\-\s]{7,15}$/, "Format nomor telepon tidak valid.").optional().or(z.literal("")),
+  phone: z.string().min(7, "Nomor telepon wajib diisi.").regex(/^[0-9+\-\s]{7,15}$/, "Format nomor telepon tidak valid."),
   service_radius_km: z
     .number({ message: "Radius layanan wajib diisi." })
     .positive("Radius layanan harus lebih dari 0.")
@@ -60,6 +60,8 @@ export function OutletForm({ outlet, onClose }: Props) {
   const [searching, setSearching] = useState(false);
   const [showMatches, setShowMatches] = useState(false);
   const skipNextSearchRef = useRef(false);
+  const [reverseGeocoding, setReverseGeocoding] = useState(false);
+  const reverseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (outlet) {
@@ -105,6 +107,35 @@ export function OutletForm({ outlet, onClose }: Props) {
     return () => clearTimeout(handle);
   }, [form.address]);
 
+  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
+    setReverseGeocoding(true);
+    try {
+      const items = await outletService.geocodeSearch(`${lat},${lng}`, 1);
+      const result = items[0];
+      if (result) {
+        skipNextSearchRef.current = true;
+        setForm((prev) => ({
+          ...prev,
+          address: result.street || result.formatted,
+          province: result.province || prev.province,
+          city: result.city || prev.city,
+          district: result.district || prev.district,
+          postal_code: result.postal_code || prev.postal_code,
+        }));
+      }
+    } catch {
+      // silently ignore reverse geocode errors
+    } finally {
+      setReverseGeocoding(false);
+    }
+  }, []);
+
+  const handleMapPin = useCallback((lat: number, lng: number) => {
+    setForm((prev) => ({ ...prev, latitude: lat, longitude: lng }));
+    if (reverseTimer.current) clearTimeout(reverseTimer.current);
+    reverseTimer.current = setTimeout(() => reverseGeocode(lat, lng), 600);
+  }, [reverseGeocode]);
+
   const pickMatch = (m: GeocodeMatch) => {
     skipNextSearchRef.current = true;
     // Try to extract city/province from formatted address
@@ -135,7 +166,7 @@ export function OutletForm({ outlet, onClose }: Props) {
       city: form.city,
       district: form.district,
       postal_code: form.postal_code || undefined,
-      phone: form.phone || undefined,
+      phone: form.phone,
       service_radius_km: form.service_radius_km,
     });
     if (!result.success) {
@@ -152,7 +183,7 @@ export function OutletForm({ outlet, onClose }: Props) {
           city: form.city,
           district: form.district,
           postal_code: form.postal_code || undefined,
-          phone: form.phone || undefined,
+          phone: form.phone,
           latitude: form.latitude ?? undefined,
           longitude: form.longitude ?? undefined,
           service_radius_km: form.service_radius_km,
@@ -168,7 +199,7 @@ export function OutletForm({ outlet, onClose }: Props) {
           city: form.city,
           district: form.district,
           postal_code: form.postal_code || undefined,
-          phone: form.phone || undefined,
+          phone: form.phone,
           latitude: form.latitude ?? undefined,
           longitude: form.longitude ?? undefined,
           service_radius_km: form.service_radius_km,
@@ -320,7 +351,7 @@ export function OutletForm({ outlet, onClose }: Props) {
                 className={inputClass}
               />
             </Field>
-            <Field label="No. Telepon Outlet (opsional)">
+            <Field label="No. Telepon Outlet">
               <input
                 type="tel"
                 value={form.phone}
@@ -336,10 +367,13 @@ export function OutletForm({ outlet, onClose }: Props) {
               latitude={form.latitude}
               longitude={form.longitude}
               radiusKm={form.service_radius_km}
-              onChange={(lat, lng) =>
-                setForm({ ...form, latitude: lat, longitude: lng })
-              }
+              onChange={handleMapPin}
             />
+            {reverseGeocoding && (
+              <p className="text-xs text-primary mt-1 ml-1 flex items-center gap-1">
+                <Loader2 className="w-3 h-3 animate-spin" /> Membaca informasi lokasi...
+              </p>
+            )}
             <p className="text-xs text-on-surface-variant mt-1 ml-1">
               {form.latitude != null && form.longitude != null
                 ? `Pin: ${Number(form.latitude).toFixed(5)}, ${Number(form.longitude).toFixed(5)}`

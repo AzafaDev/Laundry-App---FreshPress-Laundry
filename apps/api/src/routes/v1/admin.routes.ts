@@ -77,6 +77,11 @@ router.delete(
   requireRole("super_admin"),
   UserCtrl.deleteUser,
 );
+router.delete(
+  "/admin/users/:id/permanent",
+  requireRole("super_admin"),
+  UserCtrl.hardDeleteUser,
+);
 
 // Employee shift assignments
 router.get(
@@ -127,7 +132,12 @@ router.patch(
 router.delete(
   "/admin/outlets/:id",
   requireRole("super_admin"),
-  OutletCtrl.deactivateOutlet,
+  OutletCtrl.softDeleteOutlet,
+);
+router.delete(
+  "/admin/outlets/:id/permanent",
+  requireRole("super_admin"),
+  OutletCtrl.deleteOutlet,
 );
 router.get(
   "/admin/outlets/:id/assignments",

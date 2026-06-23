@@ -11,6 +11,8 @@ import type {
   ListOutletQuery,
 } from "../../validations/outlet.validation.js";
 
+type ListOutletQueryExtended = ListOutletQuery & { include_deleted?: boolean };
+
 const OUTLET_SELECT = {
   id: true,
   name: true,
@@ -24,15 +26,17 @@ const OUTLET_SELECT = {
   longitude: true,
   service_radius_km: true,
   is_active: true,
+  deleted_at: true,
   created_at: true,
 } satisfies Prisma.OutletSelect;
 
 /** List outlets — paginated, optional search over name/address, optional is_active filter. */
-export const listOutlets = async (query: ListOutletQuery) => {
-  const { page, limit, search, is_active } = query;
+export const listOutlets = async (query: ListOutletQueryExtended) => {
+  const { page, limit, search, is_active, include_deleted } = query;
   const skip = (page - 1) * limit;
 
   const where: Prisma.OutletWhereInput = {
+    ...(include_deleted ? {} : { deleted_at: null }),
     ...(is_active !== undefined && { is_active }),
     ...(search
       ? {
@@ -141,15 +145,36 @@ export const updateOutlet = async (id: string, input: UpdateOutletInput) => {
   });
 };
 
-/** Soft-deactivate (set is_active = false). */
-export const deactivateOutlet = async (id: string) => {
+/** Soft-delete outlet (set deleted_at). */
+export const softDeleteOutlet = async (id: string) => {
   const existing = await prisma.outlet.findUnique({ where: { id } });
   if (!existing) throw new AppError("Outlet tidak ditemukan.", 404);
+  if (existing.deleted_at) throw new AppError("Outlet sudah dihapus.", 400);
   return prisma.outlet.update({
     where: { id },
-    data: { is_active: false },
+    data: { deleted_at: new Date(), is_active: false },
     select: OUTLET_SELECT,
   });
+};
+
+/** Permanently delete an outlet. Requires soft-delete first. */
+export const deleteOutlet = async (id: string) => {
+  const existing = await prisma.outlet.findUnique({ where: { id } });
+  if (!existing) throw new AppError("Outlet tidak ditemukan.", 404);
+  if (!existing.deleted_at) {
+    throw new AppError("Outlet harus dihapus (soft delete) terlebih dahulu sebelum dihapus permanen.", 400);
+  }
+
+  const orderCount = await prisma.order.count({ where: { outlet_id: id } });
+  if (orderCount > 0) {
+    throw new AppError(
+      `Outlet tidak dapat dihapus permanen karena masih memiliki ${orderCount} order terkait.`,
+      409,
+    );
+  }
+
+  await prisma.outlet.delete({ where: { id } });
+  return { id };
 };
 
 /** Assign an employee to an outlet by updating their outlet_id.
