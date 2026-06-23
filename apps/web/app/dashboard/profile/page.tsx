@@ -10,7 +10,7 @@ import { z } from "zod";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { employeeProfileService } from "@/services/employeeProfile.service";
-import { employeeAuthService } from "@/services/employeeAuth.service";
+import { useChangePassword } from "@/hooks/useEmployeeAuth";
 import type { EmployeeRole } from "@/types/employee.types";
 
 const employeeProfileSchema = z.object({
@@ -89,9 +89,9 @@ export default function EmployeeProfilePage() {
   const [showOld, setShowOld] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const changePasswordMutation = useChangePassword();
 
   useEffect(() => {
     if (user) {
@@ -139,7 +139,7 @@ export default function EmployeeProfilePage() {
     }
   };
 
-  const handlePasswordSubmit = async (e: FormEvent) => {
+  const handlePasswordSubmit = (e: FormEvent) => {
     e.preventDefault();
     setPasswordMsg(null);
 
@@ -149,16 +149,15 @@ export default function EmployeeProfilePage() {
       return;
     }
 
-    setPasswordLoading(true);
-    try {
-      const result = await employeeAuthService.changePassword(oldPassword, newPassword);
-      setPasswordMsg({ type: "success", text: result.message });
-      setOldPassword(""); setNewPassword(""); setConfirmPassword("");
-    } catch (err: any) {
-      setPasswordMsg({ type: "error", text: err?.response?.data?.message || "Gagal mengganti password." });
-    } finally {
-      setPasswordLoading(false);
-    }
+    changePasswordMutation.mutate({ oldPassword, newPassword }, {
+      onSuccess: (data) => {
+        setPasswordMsg({ type: "success", text: data.message });
+        setOldPassword(""); setNewPassword(""); setConfirmPassword("");
+      },
+      onError: (err: any) => {
+        setPasswordMsg({ type: "error", text: err?.response?.data?.message || "Gagal mengganti password." });
+      },
+    });
   };
 
   if (!_hasHydrated) {
@@ -343,10 +342,10 @@ export default function EmployeeProfilePage() {
               <FeedbackMsg msg={passwordMsg} />
               <button
                 type="submit"
-                disabled={passwordLoading}
+                disabled={changePasswordMutation.isPending}
                 className="w-full bg-gray-900 text-white font-semibold py-3 rounded-xl hover:bg-gray-800 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed text-sm"
               >
-                {passwordLoading ? <Spinner /> : "Ganti Password"}
+                {changePasswordMutation.isPending ? <Spinner /> : "Ganti Password"}
               </button>
             </form>
           )}

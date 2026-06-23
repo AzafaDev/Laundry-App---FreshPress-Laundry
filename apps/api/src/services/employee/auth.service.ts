@@ -77,7 +77,13 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
 
   await revokeRefreshToken(refreshToken);
 
-  await issueAuthTokens(res, payload);
+  await issueAuthTokens(res, {
+    userId: payload.userId,
+    role: payload.role,
+    email: payload.email,
+    outletId: payload.outletId,
+    tokenVersion: payload.tokenVersion,
+  });
 
   return {};
 };
