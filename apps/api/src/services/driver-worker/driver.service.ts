@@ -2,12 +2,32 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { assertShiftEligibility, assertDriverEligibility } from "../../guards/driver-worker/shift.guard.js";
 import { getNow, toWIBView, wibTimeOnDate } from "../../utils/time.util.js";
+import { haversineKm } from "../../utils/geo.util.js";
 import {
   DRIVER_TASK_DETAIL_SELECT,
   runClaimTransaction,
   runCompleteTransaction,
 } from "../../repositories/driver-worker/driver.repository.js";
 import { emitClaimEvents, emitCompleteEvents } from "../../helpers/driver-worker/driver.helpers.js";
+
+function withDistance<
+  T extends {
+    order?: {
+      pickup_address?: { latitude: any; longitude: any } | null;
+      outlet?: { latitude: any; longitude: any } | null;
+    } | null;
+  },
+>(task: T) {
+  const addr = task.order?.pickup_address;
+  const outlet = task.order?.outlet;
+  const distance_km =
+    addr && outlet
+      ? Math.round(
+          haversineKm(Number(outlet.latitude), Number(outlet.longitude), Number(addr.latitude), Number(addr.longitude)) * 10,
+        ) / 10
+      : null;
+  return { ...task, distance_km };
+}
 
 export const driverService = {
   async getAvailablePickupOrders(employeeId: string) {
@@ -23,11 +43,11 @@ export const driverService = {
           pickup_date: { lte: endOfToday },
         },
       },
-      include: { order: { include: { customer: true, pickup_address: true } } },
+      include: { order: { include: { customer: true, pickup_address: true, outlet: { select: { latitude: true, longitude: true } } } } },
       orderBy: { created_at: "asc" },
       take: 200,
     });
-    return { tasks };
+    return { tasks: tasks.map(withDistance) };
   },
 
   async getAvailableDeliveryOrders(employeeId: string) {
@@ -39,18 +59,19 @@ export const driverService = {
         driver_id: null,
         order: { status: "ready_for_delivery", outlet_id: outletId },
       },
-      include: { order: { include: { customer: true, pickup_address: true } } },
+      include: { order: { include: { customer: true, pickup_address: true, outlet: { select: { latitude: true, longitude: true } } } } },
       orderBy: { created_at: "asc" },
       take: 200,
     });
-    return { tasks };
+    return { tasks: tasks.map(withDistance) };
   },
 
   async getActiveTask(employeeId: string) {
-    return prisma.driverTask.findFirst({
+    const task = await prisma.driverTask.findFirst({
       where: { driver_id: employeeId, status: "in_progress" },
       select: DRIVER_TASK_DETAIL_SELECT,
     });
+    return task ? withDistance(task) : task;
   },
 
   async claimTask(employeeId: string, taskId: string) {
@@ -61,7 +82,7 @@ export const driverService = {
     const driverName = employee?.full_name ?? "Driver";
     const claimed = await runClaimTransaction(taskId, employeeId, employeeOutletId);
     await emitClaimEvents(claimed, employeeId, driverName);
-    return claimed;
+    return withDistance(claimed);
   },
 
   async createDeliveryTask(orderId: string) {

@@ -6,10 +6,7 @@ import { Lock, EyeOff, Eye } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { employeeAuthService } from "@/services/employeeAuth.service";
-import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
-import type { EmployeeRole } from "@/types/employee.types";
-import { getDashboardPath } from "@/utils/employeeRoutes";
+import { useResetPassword } from "@/hooks/useEmployeeAuth";
 import { AuthPageShell } from "@/components/employee/AuthPageShell";
 import { AuthCard } from "@/components/employee/AuthCard";
 import { AuthErrorAlert } from "@/components/employee/AuthErrorAlert";
@@ -33,13 +30,13 @@ function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const { setAuth } = useEmployeeAuthStore();
 
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tokenInvalid, setTokenInvalid] = useState(false);
+
+  const { mutate, isPending } = useResetPassword();
 
   const { register, handleSubmit, formState: { errors } } = useForm<ResetFormData>({
     resolver: zodResolver(resetSchema),
@@ -49,25 +46,19 @@ function ResetPasswordForm() {
     if (!token) router.replace("/employee/forgot-password");
   }, [token, router]);
 
-  const onSubmit = async (data: ResetFormData) => {
-    if (isLoading) return;
-    setIsLoading(true);
+  const onSubmit = (data: ResetFormData) => {
     setError(null);
-    try {
-      const result = await employeeAuthService.resetPassword(token!, data.newPassword);
-      setAuth(result.employee);
-      router.replace(getDashboardPath(result.employee.role as EmployeeRole));
-    } catch (err: unknown) {
-      const status = (err as any)?.response?.status;
-      if (status === 400 || status === 410 || status === 404) {
-        setTokenInvalid(true);
-        setError("Token tidak valid atau sudah kadaluarsa.");
-      } else {
-        setError("Terjadi kesalahan. Silakan coba lagi.");
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    mutate({ token: token!, newPassword: data.newPassword }, {
+      onError: (err: unknown) => {
+        const status = (err as any)?.response?.status;
+        if (status === 400 || status === 410 || status === 404) {
+          setTokenInvalid(true);
+          setError("Token tidak valid atau sudah kadaluarsa.");
+        } else {
+          setError("Terjadi kesalahan. Silakan coba lagi.");
+        }
+      },
+    });
   };
 
   if (!token) return null;
@@ -133,7 +124,7 @@ function ResetPasswordForm() {
             />
           </AuthFormField>
 
-          <AuthSubmitButton isLoading={isLoading}>
+          <AuthSubmitButton isLoading={isPending}>
             Simpan & Masuk
           </AuthSubmitButton>
         </form>

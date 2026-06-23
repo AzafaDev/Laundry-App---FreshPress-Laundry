@@ -59,3 +59,30 @@ export const useEmployeeAuth = () => {
     logout,
   };
 };
+
+export const useForgotPassword = () => {
+  return useMutation({
+    mutationFn: (email: string) => employeeAuthService.forgotPassword(email),
+  });
+};
+
+export const useResetPassword = () => {
+  const router = useRouter();
+  const { setAuth } = useEmployeeAuthStore();
+
+  return useMutation({
+    mutationFn: ({ token, newPassword }: { token: string; newPassword: string }) =>
+      employeeAuthService.resetPassword(token, newPassword),
+    onSuccess: (data) => {
+      setAuth(data.employee);
+      router.replace(getDashboardPath(data.employee.role));
+    },
+  });
+};
+
+export const useChangePassword = () => {
+  return useMutation({
+    mutationFn: ({ oldPassword, newPassword }: { oldPassword: string; newPassword: string }) =>
+      employeeAuthService.changePassword(oldPassword, newPassword),
+  });
+};
