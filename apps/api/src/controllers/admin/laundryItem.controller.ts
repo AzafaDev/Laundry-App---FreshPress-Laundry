@@ -19,8 +19,9 @@ export const listLaundryItems = async (
     const q = listLaundryItemQuerySchema.parse(req.query);
     const { skip, take } = getSkipTake(q);
 
+    const includeDeleted = req.query.include_deleted === "true";
     const where = {
-      deleted_at: null,
+      ...(includeDeleted ? {} : { deleted_at: null }),
       ...(q.is_active !== undefined && { is_active: q.is_active }),
       ...(q.search && {
         name: { contains: q.search, mode: "insensitive" as const },
@@ -121,6 +122,25 @@ export const updateLaundryItem = async (
       data: body,
     });
     res.json({ success: true, data: item });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── Hard delete ───────────────────────────────────────────────────────────────
+export const hardDeleteLaundryItem = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const id = req.params.id as string;
+    const existing = await prisma.laundryItem.findFirst({ where: { id } });
+    if (!existing) return next(new AppError("Laundry item tidak ditemukan.", 404));
+    if (!existing.deleted_at) return next(new AppError("Item harus dihapus terlebih dahulu sebelum dihapus permanen.", 400));
+
+    await prisma.laundryItem.delete({ where: { id } });
+    res.json({ success: true, data: { id }, message: "Item dihapus permanen." });
   } catch (err) {
     next(err);
   }

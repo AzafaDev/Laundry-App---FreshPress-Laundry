@@ -15,6 +15,7 @@ export interface LaundryItemListQuery {
   limit?: number;
   search?: string;
   is_active?: boolean;
+  include_deleted?: boolean;
   sort_by?: "name" | "base_price";
   sort_dir?: "asc" | "desc";
 }

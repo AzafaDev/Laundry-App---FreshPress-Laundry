@@ -8,6 +8,9 @@ import {
   BarChart3,
   RefreshCw,
   Store,
+  Download,
+  Calculator,
+  LineChart as LineChartIcon,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -30,6 +33,15 @@ interface SalesChartPoint {
   period: string;
   income: number;
   order_count: number;
+  average_per_order: number;
+}
+
+interface SalesSummary {
+  total_income: number;
+  total_orders: number;
+  average_per_order: number;
+  average_per_period: number;
+  period_count: number;
 }
 
 interface EmployeePerf {
@@ -78,7 +90,7 @@ const fetchSalesReport = async (
   if (dateFrom) params.set("date_from", dateFrom);
   if (dateTo) params.set("date_to", dateTo);
   const { data } = await axiosInstance.get(`/v1/reports/sales?${params}`);
-  return data?.data as { summary: { total_income: number; total_orders: number }; chart: SalesChartPoint[] };
+  return data?.data as { summary: SalesSummary; chart: SalesChartPoint[] };
 };
 
 const fetchEmployeeReport = async (
@@ -94,6 +106,20 @@ const fetchEmployeeReport = async (
   return data?.data as EmployeePerf[];
 };
 
+// ── CSV download helper ───────────────────────────────────────────────────────
+async function downloadCsvFromApi(url: string, filename: string) {
+  const { data } = await axiosInstance.get(url, { responseType: "blob" });
+  const blob = new Blob([data], { type: "text/csv;charset=utf-8;" });
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = href;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(href);
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────────
 export default function ReportsPage() {
   const user = useEmployeeAuthStore((s) => s.user);
@@ -103,6 +129,8 @@ export default function ReportsPage() {
   const [outletId, setOutletId] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [downloadingSales, setDownloadingSales] = useState(false);
+  const [downloadingEmp, setDownloadingEmp] = useState(false);
 
   // Outlets dropdown (super_admin only)
   const { data: outletsData } = useOutlets(
@@ -134,6 +162,42 @@ export default function ReportsPage() {
   const salesData = salesQuery.data;
   const empData = empQuery.data ?? [];
   const chartData = salesData?.chart ?? [];
+
+  const buildParams = () => {
+    const p = new URLSearchParams({ group_by: groupBy });
+    if (outletId) p.set("outlet_id", outletId);
+    if (dateFrom) p.set("date_from", dateFrom);
+    if (dateTo) p.set("date_to", dateTo);
+    return p.toString();
+  };
+
+  const handleDownloadSalesCsv = async () => {
+    setDownloadingSales(true);
+    try {
+      await downloadCsvFromApi(
+        `/v1/reports/sales/export?${buildParams()}`,
+        `sales_report_${new Date().toISOString().slice(0, 10)}.csv`,
+      );
+    } finally {
+      setDownloadingSales(false);
+    }
+  };
+
+  const handleDownloadEmpCsv = async () => {
+    setDownloadingEmp(true);
+    try {
+      const p = new URLSearchParams();
+      if (outletId) p.set("outlet_id", outletId);
+      if (dateFrom) p.set("date_from", dateFrom);
+      if (dateTo) p.set("date_to", dateTo);
+      await downloadCsvFromApi(
+        `/v1/reports/employees/export?${p}`,
+        `employee_performance_${new Date().toISOString().slice(0, 10)}.csv`,
+      );
+    } finally {
+      setDownloadingEmp(false);
+    }
+  };
 
   return (
     <>
@@ -233,54 +297,68 @@ export default function ReportsPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-surface border border-outline-variant rounded-xl p-5">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 bg-primary/10 rounded-lg">
               <TrendingUp className="w-5 h-5 text-primary" />
             </div>
-            <span className="text-sm text-on-surface-variant">
-              Total Pendapatan
-            </span>
+            <span className="text-xs text-on-surface-variant">Total Pendapatan</span>
           </div>
           {salesQuery.isLoading ? (
             <div className="h-8 w-32 bg-surface-container-high rounded animate-pulse" />
           ) : (
-            <p className="text-2xl font-bold">
-              {fmtRupiahFull(salesData?.summary.total_income ?? 0)}
-            </p>
+            <p className="text-xl font-bold">{fmtRupiahFull(salesData?.summary.total_income ?? 0)}</p>
           )}
         </div>
+
         <div className="bg-surface border border-outline-variant rounded-xl p-5">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 bg-secondary-container rounded-lg">
               <ShoppingBag className="w-5 h-5 text-on-secondary-container" />
             </div>
-            <span className="text-sm text-on-surface-variant">
-              Total Order Selesai
-            </span>
+            <span className="text-xs text-on-surface-variant">Total Order Selesai</span>
           </div>
           {salesQuery.isLoading ? (
             <div className="h-8 w-20 bg-surface-container-high rounded animate-pulse" />
           ) : (
-            <p className="text-2xl font-bold">
-              {salesData?.summary.total_orders ?? 0}
-            </p>
+            <p className="text-xl font-bold">{salesData?.summary.total_orders ?? 0}</p>
           )}
         </div>
+
+        <div className="bg-surface border border-outline-variant rounded-xl p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-amber-100 rounded-lg">
+              <Calculator className="w-5 h-5 text-amber-700" />
+            </div>
+            <span className="text-xs text-on-surface-variant">Rata-rata per Order</span>
+          </div>
+          {salesQuery.isLoading ? (
+            <div className="h-8 w-24 bg-surface-container-high rounded animate-pulse" />
+          ) : (
+            <>
+              <p className="text-xl font-bold">{fmtRupiahFull(salesData?.summary.average_per_order ?? 0)}</p>
+              <p className="text-xs text-on-surface-variant mt-1">per transaksi selesai</p>
+            </>
+          )}
+        </div>
+
         <div className="bg-surface border border-outline-variant rounded-xl p-5">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 bg-tertiary-container rounded-lg">
-              <Users className="w-5 h-5 text-on-tertiary-container" />
+              <LineChartIcon className="w-5 h-5 text-on-tertiary-container" />
             </div>
-            <span className="text-sm text-on-surface-variant">
-              Karyawan Aktif
+            <span className="text-xs text-on-surface-variant">
+              Rata-rata per {groupBy === "day" ? "Hari" : groupBy === "month" ? "Bulan" : "Tahun"}
             </span>
           </div>
-          {empQuery.isLoading ? (
-            <div className="h-8 w-16 bg-surface-container-high rounded animate-pulse" />
+          {salesQuery.isLoading ? (
+            <div className="h-8 w-24 bg-surface-container-high rounded animate-pulse" />
           ) : (
-            <p className="text-2xl font-bold">{empData.length}</p>
+            <>
+              <p className="text-xl font-bold">{fmtRupiahFull(salesData?.summary.average_per_period ?? 0)}</p>
+              <p className="text-xs text-on-surface-variant mt-1">dari {salesData?.summary.period_count ?? 0} periode</p>
+            </>
           )}
         </div>
       </div>
@@ -291,10 +369,18 @@ export default function ReportsPage() {
           <div className="flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-primary" />
             <h3 className="font-bold">Laporan Pendapatan</h3>
+            <span className="text-xs text-on-surface-variant capitalize">
+              · Per {groupBy === "day" ? "Hari" : groupBy === "month" ? "Bulan" : "Tahun"}
+            </span>
           </div>
-          <span className="text-xs text-on-surface-variant capitalize">
-            Per {groupBy === "day" ? "Hari" : groupBy === "month" ? "Bulan" : "Tahun"}
-          </span>
+          <button
+            onClick={handleDownloadSalesCsv}
+            disabled={downloadingSales || salesQuery.isLoading || chartData.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-outline-variant rounded-lg text-xs font-medium hover:bg-surface-container-high disabled:opacity-50 transition-all"
+          >
+            <Download className="w-3.5 h-3.5" />
+            {downloadingSales ? "Mengunduh..." : "CSV"}
+          </button>
         </div>
 
         {salesQuery.isLoading ? (
@@ -318,7 +404,11 @@ export default function ReportsPage() {
                 stroke="var(--color-outline)"
               />
               <Tooltip
-                formatter={(v) => [fmtRupiahFull(Number(v ?? 0)), "Pendapatan"]}
+                formatter={(v, name) => {
+                  if (name === "income") return [fmtRupiahFull(Number(v ?? 0)), "Pendapatan"];
+                  if (name === "average_per_order") return [fmtRupiahFull(Number(v ?? 0)), "Rata-rata/Order"];
+                  return [v, name];
+                }}
                 contentStyle={{
                   fontSize: 12,
                   borderRadius: 8,
@@ -332,6 +422,16 @@ export default function ReportsPage() {
                 strokeWidth={2}
                 dot={{ r: 3 }}
                 activeDot={{ r: 5 }}
+                name="income"
+              />
+              <Line
+                type="monotone"
+                dataKey="average_per_order"
+                stroke="var(--color-secondary)"
+                strokeWidth={1.5}
+                strokeDasharray="4 2"
+                dot={false}
+                name="average_per_order"
               />
             </LineChart>
           </ResponsiveContainer>
@@ -340,9 +440,19 @@ export default function ReportsPage() {
 
       {/* Employee performance */}
       <div className="bg-surface border border-outline-variant rounded-xl p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-primary" />
-          <h3 className="font-bold">Performa Karyawan</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" />
+            <h3 className="font-bold">Performa Karyawan</h3>
+          </div>
+          <button
+            onClick={handleDownloadEmpCsv}
+            disabled={downloadingEmp || empQuery.isLoading || empData.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-outline-variant rounded-lg text-xs font-medium hover:bg-surface-container-high disabled:opacity-50 transition-all"
+          >
+            <Download className="w-3.5 h-3.5" />
+            {downloadingEmp ? "Mengunduh..." : "CSV"}
+          </button>
         </div>
 
         {empQuery.isLoading ? (

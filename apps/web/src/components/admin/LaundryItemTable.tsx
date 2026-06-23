@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, X, Scale, Package } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight, X, Scale, Package, ShieldAlert } from "lucide-react";
 import { z } from "zod";
 import {
   useLaundryItems,
   useCreateLaundryItem,
   useUpdateLaundryItem,
   useDeleteLaundryItem,
+  useHardDeleteLaundryItem,
 } from "@/hooks/useLaundryItems";
 import type { LaundryItem, CreateLaundryItemPayload } from "@/types/laundryItem.types";
 
@@ -125,19 +126,16 @@ function LaundryItemFormModal({ initial, onClose }: FormModalProps) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Satuan</label>
-              <input
-                list="unit-options"
+              <select
                 value={form.unit}
                 onChange={(e) => set("unit", e.target.value)}
                 className="w-full px-3 py-2 border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface"
-                placeholder="pcs"
-              />
-              <datalist id="unit-options">
-                <option value="kg" />
-                <option value="pcs" />
-              </datalist>
+              >
+                <option value="pcs">pcs</option>
+                <option value="kg">kg</option>
+              </select>
               <p className="mt-1 text-xs text-on-surface-variant">
-                Masuk grup <span className="font-medium">{grouping}</span>. Gunakan{" "}
+                Gunakan <span className="font-medium">pcs</span> untuk laundry item. Gunakan{" "}
                 <span className="font-medium">kg</span> untuk item per kilo.
               </p>
             </div>
@@ -198,10 +196,11 @@ interface ItemsSectionProps {
   onToggleSort: (col: SortCol) => void;
   onEdit: (item: LaundryItem) => void;
   onDelete: (item: LaundryItem) => void;
+  onHardDelete: (item: LaundryItem) => void;
 }
 
 function ItemsSection({
-  title, icon, items, isFetching, sortBy, sortDir, onToggleSort, onEdit, onDelete,
+  title, icon, items, isFetching, sortBy, sortDir, onToggleSort, onEdit, onDelete, onHardDelete,
 }: ItemsSectionProps) {
   const SortIcon = ({ col }: { col: SortCol }) =>
     sortBy === col ? (
@@ -236,57 +235,52 @@ function ItemsSection({
                 >
                   Harga Dasar <SortIcon col="base_price" />
                 </th>
-                <th className="px-4 py-2.5 text-xs font-semibold">Status</th>
                 <th className="px-4 py-2.5 text-xs font-semibold text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className={`divide-y divide-outline-variant ${isFetching ? "opacity-60" : ""}`}>
               {items.length === 0 && !isFetching ? (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-sm text-on-surface-variant">
+                  <td colSpan={5} className="p-8 text-center text-sm text-on-surface-variant">
                     Belum ada item pada grup ini.
                   </td>
                 </tr>
               ) : (
-                items.map((item) => (
-                  <tr key={item.id} className="hover:bg-surface-container-lowest transition-colors">
-                    <td className="px-4 py-2.5 font-medium text-sm">{item.name}</td>
-                    <td className="px-4 py-2.5 text-sm text-on-surface-variant max-w-xs truncate">
-                      {item.description ?? "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-sm">{item.unit}</td>
-                    <td className="px-4 py-2.5 text-sm font-medium">{fmtPrice(item.base_price)}</td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                          item.is_active
-                            ? "bg-secondary-container text-on-secondary-container"
-                            : "bg-surface-container-highest text-on-surface-variant"
-                        }`}
-                      >
-                        {item.is_active ? "Aktif" : "Nonaktif"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => onEdit(item)}
-                          className="p-1.5 hover:bg-surface-container-high rounded-lg text-on-surface-variant"
-                          title="Edit"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => onDelete(item)}
-                          className="p-1.5 hover:bg-error-container rounded-lg text-error"
-                          title="Hapus"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                items.map((item) => {
+                  const isDeleted = !!item.deleted_at;
+                  return (
+                    <tr key={item.id} className={`transition-colors ${isDeleted ? "bg-error-container/10 opacity-60" : "hover:bg-surface-container-lowest"}`}>
+                      <td className="px-4 py-2.5 font-medium text-sm">
+                        <span className={isDeleted ? "line-through text-on-surface-variant" : ""}>{item.name}</span>
+                        {isDeleted && <span className="ml-2 text-xs text-error font-normal">(terhapus)</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-sm text-on-surface-variant max-w-xs truncate">
+                        {item.description ?? "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-sm">{item.unit}</td>
+                      <td className="px-4 py-2.5 text-sm font-medium">{fmtPrice(item.base_price)}</td>
+                      <td className="px-4 py-2.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {!isDeleted && (
+                            <>
+                              <button onClick={() => onEdit(item)} className="p-1.5 hover:bg-surface-container-high rounded-lg text-on-surface-variant" title="Edit">
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => onDelete(item)} className="p-1.5 hover:bg-error-container rounded-lg text-error" title="Hapus">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          {isDeleted && (
+                            <button onClick={() => onHardDelete(item)} className="p-1.5 hover:bg-error/20 rounded-lg text-error" title="Hapus permanen">
+                              <ShieldAlert className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -294,39 +288,37 @@ function ItemsSection({
 
         {/* Mobile */}
         <div className="md:hidden divide-y divide-outline-variant">
-          {items.map((item) => (
-            <div key={item.id} className="p-4">
-              <div className="flex justify-between items-start mb-1">
-                <p className="font-medium text-sm">{item.name}</p>
-                <span
-                  className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                    item.is_active
-                      ? "bg-secondary-container text-on-secondary-container"
-                      : "bg-surface-container-highest text-on-surface-variant"
-                  }`}
-                >
-                  {item.is_active ? "Aktif" : "Nonaktif"}
-                </span>
+          {items.map((item) => {
+            const isDeleted = !!item.deleted_at;
+            return (
+              <div key={item.id} className={`p-4 ${isDeleted ? "opacity-60 bg-error-container/10" : ""}`}>
+                <div className="flex justify-between items-start mb-1">
+                  <p className={`font-medium text-sm ${isDeleted ? "line-through text-on-surface-variant" : ""}`}>{item.name}</p>
+                  {isDeleted && <span className="text-xs text-error">(terhapus)</span>}
+                </div>
+                <p className="text-xs text-on-surface-variant mb-2">
+                  {item.unit} · {fmtPrice(item.base_price)}
+                </p>
+                <div className="flex gap-2">
+                  {!isDeleted && (
+                    <>
+                      <button onClick={() => onEdit(item)} className="flex items-center gap-1 px-3 py-1 border border-outline-variant rounded-lg text-xs hover:bg-surface-container-high">
+                        <Pencil className="w-3 h-3" /> Edit
+                      </button>
+                      <button onClick={() => onDelete(item)} className="flex items-center gap-1 px-3 py-1 border border-error rounded-lg text-xs text-error hover:bg-error-container">
+                        <Trash2 className="w-3 h-3" /> Hapus
+                      </button>
+                    </>
+                  )}
+                  {isDeleted && (
+                    <button onClick={() => onHardDelete(item)} className="flex items-center gap-1 px-3 py-1 border border-error rounded-lg text-xs text-error hover:bg-error-container">
+                      <ShieldAlert className="w-3 h-3" /> Hapus Permanen
+                    </button>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-on-surface-variant mb-2">
-                {item.unit} · {fmtPrice(item.base_price)}
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => onEdit(item)}
-                  className="flex items-center gap-1 px-3 py-1 border border-outline-variant rounded-lg text-xs hover:bg-surface-container-high"
-                >
-                  <Pencil className="w-3 h-3" /> Edit
-                </button>
-                <button
-                  onClick={() => onDelete(item)}
-                  className="flex items-center gap-1 px-3 py-1 border border-error rounded-lg text-xs text-error hover:bg-error-container"
-                >
-                  <Trash2 className="w-3 h-3" /> Hapus
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {items.length === 0 && !isFetching && (
             <p className="p-8 text-center text-sm text-on-surface-variant">Belum ada item pada grup ini.</p>
           )}
@@ -337,20 +329,28 @@ function ItemsSection({
 }
 
 // ── Main Table ────────────────────────────────────────────────────────────────
+type StatusFilter = "all" | "active" | "inactive" | "deleted";
+
 export function LaundryItemTable() {
   const [pcPage, setPcPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [isActiveFilter, setIsActiveFilter] = useState<"" | "true" | "false">("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortBy, setSortBy] = useState<SortCol>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [modal, setModal] = useState<"create" | "edit" | null>(null);
   const [editing, setEditing] = useState<LaundryItem | null>(null);
+  const [hardDeleteTarget, setHardDeleteTarget] = useState<LaundryItem | null>(null);
+  const [hardDeleteConfirmName, setHardDeleteConfirmName] = useState("");
 
   const del = useDeleteLaundryItem();
+  const hardDel = useHardDeleteLaundryItem();
+
+  const includeDeleted = statusFilter === "deleted" || statusFilter === "all";
 
   const commonFilters = {
     search: search.trim() || undefined,
-    is_active: isActiveFilter === "" ? undefined : isActiveFilter === "true",
+    is_active: statusFilter === "active" ? true : statusFilter === "inactive" ? false : undefined,
+    include_deleted: includeDeleted,
     sort_by: sortBy,
     sort_dir: sortDir,
   };
@@ -372,9 +372,17 @@ export function LaundryItemTable() {
   const isError = kgError || pcsError;
   const isFetching = kgFetching || pcsFetching;
 
-  // Filter by unit after fetching
-  const kiloItems = (kgData?.data ?? []).filter((it) => isKiloUnit(it.unit));
-  const pcsItems  = (pcsData?.data ?? []).filter((it) => !isKiloUnit(it.unit));
+  // Filter by unit after fetching; if "deleted" status selected, only show deleted items
+  const kiloItems = (kgData?.data ?? []).filter((it) => {
+    if (!isKiloUnit(it.unit)) return false;
+    if (statusFilter === "deleted") return !!it.deleted_at;
+    return true;
+  });
+  const pcsItems = (pcsData?.data ?? []).filter((it) => {
+    if (isKiloUnit(it.unit)) return false;
+    if (statusFilter === "deleted") return !!it.deleted_at;
+    return true;
+  });
   const pcsPagination = pcsData?.pagination;
 
   const toggleSort = (col: SortCol) => {
@@ -388,8 +396,22 @@ export function LaundryItemTable() {
   };
 
   const handleDelete = (item: LaundryItem) => {
-    if (!confirm(`Hapus item "${item.name}"?`)) return;
+    if (!confirm(`Hapus item "${item.name}"? Item dapat dihapus permanen setelahnya.`)) return;
     del.mutate(item.id);
+  };
+
+  const handleHardDelete = (item: LaundryItem) => {
+    setHardDeleteTarget(item);
+    setHardDeleteConfirmName("");
+  };
+
+  const confirmHardDelete = () => {
+    if (!hardDeleteTarget) return;
+    if (hardDeleteConfirmName !== hardDeleteTarget.name) return;
+    hardDel.mutate(hardDeleteTarget.id, {
+      onSuccess: () => setHardDeleteTarget(null),
+      onError: () => setHardDeleteTarget(null),
+    });
   };
 
   const openEdit = (item: LaundryItem) => {
@@ -417,13 +439,14 @@ export function LaundryItemTable() {
             />
           </div>
           <select
-            value={isActiveFilter}
-            onChange={(e) => { setIsActiveFilter(e.target.value as "" | "true" | "false"); setPcPage(1); }}
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value as StatusFilter); setPcPage(1); }}
             className="px-4 py-2.5 bg-surface border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <option value="">Semua Status</option>
-            <option value="true">Aktif</option>
-            <option value="false">Nonaktif</option>
+            <option value="all">Semua Status</option>
+            <option value="active">Aktif</option>
+            <option value="inactive">Nonaktif</option>
+            <option value="deleted">Terhapus</option>
           </select>
         </div>
         <button
@@ -453,6 +476,7 @@ export function LaundryItemTable() {
           onToggleSort={toggleSort}
           onEdit={openEdit}
           onDelete={handleDelete}
+          onHardDelete={handleHardDelete}
         />
       )}
 
@@ -466,6 +490,7 @@ export function LaundryItemTable() {
         onToggleSort={toggleSort}
         onEdit={openEdit}
         onDelete={handleDelete}
+        onHardDelete={handleHardDelete}
       />
 
       {/* Pagination — for pcs items only */}
@@ -516,6 +541,45 @@ export function LaundryItemTable() {
           initial={modal === "edit" ? editing : null}
           onClose={closeModal}
         />
+      )}
+
+      {/* Hard Delete Confirm Dialog */}
+      {hardDeleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-surface rounded-2xl w-full max-w-md shadow-xl p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="w-6 h-6 text-error flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-bold text-lg text-error">Hapus Permanen</h3>
+                <p className="text-sm text-on-surface-variant mt-1">
+                  Item <strong className="text-on-surface">"{hardDeleteTarget.name}"</strong> akan dihapus permanen dan tidak bisa dikembalikan. Ketik nama item untuk konfirmasi.
+                </p>
+              </div>
+            </div>
+            <input
+              type="text"
+              value={hardDeleteConfirmName}
+              onChange={(e) => setHardDeleteConfirmName(e.target.value)}
+              placeholder={hardDeleteTarget.name}
+              className="w-full px-4 py-2.5 border-2 border-outline-variant rounded-xl text-sm focus:outline-none focus:border-error"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => setHardDeleteTarget(null)}
+                className="flex-1 py-2.5 border border-outline-variant rounded-xl text-sm font-medium hover:bg-surface-container-low"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmHardDelete}
+                disabled={hardDeleteConfirmName !== hardDeleteTarget.name || hardDel.isPending}
+                className="flex-1 py-2.5 bg-error text-on-error rounded-xl text-sm font-bold disabled:opacity-40 hover:opacity-90"
+              >
+                {hardDel.isPending ? "Menghapus..." : "Hapus Permanen"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

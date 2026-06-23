@@ -4,7 +4,7 @@ import { Router } from "express";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import { requireRole } from "../../middlewares/role.middleware.js";
 import { validate } from "../../middlewares/validate.middleware.js";
-import { getAttendanceReport, exportAttendanceReport } from "../../controllers/admin/report.controller.js";
+import { getAttendanceReport, exportAttendanceReport, exportSalesReport, exportEmployeeReport } from "../../controllers/admin/report.controller.js";
 import * as UserCtrl from "../../controllers/admin/user.controller.js";
 import * as OutletCtrl from "../../controllers/admin/outlet.controller.js";
 import * as ShiftCtrl from "../../controllers/admin/shift.controller.js";
@@ -77,6 +77,16 @@ router.delete(
   requireRole("super_admin"),
   UserCtrl.deleteUser,
 );
+router.delete(
+  "/admin/users/:id/permanent",
+  requireRole("super_admin"),
+  UserCtrl.hardDeleteUser,
+);
+router.post(
+  "/admin/users/:id/resend-invite",
+  requireRole("super_admin"),
+  UserCtrl.resendInvite,
+);
 
 // Employee shift assignments
 router.get(
@@ -127,7 +137,12 @@ router.patch(
 router.delete(
   "/admin/outlets/:id",
   requireRole("super_admin"),
-  OutletCtrl.deactivateOutlet,
+  OutletCtrl.softDeleteOutlet,
+);
+router.delete(
+  "/admin/outlets/:id/permanent",
+  requireRole("super_admin"),
+  OutletCtrl.deleteOutlet,
 );
 router.get(
   "/admin/outlets/:id/assignments",
@@ -203,6 +218,11 @@ router.delete(
   "/admin/laundry-items/:id",
   requireRole("super_admin"),
   LaundryItemCtrl.deleteLaundryItem,
+);
+router.delete(
+  "/admin/laundry-items/:id/permanent",
+  requireRole("super_admin"),
+  LaundryItemCtrl.hardDeleteLaundryItem,
 );
 
 // -- Orders -------------------------------------------------------------------
@@ -281,6 +301,16 @@ router.get(
   "/reports/employees",
   requireRole("super_admin", "outlet_admin"),
   getEmployeePerformanceReport,
+);
+router.get(
+  "/reports/sales/export",
+  requireRole("super_admin", "outlet_admin"),
+  exportSalesReport,
+);
+router.get(
+  "/reports/employees/export",
+  requireRole("super_admin", "outlet_admin"),
+  exportEmployeeReport,
 );
 
 // -- Admin Notifications ------------------------------------------------------

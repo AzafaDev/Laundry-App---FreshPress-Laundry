@@ -21,8 +21,8 @@ export const createUserSchema = z.object({
   email: z.string().email("Format email tidak valid."),
   phone: z
     .string()
-    .regex(/^[0-9+\-\s]{8,15}$/, "Format nomor telepon tidak valid.")
-    .optional(),
+    .min(1, "Nomor telepon wajib diisi.")
+    .regex(/^[0-9+\-\s]{8,15}$/, "Format nomor telepon tidak valid."),
   role: employeeRoleSchema,
   outlet_id: z.string().uuid("outlet_id harus UUID.").optional(),
   // password is now optional — if omitted, an invite email is sent

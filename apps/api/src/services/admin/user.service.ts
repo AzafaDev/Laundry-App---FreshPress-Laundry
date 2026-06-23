@@ -99,7 +99,8 @@ export const createUser = async (input: CreateUserInput) => {
       phone: input.phone ?? null,
       role: input.role as any,
       password_hash,
-      is_active: input.is_active ?? true,
+      // If no password supplied (invite flow), account starts inactive until employee sets password
+      is_active: input.password ? (input.is_active ?? true) : false,
       outlet_id: input.outlet_id ?? null,
     },
     select: PUBLIC_EMPLOYEE_SELECT,
@@ -155,6 +156,58 @@ export const updateUser = async (id: string, input: UpdateUserInput) => {
     data,
     select: PUBLIC_EMPLOYEE_SELECT,
   });
+};
+
+/** Permanently delete a user that has already been soft-deleted. */
+export const hardDeleteUser = async (id: string, requesterId: string) => {
+  if (id === requesterId) {
+    throw new AppError("Tidak dapat menghapus akun sendiri.", 400);
+  }
+  const target = await prisma.employee.findUnique({ where: { id } });
+  if (!target) throw new AppError("User tidak ditemukan.", 404);
+  if (!target.deleted_at) {
+    throw new AppError("User harus di-soft-delete terlebih dahulu sebelum dihapus permanen.", 400);
+  }
+
+  await prisma.$transaction([
+    prisma.passwordResetToken.deleteMany({ where: { employee_id: id } }),
+    prisma.employeeShift.deleteMany({ where: { employee_id: id } }),
+    prisma.attendance.deleteMany({ where: { employee_id: id } }),
+    prisma.employee.delete({ where: { id } }),
+  ]);
+
+  return { id };
+};
+
+/**
+ * Resend an invite / re-verification email so an inactive user can set (or reset)
+ * their password. Works for both first-time invites and admin-deactivated accounts.
+ * When the user clicks the link and sets a password, `is_active` becomes true automatically.
+ */
+export const resendInvite = async (id: string) => {
+  const target = await prisma.employee.findFirst({ where: { id, deleted_at: null } });
+  if (!target) throw new AppError("User tidak ditemukan.", 404);
+  if (target.is_active) throw new AppError("User sudah aktif. Tidak perlu kirim undangan ulang.", 400);
+
+  // Invalidate all existing unused tokens first
+  await prisma.passwordResetToken.deleteMany({
+    where: { employee_id: id, used_at: null },
+  });
+
+  // Create a fresh 24-hour token
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+  await prisma.passwordResetToken.create({
+    data: { employee_id: id, token_hash: tokenHash, expires_at: expiresAt },
+  });
+
+  sendEmployeeInviteEmail(target.email, target.full_name, rawToken).catch((err) =>
+    console.error("Failed to send re-invite email:", err),
+  );
+
+  return { id, email: target.email };
 };
 
 /** Soft-delete: mark deleted_at instead of removing the row. */

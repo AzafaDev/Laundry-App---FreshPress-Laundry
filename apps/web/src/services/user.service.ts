@@ -55,4 +55,18 @@ export const userService = {
     );
     return data.data;
   },
+
+  resendInvite: async (id: string): Promise<{ id: string; email: string }> => {
+    const { data } = await axiosInstance.post<Envelope<{ id: string; email: string }>>(
+      `/v1/admin/users/${id}/resend-invite`,
+    );
+    return data.data;
+  },
+
+  hardRemove: async (id: string): Promise<{ id: string }> => {
+    const { data } = await axiosInstance.delete<Envelope<{ id: string }>>(
+      `/v1/admin/users/${id}/permanent`,
+    );
+    return data.data;
+  },
 };

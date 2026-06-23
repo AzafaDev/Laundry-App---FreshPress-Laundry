@@ -19,6 +19,11 @@ export interface GeocodeMatch {
   longitude: number;
   formatted: string;
   confidence?: number;
+  street?: string;
+  district?: string;
+  city?: string;
+  province?: string;
+  postal_code?: string;
 }
 
 export interface AssignedUser {
@@ -35,7 +40,7 @@ export const outletService = {
   list: async (params: OutletListQuery = {}): Promise<OutletListResponse> => {
     const { data } = await axiosInstance.get<PaginatedEnvelope<Outlet>>(
       "/v1/admin/outlets",
-      { params },
+      { params: { ...params, include_deleted: params.include_deleted ? "true" : undefined } },
     );
     return { items: data.items, pagination: data.pagination };
   },
@@ -63,9 +68,16 @@ export const outletService = {
     return data.data;
   },
 
-  deactivate: async (id: string): Promise<Outlet> => {
+  softDelete: async (id: string): Promise<Outlet> => {
     const { data } = await axiosInstance.delete<Envelope<Outlet>>(
       `/v1/admin/outlets/${id}`,
+    );
+    return data.data;
+  },
+
+  delete: async (id: string): Promise<{ id: string }> => {
+    const { data } = await axiosInstance.delete<Envelope<{ id: string }>>(
+      `/v1/admin/outlets/${id}/permanent`,
     );
     return data.data;
   },

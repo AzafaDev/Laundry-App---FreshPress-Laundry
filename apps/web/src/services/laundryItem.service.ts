@@ -16,6 +16,7 @@ export const laundryItemService = {
     if (query.limit) params.set("limit", String(query.limit));
     if (query.search) params.set("search", query.search);
     if (query.is_active !== undefined) params.set("is_active", String(query.is_active));
+    if (query.include_deleted) params.set("include_deleted", "true");
     if (query.sort_by) params.set("sort_by", query.sort_by);
     if (query.sort_dir) params.set("sort_dir", query.sort_dir);
     const { data } = await axiosInstance.get(
@@ -42,5 +43,9 @@ export const laundryItemService = {
 
   remove: async (id: string): Promise<void> => {
     await axiosInstance.delete(`/v1/admin/laundry-items/${id}`);
+  },
+
+  hardRemove: async (id: string): Promise<void> => {
+    await axiosInstance.delete(`/v1/admin/laundry-items/${id}/permanent`);
   },
 };

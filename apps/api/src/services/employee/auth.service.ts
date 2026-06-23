@@ -134,7 +134,7 @@ export const resetPassword = async (rawToken: string, newPassword: string, res: 
   const [updatedEmployee] = await prisma.$transaction([
     prisma.employee.update({
       where: { id: record.employee_id },
-      data: { password_hash, token_version: { increment: 1 } },
+      data: { password_hash, token_version: { increment: 1 }, is_active: true },
     }),
     prisma.passwordResetToken.update({
       where: { id: record.id },
