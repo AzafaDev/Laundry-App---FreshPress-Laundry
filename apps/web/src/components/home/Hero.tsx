@@ -1,116 +1,126 @@
-﻿"use client";
+"use client";
 
-import Link from "next/link";
-import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Star, Truck, HeadphonesIcon, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, HeadphonesIcon, MapPin, Truck } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { laundryItemService } from "@/services/laundryItem.service";
 import { formatRupiah } from "@/utils/formatPrice";
+import { HeroSlide1 } from "./slides/HeroSlide1";
+import { HeroSlide2 } from "./slides/HeroSlide2";
+import { HeroSlide3 } from "./slides/HeroSlide3";
 
-const usps = [
+const USPS = [
   { icon: Truck, label: "Gratis jemput & antar" },
   { icon: HeadphonesIcon, label: "Dukungan 24/7" },
   { icon: MapPin, label: "Lacak pesanan real-time" },
 ];
 
+const SLIDE_COUNT = 3;
+const INTERVAL_MS = 5000;
+
+// Navbar: h-14 (3.5rem) mobile, h-16 (4rem) md+
+const HERO_HEIGHT = "h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4rem)]";
+
 export const Hero = () => {
   const user = useAuthStore((s) => s.user);
-  const ctaHref = user ? "/customer/pickup" : "/register";
+  const ctaHref = user ? "/customer/pickup" : "/customer/register";
 
   const { data: laundryItems = [] } = useQuery({
     queryKey: ["customer", "laundry-items"],
     queryFn: laundryItemService.listForCustomer,
   });
 
-  const cheapestKgItem = laundryItems
-    .filter((item) => item.unit === "kg")
-    .reduce<typeof laundryItems[number] | null>((cheapest, item) => {
-      if (!cheapest || Number(item.base_price) < Number(cheapest.base_price)) {
-        return item;
-      }
-      return cheapest;
-    }, null);
+  const cheapest = (unit: string) =>
+    laundryItems
+      .filter((i) => i.unit === unit)
+      .reduce<(typeof laundryItems)[number] | null>(
+        (acc, item) => (!acc || Number(item.base_price) < Number(acc.base_price) ? item : acc),
+        null,
+      );
+
+  const cheapestKg  = cheapest("kg");
+  const cheapestPcs = cheapest("pcs") ?? cheapest("buah") ?? cheapest("satuan");
+
+  const startingPrice = cheapestKg ? `${formatRupiah(Number(cheapestKg.base_price))} / kg`  : "Rp 7.000 / kg";
+  const kiloanPrice   = cheapestKg ? `${formatRupiah(Number(cheapestKg.base_price))} / kg`  : "Rp 7.000 / kg";
+  const satuanPrice   = cheapestPcs ? `${formatRupiah(Number(cheapestPcs.base_price))} / pcs` : "Rp 5.000 / pcs";
+
+  const [current, setCurrent] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => setCurrent((c) => (c + 1) % SLIDE_COUNT), INTERVAL_MS);
+  }, []);
+
+  useEffect(() => {
+    startTimer();
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [startTimer]);
+
+  const handleNav = (dir: -1 | 1) => {
+    setCurrent((c) => (c + dir + SLIDE_COUNT) % SLIDE_COUNT);
+    startTimer();
+  };
 
   return (
-    <section className="bg-white overflow-hidden">
-      {/* Main hero */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-12 pb-0">
-        <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
-          {/* Left: text */}
-          <div className="flex-1 text-center lg:text-left">
-            {/* Trust badge */}
-            <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-semibold mb-6">
-              <div className="flex">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-3.5 h-3.5 fill-primary text-primary" />
-                ))}
-              </div>
-              <span>200.000+ ulasan di seluruh Indonesia</span>
-            </div>
+    // Section mengisi tepat satu layar dikurangi tinggi navbar
+    <section className={`${HERO_HEIGHT} flex flex-col overflow-hidden bg-white`}>
 
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-tight mb-5">
-              Laundry & Dry Cleaning{" "}
-              <span className="text-primary">Selesai 24 Jam</span>
-            </h1>
-
-            <p className="text-lg text-gray-500 mb-8">
-              Jemput dari rumah, cuci profesional oleh tenaga ahli kami, lalu
-              antar kembali ke depan pintu Anda.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
-              <Link
-                href={ctaHref}
-                className="bg-primary text-white px-8 py-4 rounded-xl text-base font-bold shadow-md hover:bg-primary-container hover:text-on-primary-container transition-all active:scale-95 text-center"
-              >
-                Jadwalkan Penjemputan
-              </Link>
-              <a
-                href="#how-it-works"
-                className="border border-gray-300 text-gray-900 px-8 py-4 rounded-xl text-base font-semibold hover:bg-gray-50 transition-colors text-center"
-              >
-                Cara Kerja
-              </a>
-            </div>
-          </div>
-
-          {/* Right: hero image */}
-          <div className="flex-1 w-full relative">
-            <div className="relative h-72 sm:h-96 lg:h-[480px] w-full">
-              <Image
-                src="/images/slide-1.png"
-                alt="FreshPress Laundry Service"
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover rounded-3xl shadow-xl"
-                priority
-              />
-              {/* Floating price card */}
-              <div className="absolute bottom-6 left-6 bg-white rounded-2xl shadow-lg px-5 py-4 flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                  <span className="text-primary font-bold text-lg">✓</span>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">Mulai dari</p>
-                  <p className="text-gray-900 font-bold text-sm">
-                    {cheapestKgItem
-                      ? `${formatRupiah(Number(cheapestKgItem.base_price))} / kg`
-                      : "Rp 7.000 / kg"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* ── Carousel (flex-1 agar mengisi sisa ruang) ── */}
+      <div
+        className="flex-1 min-h-0 relative overflow-hidden"
+        onMouseEnter={() => { if (timerRef.current) clearInterval(timerRef.current); }}
+        onMouseLeave={startTimer}
+      >
+        {/* Track */}
+        <div
+          className="flex h-full transition-transform duration-500 ease-in-out"
+          style={{ transform: `translateX(-${current * 100}%)` }}
+        >
+          <div className="min-w-full h-full"><HeroSlide1 ctaHref={ctaHref} startingPrice={startingPrice} /></div>
+          <div className="min-w-full h-full"><HeroSlide2 ctaHref={ctaHref} kiloanPrice={kiloanPrice} satuanPrice={satuanPrice} /></div>
+          <div className="min-w-full h-full"><HeroSlide3 ctaHref={ctaHref} /></div>
         </div>
+
+        {/* Panah kiri */}
+        <button
+          onClick={() => handleNav(-1)}
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full shadow-md flex items-center justify-center text-gray-700 hover:text-primary transition-colors z-10"
+          aria-label="Slide sebelumnya"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+
+        {/* Panah kanan */}
+        <button
+          onClick={() => handleNav(1)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full shadow-md flex items-center justify-center text-gray-700 hover:text-primary transition-colors z-10"
+          aria-label="Slide berikutnya"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
       </div>
 
-      {/* USP strip */}
-      <div className="bg-primary mt-10">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col sm:flex-row justify-center gap-6 sm:gap-12">
-          {usps.map(({ icon: Icon, label }) => (
+      {/* ── Dot indicators ── */}
+      <div className="shrink-0 flex justify-center gap-2 py-3 bg-white">
+        {Array.from({ length: SLIDE_COUNT }).map((_, i) => (
+          <button
+            key={i}
+            onClick={() => { setCurrent(i); startTimer(); }}
+            className={`rounded-full transition-all duration-300 ${i === current ? "w-6 h-2.5 bg-primary" : "w-2.5 h-2.5 bg-gray-300 hover:bg-gray-400"}`}
+            aria-label={`Slide ${i + 1}`}
+          />
+        ))}
+      </div>
+
+      {/* ── USP strip ── */}
+      <div className="shrink-0 bg-primary">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 flex flex-col sm:flex-row justify-center gap-5 sm:gap-12">
+          {USPS.map(({ icon: Icon, label }) => (
             <div key={label} className="flex items-center gap-2 text-white justify-center">
-              <Icon className="w-5 h-5 flex-shrink-0" />
+              <Icon className="w-4 h-4 flex-shrink-0" />
               <span className="text-sm font-medium">{label}</span>
             </div>
           ))}
@@ -118,4 +128,4 @@ export const Hero = () => {
       </div>
     </section>
   );
-}
+};

@@ -20,6 +20,8 @@ export interface User {
   is_occupied?: boolean;
   /** Present on Customer accounts (not Employee). Optional here for cross-use. */
   is_verified?: boolean;
+  /** True jika customer login via Google OAuth. Digunakan untuk sembunyikan form ubah email/password. */
+  has_google_login?: boolean;
   deleted_at?: string | null;
   created_at: string;
   updated_at?: string;

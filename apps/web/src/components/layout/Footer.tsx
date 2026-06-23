@@ -75,7 +75,7 @@ export const Footer = () => (
       <div>
         <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-widest">Layanan</h4>
         <ul className="space-y-2.5">
-          {["Wash & Fold", "Wash & Setrika", "Dry Cleaning", "Express 6 Jam"].map((item) => (
+          {["Laundry Kiloan", "Laundry Satuan"].map((item) => (
             <li key={item}>
               <a href="#" className="text-sm text-gray-500 hover:text-primary transition-colors">
                 {item}

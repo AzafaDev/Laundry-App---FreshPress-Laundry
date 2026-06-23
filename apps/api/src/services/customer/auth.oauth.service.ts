@@ -30,6 +30,9 @@ export const googleLogin = async (code: string, res: Response) => {
   const oauthPayload = ticket.getPayload();
   if (!oauthPayload?.email) throw new AppError("Tidak ada email dari Google.", 400);
 
+  const providerUid = oauthPayload.sub;
+  if (!providerUid) throw new AppError("Google user ID tidak tersedia.", 400);
+
   let customer = await prisma.customer.findUnique({ where: { email: oauthPayload.email } });
 
   if (!customer) {
@@ -47,8 +50,15 @@ export const googleLogin = async (code: string, res: Response) => {
     customer = await prisma.customer.update({ where: { id: customer.id }, data: { is_verified: true } });
   }
 
+  // Simpan / update entri SocialAccount agar bisa dideteksi sebagai Google user
+  await prisma.socialAccount.upsert({
+    where: { provider_provider_uid: { provider: "google", provider_uid: providerUid } },
+    update: { customer_id: customer.id },
+    create: { customer_id: customer.id, provider: "google", provider_uid: providerUid },
+  });
+
   issueTokenCookies(res, { userId: customer.id, role: "customer", email: customer.email, tokenVersion: customer.token_version });
 
   const { password_hash: _, ...safeCustomer } = customer;
-  return { user: safeCustomer };
+  return { user: { ...safeCustomer, has_google_login: true } };
 };

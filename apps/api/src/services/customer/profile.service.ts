@@ -10,9 +10,17 @@ export { changePassword } from "./profile.password.service.js";
 const PROFILE_SELECT = { id: true, full_name: true, email: true, phone: true, avatar_url: true, is_verified: true } as const;
 
 export const getProfile = async (userId: string) => {
-  const customer = await prisma.customer.findUnique({ where: { id: userId }, select: { ...PROFILE_SELECT, created_at: true } });
+  const customer = await prisma.customer.findUnique({
+    where: { id: userId },
+    select: {
+      ...PROFILE_SELECT,
+      created_at: true,
+      social_accounts: { select: { provider: true } },
+    },
+  });
   if (!customer) throw new AppError("User tidak ditemukan.", 404);
-  return customer;
+  const { social_accounts, ...rest } = customer;
+  return { ...rest, has_google_login: social_accounts.some((s) => s.provider === "google") };
 };
 
 export const updateProfile = async (userId: string, data: { full_name?: string; phone?: string; new_email?: string }) => {

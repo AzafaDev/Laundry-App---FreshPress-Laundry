@@ -1,15 +1,24 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, useEffect } from "react";
 import Link from "next/link";
-import { User, Mail, Phone, ArrowRight, Shirt } from "lucide-react";
+import { ArrowLeft, ArrowRight, Mail, Phone, Shirt, User } from "lucide-react";
 import { axiosInstance } from "@/lib/axios";
+import { useAuthStore } from "@/stores/authStore";
+import { useRouter } from "next/navigation";
 import { RegisterBrandingPanel } from "@/components/customer/RegisterBrandingPanel";
 
 type RegisterForm = { name: string; email: string; phone: string };
 type FormErrors = Partial<Record<keyof RegisterForm | "server", string>>;
 
 export default function CustomerRegisterPage() {
+  const router = useRouter();
+  const { user, _hasHydrated } = useAuthStore();
+
+  useEffect(() => {
+    if (_hasHydrated && user) router.replace("/");
+  }, [_hasHydrated, user, router]);
+
   const [form, setForm] = useState<RegisterForm>({ name: "", email: "", phone: "" });
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
@@ -25,7 +34,8 @@ export default function CustomerRegisterPage() {
     if (!form.name.trim()) next.name = "Nama lengkap wajib diisi.";
     if (!form.email.trim()) next.email = "Email wajib diisi.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) next.email = "Format email tidak valid.";
-    if (form.phone && !/^[0-9+\-\s]{8,15}$/.test(form.phone.trim())) next.phone = "Nomor telepon tidak valid (8-15 digit).";
+    if (!form.phone.trim()) next.phone = "Nomor telepon wajib diisi.";
+    else if (!/^[0-9+\-\s]{8,15}$/.test(form.phone.trim())) next.phone = "Nomor telepon tidak valid (8-15 digit).";
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -35,7 +45,7 @@ export default function CustomerRegisterPage() {
     if (!validate()) return;
     setLoading(true);
     try {
-      await axiosInstance.post("/v1/customer/auth/register", { full_name: form.name, email: form.email, phone: form.phone || undefined, role: "customer" });
+      await axiosInstance.post("/v1/customer/auth/register", { full_name: form.name, email: form.email, phone: form.phone.trim(), role: "customer" });
       setSent(true);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Registrasi gagal. Coba lagi.";
@@ -81,6 +91,10 @@ export default function CustomerRegisterPage() {
         <RegisterBrandingPanel />
 
         <div className="w-full max-w-[480px] mx-auto">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-primary transition-colors mb-4">
+            <ArrowLeft className="w-4 h-4" />
+            Kembali ke Beranda
+          </Link>
           <div className="lg:hidden flex flex-col items-center mb-6">
             <div className="bg-primary p-2.5 rounded-xl shadow-lg shadow-primary/30 mb-2"><Shirt className="text-white w-7 h-7" /></div>
             <span className="text-xl font-bold text-primary">FreshPress Laundry</span>
@@ -110,7 +124,7 @@ export default function CustomerRegisterPage() {
               ))}
 
               <div className="group">
-                <label htmlFor="phone" className="text-sm font-bold text-on-surface/80 ml-1 mb-1.5 block">Telepon <span className="text-on-surface-variant font-normal">(opsional)</span></label>
+                <label htmlFor="phone" className="text-sm font-bold text-on-surface/80 ml-1 mb-1.5 block">Telepon</label>
                 <div className="relative flex items-center">
                   <Phone className="absolute left-4 w-5 h-5 text-outline group-focus-within:text-primary transition-colors" />
                   <input id="phone" type="tel" placeholder="0812..." value={form.phone} onChange={(e) => updateField("phone", e.target.value)} className="w-full pl-12 pr-4 py-3.5 rounded-2xl border-2 border-outline-variant bg-white focus:outline-none focus:border-primary transition-all text-base placeholder:text-outline-variant" />

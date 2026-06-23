@@ -306,7 +306,7 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
                     <div className="border-t border-gray-100 pt-4 mb-4">
                       <div className="flex items-center gap-2 text-xs text-primary bg-primary/5 rounded-lg px-3 py-2 mb-3">
                         <Truck className="w-3.5 h-3.5 shrink-0" />
-                        Jemput &amp; antar gratis
+                        Jemput &amp; antar gratis dalam jarak kurang dari 5 km.
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-500">Total Estimasi</span>
