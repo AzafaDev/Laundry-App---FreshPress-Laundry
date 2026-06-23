@@ -91,7 +91,10 @@ export const Navbar = () => {
                   className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-gray-100 transition-colors"
                 >
                   {user?.avatar_url ? (
-                    <img src={user.avatar_url} alt={user.full_name} className="w-8 h-8 rounded-full object-cover" />
+                    <div className="w-8 h-8 rounded-full overflow-hidden shrink-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img key={user.avatar_url} src={user.avatar_url} alt={user.full_name} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                    </div>
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center">
                       <User className="w-4 h-4 text-on-primary-container" />

@@ -61,6 +61,15 @@ export default function ProfilePage() {
     if (!user) router.replace("/login?redirect=/profile");
   }, [user, router]);
 
+  // Fetch profil terbaru dari server agar has_google_login selalu akurat
+  useEffect(() => {
+    if (!user) return;
+    axiosInstance.get("/v1/customer/profile")
+      .then(({ data }) => updateUser(data))
+      .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [profileForm, setProfileForm] = useState({
     full_name: user?.full_name ?? "",
     phone: user?.phone ?? "",
@@ -174,8 +183,11 @@ export default function ProfilePage() {
     const formData = new FormData();
     formData.append("avatar", file);
     try {
-      const { data } = await axiosInstance.post("/v1/customer/profile/avatar", formData, { headers: { "Content-Type": "multipart/form-data" } });
-      updateUser({ avatar_url: data.avatar_url ?? data.user?.avatar_url });
+      const { data } = await axiosInstance.post("/v1/customer/profile/avatar", formData);
+      const avatarUrl: string | undefined = data?.avatar_url ?? data?.user?.avatar_url;
+      if (avatarUrl) {
+        updateUser({ avatar_url: avatarUrl });
+      }
     } catch (err: unknown) {
       setAvatarError((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Gagal mengunggah foto.");
     } finally { setAvatarLoading(false); e.target.value = ""; }
@@ -222,7 +234,7 @@ export default function ProfilePage() {
               <div className="w-20 h-20 rounded-full bg-primary-container flex items-center justify-center overflow-hidden border-2 border-primary/20">
                 {user.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                  <img key={user.avatar_url} src={user.avatar_url} alt="avatar" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
                 ) : (
                   <User className="w-10 h-10 text-on-primary-container" />
                 )}
@@ -261,16 +273,34 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-1">
               <label htmlFor="email" className="text-sm font-medium text-on-surface-variant block">Email</label>
-              <div className="relative"><Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" /><input id="email" type="email" value={profileForm.email} onChange={(e) => setProfileForm((p) => ({ ...p, email: e.target.value }))} className="w-full pl-10 pr-4 py-3 border-2 border-outline-variant rounded-xl bg-surface outline-none text-sm focus:border-primary transition-colors" /></div>
-              {profileForm.email !== user.email && <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Mengubah email membutuhkan verifikasi ulang.</p>}
+              {user.has_google_login ? (
+                <div className="flex items-center gap-2 pl-3 pr-4 py-3 border-2 border-outline-variant rounded-xl bg-surface-container-low text-sm text-on-surface-variant">
+                  <Mail className="w-4 h-4 text-outline shrink-0" />
+                  <span className="flex-1 truncate">{user.email}</span>
+                  <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full shrink-0">Google</span>
+                </div>
+              ) : (
+                <>
+                  <div className="relative"><Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" /><input id="email" type="email" value={profileForm.email} onChange={(e) => setProfileForm((p) => ({ ...p, email: e.target.value }))} className="w-full pl-10 pr-4 py-3 border-2 border-outline-variant rounded-xl bg-surface outline-none text-sm focus:border-primary transition-colors" /></div>
+                  {profileForm.email !== user.email && <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Mengubah email membutuhkan verifikasi ulang.</p>}
+                </>
+              )}
             </div>
+            {user.has_google_login && (
+              <p className="text-xs text-on-surface-variant flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2">
+                <AlertCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                Akun ini terhubung dengan Google. Email dan password dikelola oleh Google.
+              </p>
+            )}
             <div className="flex items-center gap-3 flex-wrap">
               <button type="submit" disabled={profileLoading} className="flex items-center gap-2 bg-primary text-on-primary px-6 py-2.5 rounded-xl font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-60">
                 {profileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Simpan Perubahan
               </button>
-              <button type="button" onClick={openPwdModal} className="flex items-center gap-2 border-2 border-outline-variant text-on-surface-variant px-6 py-2.5 rounded-xl font-semibold text-sm hover:border-primary hover:text-primary transition-all">
-                <KeyRound className="w-4 h-4" /> Ubah Password
-              </button>
+              {!user.has_google_login && (
+                <button type="button" onClick={openPwdModal} className="flex items-center gap-2 border-2 border-outline-variant text-on-surface-variant px-6 py-2.5 rounded-xl font-semibold text-sm hover:border-primary hover:text-primary transition-all">
+                  <KeyRound className="w-4 h-4" /> Ubah Password
+                </button>
+              )}
             </div>
           </form>
         </div>

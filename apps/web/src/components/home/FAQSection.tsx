@@ -5,28 +5,36 @@ import { ChevronDown } from "lucide-react";
 
 const faqs = [
   {
-    q: "Bagaimana cara memesan layanan FreshPress?",
-    a: "Cukup daftar akun, pilih layanan yang Anda butuhkan, tentukan waktu penjemputan, dan tim kami akan datang ke lokasi Anda. Prosesnya mudah dan cepat hanya dalam beberapa klik.",
+    q: "Bagaimana alur pemesanan laundry di FreshPress?",
+    a: "Daftar akun → verifikasi email → simpan alamat pickup → buat order dan pilih tanggal penjemputan (maks. 7 hari ke depan) → driver menjemput laundry Anda → laundry diproses di outlet (cuci, setrika, packing) → Anda mendapat tagihan dan melakukan pembayaran → driver mengantarkan kembali ke rumah Anda.",
   },
   {
-    q: "Berapa lama waktu pengerjaan laundry?",
-    a: "Layanan reguler selesai dalam 1–2 hari kerja. Kami juga menyediakan layanan express yang selesai dalam 6 jam untuk kebutuhan mendesak Anda.",
+    q: "Kapan saya membayar dan bagaimana cara pembayarannya?",
+    a: "Pembayaran dilakukan setelah laundry selesai diproses di outlet dan total biaya sudah dihitung berdasarkan berat atau jumlah item aktual. Anda akan mendapat notifikasi untuk melakukan pembayaran melalui Midtrans — mendukung transfer bank, kartu kredit, dan dompet digital.",
   },
   {
-    q: "Apakah ada biaya tambahan untuk penjemputan dan pengiriman?",
-    a: "Tidak! Semua layanan kami sudah termasuk jemput dan antar gratis ke seluruh area yang kami layani.",
+    q: "Apakah ada biaya penjemputan dan pengiriman?",
+    a: "Gratis untuk alamat yang berada dalam radius 5 km dari outlet terdekat. Di luar radius tersebut dikenakan biaya pengiriman flat. Estimasi biaya pengiriman bisa Anda lihat sebelum konfirmasi order berdasarkan alamat yang dipilih.",
   },
   {
-    q: "Bagaimana jika ada pakaian yang rusak saat proses pencucian?",
-    a: "Kami menjamin keamanan setiap pakaian. Jika terjadi kerusakan akibat kelalaian kami, kami akan memberikan kompensasi sesuai ketentuan yang berlaku.",
+    q: "Bagaimana outlet dipilihkan untuk pesanan saya?",
+    a: "Sistem secara otomatis memilih outlet aktif terdekat berdasarkan koordinat alamat pickup Anda. Anda tidak perlu memilih outlet secara manual — sistem yang menentukan agar proses lebih efisien.",
   },
   {
-    q: "Apakah bisa melacak status pesanan secara real-time?",
-    a: "Ya! Setelah memesan, Anda dapat melacak status pesanan secara real-time melalui dashboard akun Anda — mulai dari penjemputan, proses cuci, hingga pengiriman.",
+    q: "Bagaimana cara melacak status pesanan saya?",
+    a: "Setiap perubahan status dapat Anda pantau secara real-time di halaman 'Pesanan'. Status meliputi: Menunggu Driver Pickup → Driver Menjemput → Tiba di Outlet → Sedang Dicuci → Sedang Disetrika → Sedang Dipacking → Menunggu Pembayaran → Siap Diantar → Sedang Dikirim → Diterima. Setiap tahap disertai notifikasi.",
   },
   {
-    q: "Daerah mana saja yang dilayani FreshPress?",
-    a: "Saat ini kami melayani area Jakarta, Bandung, Surabaya, dan terus berkembang. Masukkan alamat Anda saat pemesanan untuk mengecek ketersediaan di area Anda.",
+    q: "Bagaimana jika saya tidak puas dengan hasil laundry?",
+    a: "Anda dapat mengajukan komplain saat status pesanan 'Diterima Customer'. Tersedia tipe komplain: item hilang, item rusak, item tertukar, pengantaran terlambat, atau kualitas kurang baik. Unggah foto bukti untuk mempercepat proses. Tim kami akan merespons dan memberikan solusi — termasuk cuci ulang atau refund sesuai ketentuan.",
+  },
+  {
+    q: "Apakah akun harus diverifikasi sebelum bisa memesan?",
+    a: "Ya, verifikasi email diperlukan sebelum Anda bisa membuat order. Setelah mendaftar, cek inbox untuk link verifikasi. Anda juga bisa mendaftar dan masuk menggunakan akun Google tanpa perlu verifikasi manual.",
+  },
+  {
+    q: "Bisakah saya menyimpan lebih dari satu alamat pickup?",
+    a: "Tentu. Anda dapat menyimpan beberapa alamat (Rumah, Kantor, Apartemen, dll.) di halaman 'Alamat Saya'. Satu alamat dapat dijadikan sebagai alamat utama yang otomatis terpilih saat membuat order baru.",
   },
 ];
 

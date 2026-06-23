@@ -92,6 +92,7 @@ export const uploadAvatar = async (
         folder: "freshpress/avatars",
         public_id: req.user!.userId,
         overwrite: true,
+        invalidate: true,
       });
       avatarUrl = uploaded.secure_url;
     } else {
