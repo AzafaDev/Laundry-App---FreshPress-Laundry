@@ -83,7 +83,11 @@ export const workerService = {
       throw new AppError(`Order sedang dalam status ${order.status}, tidak dapat diproses di station ${station}`, 400);
     }
 
-    const finalStatus = resolveNextStatus(station);
+    let finalStatus = resolveNextStatus(station);
+    if (station === "packing") {
+      const payment = await prisma.payment.findUnique({ where: { order_id: orderId }, select: { status: true } });
+      if (payment?.status === "paid") finalStatus = "ready_for_delivery";
+    }
 
     await runCompleteStationTransaction(orderId, employeeId, station, order.status, finalStatus, checkPendingBypass, actualItems);
 
@@ -168,7 +172,11 @@ export const workerService = {
       throw new AppError(`Order tidak sedang di station ${station}`, 400);
     }
 
-    const finalStatus = resolveNextStatus(station);
+    let finalStatus = resolveNextStatus(station);
+    if (station === "packing") {
+      const payment = await prisma.payment.findUnique({ where: { order_id: orderId }, select: { status: true } });
+      if (payment?.status === "paid") finalStatus = "ready_for_delivery";
+    }
 
     // checkPendingBypass = false karena bypass sudah di-approve, tidak perlu cek ulang
     await runCompleteStationTransaction(orderId, workerId, station, order.status, finalStatus, false, actualItems, bypassRequestId);
