@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { emitToRoom, emitToUser } from "../../lib/socket.js";
-import { notifyOutletAdmins } from "../../lib/notification.js";
+import { notifyOutletAdmins, notifyOutletEmployees } from "../../lib/notification.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { OrderStatus, StationType } from "../../../generated/prisma/client.js";
 import { getEmployeeOutlet } from "../../repositories/driver-worker/attendance.repository.js";
@@ -103,6 +103,14 @@ export const workerService = {
           invoiceNumber: order.invoice_number,
           timestamp: new Date(),
         });
+        await notifyOutletEmployees(
+          order.outlet_id,
+          ["outlet_admin", "driver"],
+          "Pembayaran berhasil",
+          `Pesanan ${order.invoice_number} siap untuk diantar.`,
+          "payment_completed",
+          order.id,
+        );
       }
     }
 
@@ -208,6 +216,14 @@ export const workerService = {
           invoiceNumber: order.invoice_number,
           timestamp: new Date(),
         });
+        await notifyOutletEmployees(
+          order.outlet_id,
+          ["outlet_admin", "driver"],
+          "Pembayaran berhasil",
+          `Pesanan ${order.invoice_number} siap untuk diantar.`,
+          "payment_completed",
+          order.id,
+        );
       }
     }
 
