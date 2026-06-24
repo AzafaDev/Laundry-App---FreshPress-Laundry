@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { env } from "../config/env.js";
+import { prisma } from "./prisma.js";
 
 let _resend: Resend | null = null;
 function getResend(): Resend {
@@ -121,7 +122,38 @@ export const sendPaymentReminderEmail = async (
   orderId: string,
 ): Promise<void> => {
   const link = `${env.CLIENT_URL}/customer/payment/${orderId}`;
-  const fmt = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount);
+  const fmt = (n: number) => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
+
+  const [orderItems, order] = await Promise.all([
+    prisma.orderItem.findMany({
+      where: { order_id: orderId },
+      include: { laundry_item: { select: { name: true, unit: true } } },
+    }),
+    prisma.order.findUnique({
+      where: { id: orderId },
+      select: { total_weight_kg: true, delivery_fee: true },
+    }),
+  ]);
+
+  const itemRows = orderItems.map((item) => `
+    <tr>
+      <td style="padding:8px 4px;border-bottom:1px solid #eee;">${item.laundry_item.name}</td>
+      <td style="padding:8px 4px;border-bottom:1px solid #eee;text-align:center;">${Number(item.quantity)} ${item.laundry_item.unit}</td>
+      <td style="padding:8px 4px;border-bottom:1px solid #eee;text-align:right;">${fmt(Number(item.price_at_order))}</td>
+    </tr>
+  `).join("");
+
+  const weightRow = order?.total_weight_kg
+    ? `<p style="color:#555;font-size:14px;">Berat total: <strong>${Number(order.total_weight_kg)} kg</strong></p>`
+    : "";
+
+  const deliveryFeeRow = order?.delivery_fee
+    ? `<tr>
+        <td colspan="2" style="padding:8px 4px;color:#555;">Ongkos kirim</td>
+        <td style="padding:8px 4px;text-align:right;">${fmt(Number(order.delivery_fee))}</td>
+       </tr>`
+    : "";
+
   await getResend().emails.send({
     from: FROM,
     to,
@@ -130,7 +162,34 @@ export const sendPaymentReminderEmail = async (
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px;">
         <h2 style="color:#00685f;">Pesanan Anda Sudah Selesai Diproses</h2>
         <p>Halo <strong>${customerName}</strong>,</p>
-        <p>Pesanan <strong>${invoiceNumber}</strong> sudah selesai dikemas dan siap diproses lebih lanjut. Total pembayaran: <strong>${fmt}</strong>.</p>
+        <p>Pesanan <strong>${invoiceNumber}</strong> sudah selesai dikemas. Berikut rincian pesanan Anda:</p>
+
+        <table style="width:100%;border-collapse:collapse;margin:16px 0;font-size:14px;">
+          <thead>
+            <tr style="background:#f5f5f5;">
+              <th style="padding:8px 4px;text-align:left;">Item</th>
+              <th style="padding:8px 4px;text-align:center;">Jumlah</th>
+              <th style="padding:8px 4px;text-align:right;">Harga</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemRows}
+            ${deliveryFeeRow}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2" style="padding:10px 4px;font-weight:bold;">Total Pembayaran</td>
+              <td style="padding:10px 4px;text-align:right;font-weight:bold;color:#00685f;">${fmt(amount)}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        ${weightRow}
+
+        <div style="background:#fff8e1;border-left:4px solid #f59e0b;padding:12px 16px;margin:16px 0;border-radius:4px;">
+          <p style="margin:0;color:#92400e;font-size:14px;font-weight:600;">⚠️ Pesanan Anda tidak akan diantar sebelum pembayaran diselesaikan.</p>
+        </div>
+
         <a href="${link}" style="display:inline-block;background:#00685f;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0;">Bayar Sekarang</a>
         <p style="color:#666;font-size:13px;">Jika Anda sudah melakukan pembayaran, abaikan email ini.</p>
       </div>
