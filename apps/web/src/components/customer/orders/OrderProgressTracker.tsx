@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, ChevronDown, Circle } from "lucide-react";
-import type { CustomerOrder } from "@/services/order.service";
+import { CheckCircle2, ChevronDown, Circle, BadgeCheck } from "lucide-react";
+import type { CustomerOrder, CustomerOrderStatus } from "@/services/order.service";
 import {
   formatDateTime,
-  getProgressIndex,
   ORDER_PROGRESS_STEPS,
   ORDER_STATUS_LABEL,
 } from "./orderConstants";
@@ -19,9 +18,14 @@ interface Props {
   onComplaint: () => void;
 }
 
+const PAYABLE_STATUSES: CustomerOrderStatus[] = ["washing", "ironing", "packing", "waiting_payment"];
+
 export function OrderProgressTracker({ order, isOpen, onToggle, onComplete, isCompleting, onComplaint }: Props) {
-  const progressIndex = getProgressIndex(order.status);
-  const activeIndex = progressIndex >= 0 ? progressIndex : 0;
+  const paidEarly = order.payment?.status === "paid" && ["washing", "ironing", "packing"].includes(order.status);
+  const visibleSteps = paidEarly
+    ? ORDER_PROGRESS_STEPS.filter((s) => s.key !== "waiting_payment")
+    : ORDER_PROGRESS_STEPS;
+  const activeIndex = Math.max(0, visibleSteps.findIndex((s) => s.key === order.status));
 
   return (
     <div className="space-y-3">
@@ -33,7 +37,7 @@ export function OrderProgressTracker({ order, isOpen, onToggle, onComplete, isCo
         className="w-full flex items-center justify-between rounded-xl border border-primary bg-primary/10 px-4 py-3 text-sm text-primary font-semibold hover:bg-primary/20 transition-colors"
       >
         <span className="flex flex-col items-start text-left">
-          <span>{ORDER_PROGRESS_STEPS[activeIndex]?.label ?? ORDER_STATUS_LABEL[order.status]}</span>
+          <span>{visibleSteps[activeIndex]?.label ?? ORDER_STATUS_LABEL[order.status]}</span>
           {order.status_histories && order.status_histories.length > 0 && (
             <span className="text-xs font-normal text-primary/70">
               {formatDateTime(order.status_histories[0].created_at)}
@@ -45,7 +49,7 @@ export function OrderProgressTracker({ order, isOpen, onToggle, onComplete, isCo
 
       {isOpen && (
         <div className="rounded-xl border border-outline-variant bg-surface-container-low divide-y divide-outline-variant overflow-hidden">
-          {ORDER_PROGRESS_STEPS.map((step, idx) => {
+          {visibleSteps.map((step, idx) => {
             const isDone = idx < activeIndex;
             const isCurrent = idx === activeIndex;
             const history = order.status_histories?.find((e) => e.new_status === step.key);
@@ -63,13 +67,27 @@ export function OrderProgressTracker({ order, isOpen, onToggle, onComplete, isCo
         </div>
       )}
 
-      {order.status === "waiting_payment" && order.payment?.status !== "paid" && (
-        <Link
-          href={`/customer/payment/${order.id}`}
-          className="block w-full text-center rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white hover:bg-primary-container hover:text-on-primary-container transition-colors"
-        >
-          Bayar Sekarang
-        </Link>
+      {PAYABLE_STATUSES.includes(order.status) && order.total_price && (
+        order.payment?.status === "paid" ? (
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
+            <BadgeCheck className="w-4 h-4 shrink-0" />
+            <span>
+              Pesanan ini sudah dibayar
+              {order.payment?.paid_at && (
+                <span className="block text-xs font-normal text-green-600">
+                  {formatDateTime(order.payment.paid_at)}
+                </span>
+              )}
+            </span>
+          </div>
+        ) : (
+          <Link
+            href={`/customer/payment/${order.id}`}
+            className="block w-full text-center rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white hover:bg-primary-container hover:text-on-primary-container transition-colors"
+          >
+            Bayar Sekarang
+          </Link>
+        )
       )}
 
       {order.status === "received_by_customer" && (
