@@ -6,6 +6,7 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { notifyCustomer } from "../../lib/notification.js";
 import { emitToUser, emitStationNewOrder } from "../../lib/socket.js";
+import { sendPaymentReminderEmail } from "../../lib/email.js";
 import { buildPagination, getSkipTake } from "../../utils/pagination.js";
 
 const ORDER_STATUSES = Object.values(OrderStatus);
@@ -176,12 +177,15 @@ export const processOrder = async (
 
     const body = processOrderSchema.parse(req.body);
 
-    // Fetch order and verify it belongs to this outlet and is in the right status
+    // Fetch order (with customer) and verify it belongs to this outlet and is in the right status
     const order = await prisma.order.findFirst({
       where: {
         id,
         deleted_at: null,
         ...(outletId ? { outlet_id: outletId } : {}),
+      },
+      include: {
+        customer: { select: { id: true, full_name: true, email: true } },
       },
     });
 
@@ -274,6 +278,7 @@ export const processOrder = async (
     const fmt = (n: number) =>
       new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
 
+    // 1. Notify: order details confirmed
     await notifyCustomer(
       updated.customer_id,
       "Detail pesanan telah diinput",
@@ -281,6 +286,26 @@ export const processOrder = async (
       "order_details",
       updated.id,
     );
+
+    // 2. Notify: payment reminder (in-app)
+    await notifyCustomer(
+      updated.customer_id,
+      "Tagihan Pembayaran",
+      `Pesanan ${updated.invoice_number} perlu dibayar sebesar ${fmt(grandTotal)}. Pembayaran diperlukan sebelum pengiriman dilakukan.`,
+      "payment",
+      updated.id,
+    );
+
+    // 3. Email: payment reminder (fire-and-forget)
+    if (order?.customer?.email) {
+      sendPaymentReminderEmail(
+        order.customer.email,
+        order.customer.full_name,
+        updated.invoice_number,
+        grandTotal,
+        updated.id,
+      ).catch((err) => console.error("Failed to send payment reminder email:", err));
+    }
 
     emitToUser(updated.customer_id, "order:status-updated", {
       orderId: updated.id,
