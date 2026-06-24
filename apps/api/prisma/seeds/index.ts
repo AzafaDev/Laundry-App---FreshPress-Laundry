@@ -43,32 +43,29 @@ export async function runAllSeeds() {
   await prisma.socialAccount.deleteMany({});
   console.log('✅ Data cleaned.\n');
 
-  const outlets = await seedOutlets();
+  const [outlets, shifts, customers] = await Promise.all([
+    seedOutlets(),
+    seedShifts(),
+    seedCustomers(),
+  ]);
+  await seedLaundryItems();
   const mainOutlet = outlets[0];
-
-  const shifts = await seedShifts();
-
-  const customers = await seedCustomers();
 
   const employees = await seedEmployees(outlets.map((o) => o.id));
 
-  await seedEmployeeShifts(employees, shifts);
-
-  await seedAttendances(employees, shifts);
-
-  await seedLaundryItems();
+  await Promise.all([
+    seedEmployeeShifts(employees, shifts),
+    seedAttendances(employees, shifts),
+  ]);
 
   await seedOrders(mainOutlet, employees, customers);
 
-  for (const outlet of outlets) {
-    await seedReportData(outlet, employees, customers[0]);
-  }
-
-  await seedBypassRequests();
-
-  await seedTaskHistory();
-
-  await seedDriverNotifications();
+  await Promise.all([
+    ...outlets.map((outlet) => seedReportData(outlet, employees, customers[0])),
+    seedBypassRequests(),
+    seedTaskHistory(),
+    seedDriverNotifications(),
+  ]);
 
   console.log('\n✅ All seeds completed successfully');
 }

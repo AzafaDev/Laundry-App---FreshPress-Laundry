@@ -77,18 +77,24 @@ export function TaskDetailModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm"
           onClick={handleClose}
         >
           <motion.div
-            initial={{ opacity: 0, y: 40, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.97 }}
-            transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            className="w-full max-w-md bg-surface rounded-2xl shadow-2xl overflow-hidden relative"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", stiffness: 400, damping: 40 }}
+            className="w-full sm:max-w-md bg-surface rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col max-h-[90dvh] sm:max-h-[85vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-start p-5 pb-3">
+            {/* drag handle — mobile only */}
+            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+              <div className="w-10 h-1 rounded-full bg-on-surface/20" />
+            </div>
+
+            {/* header */}
+            <div className="flex justify-between items-start px-5 pt-3 pb-3 sm:pt-5">
               <div>
                 <span className="text-xs font-bold uppercase text-primary bg-primary/10 px-2 py-1 rounded-full">
                   {isPickup ? "PICKUP" : "DELIVERY"}
@@ -109,7 +115,8 @@ export function TaskDetailModal({
               </button>
             </div>
 
-            <div className="px-5 pb-5 space-y-3">
+            {/* scrollable content */}
+            <div className="px-5 pb-3 space-y-3 overflow-y-auto flex-1">
               <div className="flex items-start gap-3 p-4 bg-surface-container-low rounded-xl">
                 <MapPin className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
                 <div>
@@ -173,7 +180,10 @@ export function TaskDetailModal({
                   <p className="text-sm text-on-surface leading-relaxed italic">{notes}</p>
                 </div>
               )}
+            </div>
 
+            {/* sticky action button */}
+            <div className="px-5 pt-3 pb-20 sm:pb-5 bg-surface">
               {isActiveMode ? (
                 <button
                   onClick={() => setShowConfirm(true)}
