@@ -97,6 +97,13 @@ export const workerService = {
         create: { order_id: orderId, task_type: "delivery", status: "available" },
         update: {},
       });
+      if (order.outlet_id) {
+        emitToRoom(`outlet:${order.outlet_id}`, "order:payment-completed", {
+          orderId: order.id,
+          invoiceNumber: order.invoice_number,
+          timestamp: new Date(),
+        });
+      }
     }
 
     const updatedOrder = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
@@ -195,6 +202,13 @@ export const workerService = {
         create: { order_id: orderId, task_type: "delivery", status: "available" },
         update: {},
       });
+      if (order.outlet_id) {
+        emitToRoom(`outlet:${order.outlet_id}`, "order:payment-completed", {
+          orderId: order.id,
+          invoiceNumber: order.invoice_number,
+          timestamp: new Date(),
+        });
+      }
     }
 
     const updatedOrder = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
