@@ -23,7 +23,7 @@ export function getSocket(): Socket {
   });
 
   g.__appSocket.on("connect", () => {
-    console.log("[socket] connected:", g.__appSocket?.id);
+    console.log("[socket] connected");
   });
 
   g.__appSocket.on("disconnect", (reason) => {
