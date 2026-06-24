@@ -127,7 +127,7 @@ export const getOrder = async (
       },
       include: {
         customer: { select: { id: true, full_name: true, email: true, phone: true } },
-        outlet: { select: { id: true, name: true } },
+        outlet: { select: { id: true, name: true, latitude: true, longitude: true } },
         pickup_address: true,
         order_items: {
           include: {

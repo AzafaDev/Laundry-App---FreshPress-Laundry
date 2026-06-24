@@ -234,6 +234,20 @@ export default function OrderDetailPage() {
           {order.customer.phone && (
             <p className="text-sm text-on-surface-variant">{order.customer.phone}</p>
           )}
+          {order.pickup_address && (
+            <div className="mt-2 pt-2 border-t border-outline-variant">
+              <p className="text-xs font-semibold text-on-surface-variant mb-0.5">
+                Alamat Penjemputan
+                {order.pickup_address.label ? ` · ${order.pickup_address.label}` : ""}
+              </p>
+              <p className="text-sm">{order.pickup_address.address}</p>
+              <p className="text-xs text-on-surface-variant">
+                {order.pickup_address.district}, {order.pickup_address.city},{" "}
+                {order.pickup_address.province}
+                {order.pickup_address.postal_code ? ` ${order.pickup_address.postal_code}` : ""}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Driver */}
@@ -245,29 +259,53 @@ export default function OrderDetailPage() {
           {order.driver_tasks.length === 0 ? (
             <p className="text-sm text-on-surface-variant">Belum ada driver task.</p>
           ) : (
-            order.driver_tasks.map((task: DriverTask) => (
-              <div key={task.id} className="text-sm">
-                <span className="font-medium capitalize">
-                  {task.task_type.replace(/_/g, " ")}
-                </span>
-                <span
-                  className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
-                    task.status === "completed"
-                      ? "bg-secondary-container text-on-secondary-container"
-                      : task.status === "in_progress"
-                        ? "bg-primary-container text-on-primary-container"
-                        : "bg-surface-container-highest text-on-surface-variant"
-                  }`}
-                >
-                  {task.status}
-                </span>
-                {task.driver && (
-                  <p className="text-xs text-on-surface-variant mt-0.5">
-                    {task.driver.full_name}
-                  </p>
-                )}
-              </div>
-            ))
+            order.driver_tasks.map((task: DriverTask) => {
+              // Compute distance the same way as the driver service (haversine)
+              const addrLat = order.pickup_address ? Number(order.pickup_address.latitude) : null;
+              const addrLng = order.pickup_address ? Number(order.pickup_address.longitude) : null;
+              const outLat = order.outlet.latitude != null ? Number(order.outlet.latitude) : null;
+              const outLng = order.outlet.longitude != null ? Number(order.outlet.longitude) : null;
+              let distanceKm: number | null = null;
+              if (addrLat != null && addrLng != null && outLat != null && outLng != null) {
+                const toRad = (d: number) => (d * Math.PI) / 180;
+                const dLat = toRad(addrLat - outLat);
+                const dLng = toRad(addrLng - outLng);
+                const a =
+                  Math.sin(dLat / 2) ** 2 +
+                  Math.cos(toRad(outLat)) * Math.cos(toRad(addrLat)) * Math.sin(dLng / 2) ** 2;
+                distanceKm = Math.round(6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 10) / 10;
+              }
+              return (
+                <div key={task.id} className="text-sm">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium capitalize">
+                      {task.task_type.replace(/_/g, " ")}
+                    </span>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${
+                        task.status === "completed"
+                          ? "bg-secondary-container text-on-secondary-container"
+                          : task.status === "in_progress"
+                            ? "bg-primary-container text-on-primary-container"
+                            : "bg-surface-container-highest text-on-surface-variant"
+                      }`}
+                    >
+                      {task.status}
+                    </span>
+                    {distanceKm != null && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant">
+                        {distanceKm} km
+                      </span>
+                    )}
+                  </div>
+                  {task.driver && (
+                    <p className="text-xs text-on-surface-variant mt-0.5">
+                      {task.driver.full_name}
+                    </p>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
 

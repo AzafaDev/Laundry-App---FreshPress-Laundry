@@ -38,7 +38,7 @@ export interface OrderSummary {
   created_at: string;
   updated_at: string;
   customer: { id: string; full_name: string; email: string; phone: string | null };
-  outlet: { id: string; name: string };
+  outlet: { id: string; name: string; latitude?: string | number | null; longitude?: string | number | null };
 }
 
 export interface OrderStatusHistory {
@@ -92,6 +92,17 @@ export interface OrderItemBreakdown {
 
 export interface OrderDetail extends OrderSummary {
   notes: string | null;
+  pickup_address: {
+    id: string;
+    label: string;
+    address: string;
+    city: string;
+    district: string;
+    province: string;
+    postal_code: string | null;
+    latitude: string | number;
+    longitude: string | number;
+  } | null;
   order_items: OrderItem[];
   order_item_breakdowns: OrderItemBreakdown[];
   status_histories: OrderStatusHistory[];
