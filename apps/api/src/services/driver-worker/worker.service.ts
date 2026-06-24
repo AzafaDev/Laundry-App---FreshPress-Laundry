@@ -91,6 +91,14 @@ export const workerService = {
 
     await runCompleteStationTransaction(orderId, employeeId, station, order.status, finalStatus, checkPendingBypass, actualItems);
 
+    if (finalStatus === "ready_for_delivery") {
+      await prisma.driverTask.upsert({
+        where: { order_id_task_type: { order_id: orderId, task_type: "delivery" } },
+        create: { order_id: orderId, task_type: "delivery", status: "available" },
+        update: {},
+      });
+    }
+
     const updatedOrder = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
 
     await emitStationEvents(order, station, finalStatus, employeeId);
@@ -180,6 +188,14 @@ export const workerService = {
 
     // checkPendingBypass = false karena bypass sudah di-approve, tidak perlu cek ulang
     await runCompleteStationTransaction(orderId, workerId, station, order.status, finalStatus, false, actualItems, bypassRequestId);
+
+    if (finalStatus === "ready_for_delivery") {
+      await prisma.driverTask.upsert({
+        where: { order_id_task_type: { order_id: orderId, task_type: "delivery" } },
+        create: { order_id: orderId, task_type: "delivery", status: "available" },
+        update: {},
+      });
+    }
 
     const updatedOrder = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
 
