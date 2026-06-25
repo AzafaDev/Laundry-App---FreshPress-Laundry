@@ -37,10 +37,7 @@ export const attendanceService = {
     const now = getNow();
     const today = getTodayLocalStart();
 
-    const [existing, shift, employee] = await Promise.all([
-      prisma.attendance.findUnique({
-        where: { employee_id_date: { employee_id: employeeId, date: today } },
-      }),
+    const [shift, employee] = await Promise.all([
       getEmployeeShiftForDate(employeeId, today),
       prisma.employee.findUnique({
         where: { id: employeeId },
@@ -48,8 +45,6 @@ export const attendanceService = {
       }),
     ]);
 
-    if (existing?.check_out_time) throw new AppError("Anda sudah check-out hari ini, tidak dapat check-in lagi.", 400);
-    if (existing?.check_in_time) throw new AppError("Anda sudah melakukan check-in hari ini.", 400);
     if (!shift) throw new AppError("Anda tidak memiliki shift yang aktif hari ini", 403);
     if (!employee) throw new AppError("Employee tidak ditemukan", 404);
     if (!employee.outlet_id) throw new AppError("Employee belum memiliki outlet", 400);
@@ -71,8 +66,15 @@ export const attendanceService = {
       ...(body?.lng !== undefined && { check_in_longitude: body.lng }),
     };
 
-    const attendance = await prisma.attendance.create({
-      data: { employee_id: employeeId, date: today, ...checkInData },
+    const attendance = await prisma.$transaction(async (tx) => {
+      const existing = await tx.attendance.findUnique({
+        where: { employee_id_date: { employee_id: employeeId, date: today } },
+      });
+      if (existing?.check_out_time) throw new AppError("Anda sudah check-out hari ini, tidak dapat check-in lagi.", 400);
+      if (existing?.check_in_time) throw new AppError("Anda sudah melakukan check-in hari ini.", 400);
+      return tx.attendance.create({
+        data: { employee_id: employeeId, date: today, ...checkInData },
+      });
     });
 
     if (employee.outlet_id) {

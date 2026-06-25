@@ -86,12 +86,10 @@ export const driverService = {
   },
 
   async createDeliveryTask(orderId: string) {
-    const existing = await prisma.driverTask.findUnique({
+    return prisma.driverTask.upsert({
       where: { order_id_task_type: { order_id: orderId, task_type: "delivery" } },
-    });
-    if (existing) return existing;
-    return prisma.driverTask.create({
-      data: { order_id: orderId, task_type: "delivery", status: "available" },
+      update: {},
+      create: { order_id: orderId, task_type: "delivery", status: "available" },
     });
   },
 
@@ -126,8 +124,6 @@ export const driverService = {
   },
 
   async completeTask(employeeId: string, taskId: string) {
-    await assertShiftEligibility(employeeId);
-
     const task = await prisma.driverTask.findUnique({
       where: { id: taskId },
       include: { order: { select: { id: true, outlet_id: true, customer_id: true, status: true } } },

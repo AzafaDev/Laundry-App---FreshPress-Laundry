@@ -25,6 +25,7 @@ export const checkIn = async (req: Request, res: Response) => {
 export const checkOut = async (req: Request, res: Response) => {
   const employeeId = requireUserId(req);
   const { attendanceId } = req.body;
+  if (!attendanceId) throw new AppError("attendanceId wajib diisi", 400);
   const attendance = await attendanceService.checkOut(attendanceId, employeeId);
   res.json({ success: true, data: attendance });
 };
