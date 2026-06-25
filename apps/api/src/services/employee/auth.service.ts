@@ -58,7 +58,7 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
   try {
     payload = verifyRefreshToken(refreshToken);
   } catch (error) {
-    throw new AppError("Refresh token tidak valid atau kadaluarsa");
+    throw new AppError("Refresh token tidak valid atau kadaluarsa", 401);
   }
 
   const storedToken = await prisma.refreshToken.findFirst({
@@ -103,19 +103,21 @@ export const logoutEmployee = async (req: any, res: Response) => {
 export const forgotPassword = async (email: string) => {
   const employee = await prisma.employee.findUnique({ where: { email, deleted_at: null } });
   if (!employee) return { message: "Jika email terdaftar, link reset akan dikirimkan." };
-
-  await prisma.passwordResetToken.updateMany({
-    where: { employee_id: employee.id, used_at: null },
-    data: { used_at: new Date() },
-  });
+  if (!employee.is_active) return { message: "Jika email terdaftar, link reset akan dikirimkan." };
 
   const rawToken = crypto.randomBytes(32).toString("hex");
   const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
   const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
 
-  await prisma.passwordResetToken.create({
-    data: { employee_id: employee.id, token_hash: tokenHash, expires_at: expiresAt },
-  });
+  await prisma.$transaction([
+    prisma.passwordResetToken.updateMany({
+      where: { employee_id: employee.id, used_at: null },
+      data: { used_at: new Date() },
+    }),
+    prisma.passwordResetToken.create({
+      data: { employee_id: employee.id, token_hash: tokenHash, expires_at: expiresAt },
+    }),
+  ]);
 
   await sendEmployeeResetPasswordEmail(employee.email, rawToken);
   return { message: "Jika email terdaftar, link reset akan dikirimkan." };
@@ -129,12 +131,13 @@ export const resetPassword = async (rawToken: string, newPassword: string, res: 
   });
 
   if (!record) throw new AppError("Token tidak valid atau sudah kadaluarsa.", 400);
+  if (!record.employee.is_active) throw new AppError("Akun Anda tidak aktif.", 403);
 
   const password_hash = await bcrypt.hash(newPassword, 10);
   const [updatedEmployee] = await prisma.$transaction([
     prisma.employee.update({
       where: { id: record.employee_id },
-      data: { password_hash, token_version: { increment: 1 }, is_active: true },
+      data: { password_hash, token_version: { increment: 1 } },
     }),
     prisma.passwordResetToken.update({
       where: { id: record.id },
@@ -142,7 +145,6 @@ export const resetPassword = async (rawToken: string, newPassword: string, res: 
     }),
   ]);
 
-  // Auto-login: issue tokens so the frontend can redirect to the correct dashboard
   const employee = record.employee;
 
   await prisma.refreshToken.updateMany({
@@ -158,7 +160,6 @@ export const resetPassword = async (rawToken: string, newPassword: string, res: 
     tokenVersion: updatedEmployee.token_version,
   });
 
-  // Fetch outlet name for store hydration
   const outlet = employee.outlet_id
     ? await prisma.outlet.findUnique({ where: { id: employee.outlet_id }, select: { name: true } })
     : null;
