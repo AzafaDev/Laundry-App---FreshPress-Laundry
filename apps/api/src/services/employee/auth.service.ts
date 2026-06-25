@@ -27,7 +27,7 @@ export const loginEmployee = async (
   }
 
   if (!employee.is_active) {
-    throw new AppError("Akun Anda tidak aktif.", 403);
+    throw new AppError("Email atau password salah.", 401);
   }
 
   await issueAuthTokens(res, {
