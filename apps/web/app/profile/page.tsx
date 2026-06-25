@@ -93,6 +93,10 @@ export default function ProfilePage() {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
 
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
+  const [resendEmailChangeLoading, setResendEmailChangeLoading] = useState(false);
+  const [resendEmailChangeSent, setResendEmailChangeSent] = useState(false);
+
   useEffect(() => {
     if (user) {
       setProfileForm({ full_name: user.full_name ?? "", phone: user.phone ?? "", email: user.email ?? "" });
@@ -147,7 +151,12 @@ export default function ProfilePage() {
         payload,
       );
       updateUser(data.user ?? data);
-      setProfileSuccess(data.message ?? "Profil berhasil diperbarui.");
+      if (payload.new_email) {
+        setPendingEmail(payload.new_email as string);
+        setResendEmailChangeSent(false);
+      } else {
+        setProfileSuccess(data.message ?? "Profil berhasil diperbarui.");
+      }
     } catch (err: unknown) {
       setProfileError((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Gagal memperbarui profil.");
     } finally { setProfileLoading(false); }
@@ -193,6 +202,19 @@ export default function ProfilePage() {
     } finally { setAvatarLoading(false); e.target.value = ""; }
   };
 
+  const handleResendEmailChange = async () => {
+    if (!pendingEmail) return;
+    setResendEmailChangeLoading(true);
+    try {
+      await axiosInstance.patch("/v1/customer/profile", { new_email: pendingEmail });
+      setResendEmailChangeSent(true);
+    } catch {
+      /* silent — user can retry */
+    } finally {
+      setResendEmailChangeLoading(false);
+    }
+  };
+
   const handleResend = async () => {
     if (!user?.email) return;
     setResendLoading(true);
@@ -223,6 +245,43 @@ export default function ProfilePage() {
               <button onClick={handleResend} disabled={resendLoading} className="text-xs text-primary font-semibold hover:underline flex items-center gap-1 disabled:opacity-60">
                 {resendLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Kirim ulang
               </button>
+            )}
+          </div>
+        )}
+
+        {(profileSuccess || profileError || pendingEmail) && (
+          <div className="space-y-2">
+            {profileSuccess && (
+              <div className="flex items-center gap-2 bg-primary-container/30 border border-primary/30 text-primary text-sm px-4 py-3 rounded-2xl">
+                <CheckCircle className="w-4 h-4 flex-shrink-0" />{profileSuccess}
+              </div>
+            )}
+            {profileError && (
+              <div className="flex items-center gap-2 bg-error-container/30 border border-error/30 text-error text-sm px-4 py-3 rounded-2xl">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />{profileError}
+              </div>
+            )}
+            {pendingEmail && (
+              <div className="flex items-start gap-3 bg-primary-container/20 border border-primary/30 rounded-2xl p-4">
+                <Mail className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+                <div className="flex-1 text-sm">
+                  <p className="font-semibold text-on-surface">Konfirmasi perubahan email</p>
+                  <p className="text-on-surface-variant">
+                    Link konfirmasi telah dikirim ke <span className="font-medium text-on-surface">{pendingEmail}</span>. Cek inbox atau folder spam.
+                  </p>
+                </div>
+                {resendEmailChangeSent ? (
+                  <span className="text-xs text-primary font-medium flex items-center gap-1 shrink-0"><CheckCircle className="w-4 h-4" /> Terkirim</span>
+                ) : (
+                  <button
+                    onClick={handleResendEmailChange}
+                    disabled={resendEmailChangeLoading}
+                    className="text-xs text-primary font-semibold hover:underline flex items-center gap-1 disabled:opacity-60 shrink-0"
+                  >
+                    {resendEmailChangeLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Kirim ulang
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -261,8 +320,6 @@ export default function ProfilePage() {
         <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6">
           <h2 className="text-base font-bold text-on-surface mb-4">Informasi Akun</h2>
           <form onSubmit={handleProfileSubmit} className="space-y-4">
-            {profileSuccess && <div className="flex items-center gap-2 bg-primary-container/30 border border-primary/30 text-primary text-sm px-4 py-3 rounded-xl"><CheckCircle className="w-4 h-4 flex-shrink-0" />{profileSuccess}</div>}
-            {profileError && <div className="flex items-center gap-2 bg-error-container/30 border border-error/30 text-error text-sm px-4 py-3 rounded-xl"><AlertCircle className="w-4 h-4 flex-shrink-0" />{profileError}</div>}
             <div className="space-y-1">
               <label htmlFor="full_name" className="text-sm font-medium text-on-surface-variant block">Nama Lengkap</label>
               <div className="relative"><User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" /><input id="full_name" type="text" value={profileForm.full_name} onChange={(e) => setProfileForm((p) => ({ ...p, full_name: e.target.value }))} className="w-full pl-10 pr-4 py-3 border-2 border-outline-variant rounded-xl bg-surface outline-none text-sm focus:border-primary transition-colors" /></div>
