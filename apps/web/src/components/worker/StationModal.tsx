@@ -113,6 +113,7 @@ export function StationModal({ orderId, orders, onClose, onConfirm, isProcessing
                           onChange={(e) => handleSatuanChange(item.laundry_item_id, parseInt(e.target.value) || 0)}
                           className="w-16 px-2 py-1.5 border rounded-lg text-center text-sm font-bold focus:outline-none focus:ring-2 border-outline-variant bg-surface focus:ring-primary/30"
                           min="0"
+                          max="99"
                         />
                       </div>
                     </div>
@@ -160,6 +161,7 @@ export function StationModal({ orderId, orders, onClose, onConfirm, isProcessing
                           onChange={(e) => handleBreakdownChange(item.id, parseInt(e.target.value) || 0)}
                           className="w-16 px-2 py-1.5 border rounded-lg text-center text-sm font-bold focus:outline-none focus:ring-2 border-outline-variant bg-surface focus:ring-primary/30"
                           min="0"
+                          max="99"
                         />
                       </div>
                     </div>

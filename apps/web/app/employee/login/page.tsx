@@ -19,7 +19,7 @@ import { AuthSubmitButton } from "@/components/employee/AuthSubmitButton";
 
 const loginSchema = z.object({
   email: z.string().email("Format email tidak valid"),
-  password: z.string().min(1, "Password wajib diisi"),
+  password: z.string().min(1, "Password wajib diisi").max(64, "Password maksimal 64 karakter"),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;

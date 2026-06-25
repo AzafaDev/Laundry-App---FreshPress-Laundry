@@ -69,8 +69,8 @@ export async function seedCustomers(): Promise<Customer[]> {
 
   const customerSeedData = [
     {
-      email: 'testcustomer@freshpress.com',
-      full_name: 'Test Customer',
+      email: 'zaidsyaifulfatih98@gmail.com',
+      full_name: 'Zaid Syaiful Fatih',
       phone: '08111222333',
       avatar_url: null,
       is_verified: true,

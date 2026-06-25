@@ -16,7 +16,13 @@ import { AuthSubmitButton } from "@/components/employee/AuthSubmitButton";
 
 const resetSchema = z
   .object({
-    newPassword: z.string().min(8, "Password minimal 8 karakter"),
+    newPassword: z
+      .string()
+      .min(8, "Password minimal 8 karakter")
+      .max(64, "Password maksimal 64 karakter")
+      .regex(/\S/, "Password tidak boleh hanya spasi")
+      .regex(/[a-zA-Z]/, "Password harus mengandung huruf")
+      .regex(/\d/, "Password harus mengandung angka"),
     confirmPassword: z.string(),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {

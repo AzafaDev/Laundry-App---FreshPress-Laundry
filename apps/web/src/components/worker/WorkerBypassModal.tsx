@@ -12,7 +12,8 @@ const bypassSchema = z.object({
   description: z
     .string()
     .min(10, "Deskripsi minimal 10 karakter.")
-    .max(1000, "Deskripsi maksimal 1000 karakter."),
+    .max(255, "Deskripsi maksimal 255 karakter.")
+    .regex(/\S/, "Deskripsi tidak boleh hanya spasi."),
 });
 
 interface WorkerBypassModalProps {
@@ -176,6 +177,7 @@ export function WorkerBypassModal({
               onChange={(e) => { setDescription(e.target.value); if (descError) setDescError(""); }}
               placeholder="Jelaskan alasan ketidaksesuaian item secara detail..."
               rows={4}
+              maxLength={255}
               className={`w-full px-3 py-2.5 text-sm border rounded-xl bg-surface resize-none focus:outline-none focus:ring-2 transition-colors ${
                 descError
                   ? "border-error/50 focus:ring-error/30"
