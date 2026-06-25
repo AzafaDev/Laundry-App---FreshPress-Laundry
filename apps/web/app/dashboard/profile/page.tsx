@@ -14,12 +14,14 @@ import { useChangePassword } from "@/hooks/useEmployeeAuth";
 import type { EmployeeRole } from "@/types/employee.types";
 
 const employeeProfileSchema = z.object({
-  full_name: z.string().min(2, "Nama lengkap minimal 2 karakter."),
+  full_name: z
+    .string()
+    .min(1, "Nama lengkap wajib diisi.")
+    .max(100, "Nama maksimal 100 karakter.")
+    .regex(/\S/, "Nama tidak boleh hanya spasi."),
   phone: z
     .string()
-    .regex(/^[0-9+\-\s]{8,15}$/, "Nomor telepon tidak valid.")
-    .optional()
-    .or(z.literal("")),
+    .regex(/^(?=.*\d)[0-9+\-\s]{8,20}$/, "Nomor telepon tidak valid."),
 });
 
 const employeePasswordSchema = z
@@ -28,6 +30,8 @@ const employeePasswordSchema = z
     newPassword: z
       .string()
       .min(8, "Password baru minimal 8 karakter.")
+      .max(64, "Password maksimal 64 karakter.")
+      .regex(/\S/, "Password tidak boleh hanya spasi.")
       .regex(/[a-zA-Z]/, "Password harus mengandung huruf.")
       .regex(/\d/, "Password harus mengandung angka."),
     confirmPassword: z.string(),
@@ -330,6 +334,7 @@ export default function EmployeeProfilePage() {
                       onChange={(e) => setter(e.target.value)}
                       required
                       minLength={id !== "oldPassword" ? 8 : 1}
+                      maxLength={id === "newPassword" ? 64 : undefined}
                       placeholder={hint || "••••••••"}
                       className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary text-sm placeholder:text-gray-300 transition-colors"
                     />

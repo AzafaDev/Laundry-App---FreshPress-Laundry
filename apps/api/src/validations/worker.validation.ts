@@ -8,10 +8,15 @@ export const submitItemsSchema = z.object({
         actual_quantity: z.coerce
           .number()
           .int("Quantity harus bilangan bulat.")
-          .nonnegative("Quantity tidak boleh negatif."),
+          .min(0, "Quantity tidak boleh negatif.")
+          .max(99, "Quantity maksimal 99."),
       }),
     )
-    .min(1, "Minimal satu item harus diisi."),
+    .min(1, "Minimal satu item harus diisi.")
+    .refine(
+      (items) => items.some((i) => i.actual_quantity > 0),
+      "Minimal satu item harus memiliki quantity lebih dari 0.",
+    ),
   actual_satuan_items: z
     .array(
       z.object({
@@ -19,7 +24,8 @@ export const submitItemsSchema = z.object({
         actual_quantity: z.coerce
           .number()
           .int("Quantity harus bilangan bulat.")
-          .nonnegative("Quantity tidak boleh negatif."),
+          .min(0, "Quantity tidak boleh negatif.")
+          .max(99, "Quantity maksimal 99."),
       }),
     )
     .optional(),
@@ -29,8 +35,9 @@ export const createBypassRequestSchema = z.object({
   order_id: z.string().uuid("order_id harus UUID yang valid."),
   discrepancy_description: z
     .string()
-    .min(1, "Deskripsi ketidaksesuaian wajib diisi.")
-    .max(1000, "Deskripsi maksimal 1000 karakter."),
+    .min(10, "Deskripsi minimal 10 karakter.")
+    .max(255, "Deskripsi maksimal 255 karakter.")
+    .regex(/\S/, "Deskripsi tidak boleh hanya spasi."),
   actual_items: z.string().min(1, "actual_items wajib diisi."),
   actual_satuan_items: z.string().optional(),
 });

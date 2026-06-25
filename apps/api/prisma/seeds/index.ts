@@ -30,6 +30,9 @@ export async function runAllSeeds() {
   await prisma.bypassRequest.deleteMany({});
   await prisma.order.deleteMany({});
   await prisma.customerAddress.deleteMany({});
+  await prisma.socialAccount.deleteMany({});
+  await prisma.refreshToken.deleteMany({});
+  await prisma.emailToken.deleteMany({});
   await prisma.customer.deleteMany({});
   await prisma.attendance.deleteMany({});
   await prisma.employeeShift.deleteMany({});
@@ -38,9 +41,6 @@ export async function runAllSeeds() {
   await prisma.workShift.deleteMany({});
   await prisma.laundryItem.deleteMany({});
   await prisma.outlet.deleteMany({});
-  await prisma.refreshToken.deleteMany({});
-  await prisma.emailToken.deleteMany({});
-  await prisma.socialAccount.deleteMany({});
   console.log('✅ Data cleaned.\n');
 
   const [outlets, shifts, customers] = await Promise.all([
