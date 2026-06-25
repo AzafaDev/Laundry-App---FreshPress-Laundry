@@ -1,5 +1,5 @@
 import { prisma } from "../../lib/prisma.js";
-import { notifyCustomer, notifyOutletEmployees, notifyOutletAdmins } from "../../lib/notification.js";
+import { notifyCustomer, notifyOutletEmployees } from "../../lib/notification.js";
 import { emitToRoom } from "../../lib/socket.js";
 import type { Payment, PaymentStatus } from "../../../generated/prisma/client.js";
 
@@ -43,12 +43,7 @@ export async function applyPaymentStatus(payment: Payment, newStatus: PaymentSta
       if (order.outlet_id) {
         emitToRoom(`outlet:${order.outlet_id}`, "order:payment-completed", { orderId: order.id, invoiceNumber: order.invoice_number, timestamp: new Date() });
       }
-      await Promise.all([
-        notifyCustomer(order.customer_id, "Pembayaran berhasil", `Pembayaran untuk pesanan ${order.invoice_number} telah berhasil dikonfirmasi.`, "payment", order.id),
-        order.outlet_id && order.status !== "waiting_payment"
-          ? notifyOutletAdmins(order.outlet_id, "Pembayaran diterima", `Pesanan ${order.invoice_number} telah dibayar oleh customer.`, "payment_received", order.id)
-          : Promise.resolve(),
-      ]);
+      await notifyCustomer(order.customer_id, "Pembayaran berhasil", `Pembayaran untuk pesanan ${order.invoice_number} telah berhasil dikonfirmasi.`, "payment", order.id);
     }
   }
 }
