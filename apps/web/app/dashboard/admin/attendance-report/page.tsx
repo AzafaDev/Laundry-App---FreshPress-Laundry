@@ -41,8 +41,8 @@ export default function AttendanceReportPage() {
     limit: 10,
   });
 
-  const { data: outletsData } = useOutlets();
-  const outlets = outletsData?.outlets ?? [];
+  const { data: outletsData } = useOutlets({ limit: 100 });
+  const outlets = outletsData?.items ?? [];
 
   const queryParams = {
     outletId: filters.outletId || undefined,
