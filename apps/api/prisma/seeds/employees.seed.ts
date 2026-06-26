@@ -29,7 +29,7 @@ export async function seedEmployees(outletIds: string[]): Promise<Employee[]> {
       create: {
         email: data.email,
         full_name: data.full_name,
-        phone: null,
+        phone: `08100000${String(adminAccountsData.indexOf(data) + 1).padStart(3, '0')}`,
         password_hash: defaultPassword,
         role: data.role as any,
         outlet_id: data.outlet_id,

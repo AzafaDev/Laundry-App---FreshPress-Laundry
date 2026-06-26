@@ -12,6 +12,7 @@ const envSchema = z.object({
   NODEMAILER_PASS: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   CLIENT_URL: z.string().default("http://localhost:3000"),
+  ALLOWED_ORIGINS: z.string().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   CLOUDINARY_CLOUD_NAME: z.string().optional(),

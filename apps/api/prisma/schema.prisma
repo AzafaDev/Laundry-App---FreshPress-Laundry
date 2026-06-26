@@ -168,7 +168,7 @@ model Employee {
   full_name     String       @db.VarChar(100)
   email         String       @unique @db.VarChar(255)
   password_hash String       @db.VarChar(255)
-  phone         String?      @db.VarChar(20)
+  phone         String       @db.VarChar(20)
   avatar_url    String?      @db.VarChar(500)
   role          EmployeeRole
   outlet_id     String?      @db.Uuid

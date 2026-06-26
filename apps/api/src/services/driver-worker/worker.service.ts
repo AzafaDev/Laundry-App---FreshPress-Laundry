@@ -121,6 +121,31 @@ export const workerService = {
     return { order: updatedOrder };
   },
 
+  async validateBypassEligibility(
+    employeeId: string,
+    station: "washing" | "ironing" | "packing",
+    orderId: string,
+  ) {
+    const [outletId, order] = await Promise.all([
+      assertShiftEligibility(employeeId),
+      prisma.order.findUnique({ where: { id: orderId }, select: { outlet_id: true, status: true } }),
+    ]);
+
+    if (!order) throw new AppError("Order tidak ditemukan", 404);
+    if (order.outlet_id !== outletId) throw new AppError("Order bukan dari outlet Anda", 403);
+    if (order.status !== station) throw new AppError(`Order tidak sedang di station ${station}`, 400);
+
+    const existing = await prisma.bypassRequest.findFirst({
+      where: { order_id: orderId, station: station as StationType, status: "pending" },
+    });
+    if (existing) throw new AppError("Sudah ada bypass request pending untuk order ini, tunggu review admin", 409);
+
+    const previousCount = await prisma.bypassRequest.count({
+      where: { order_id: orderId, station: station as StationType, status: { not: "pending" } },
+    });
+    if (previousCount >= 2) throw new AppError("Bypass request sudah mencapai batas maksimal (2x) untuk station ini", 400);
+  },
+
   async createBypassRequest(
     employeeId: string,
     station: "washing" | "ironing" | "packing",
@@ -139,29 +164,31 @@ export const workerService = {
     if (order.outlet_id !== outletId) throw new AppError("Order bukan dari outlet Anda", 403);
     if (order.status !== station) throw new AppError(`Order tidak sedang di station ${station}`, 400);
 
-    const existing = await prisma.bypassRequest.findFirst({
-      where: { order_id: orderId, station: station as StationType, status: "pending" },
-    });
-    if (existing) throw new AppError("Sudah ada bypass request pending untuk order ini, tunggu review admin", 409);
-
-    const previousCount = await prisma.bypassRequest.count({
-      where: { order_id: orderId, station: station as StationType, status: { not: "pending" } },
-    });
-    if (previousCount >= 2) throw new AppError("Bypass request sudah mencapai batas maksimal (2x) untuk station ini", 400);
-
     const { expectedItems, actualItems } = await buildBypassData(orderId, actualItemsRaw, actualSatuanItemsRaw);
 
-    const bypass = await prisma.bypassRequest.create({
-      data: {
-        order_id: orderId,
-        station: station as StationType,
-        requested_by: employeeId,
-        expected_items: expectedItems,
-        actual_items: actualItems,
-        discrepancy_description: discrepancyDescription,
-        photo_evidence: photoUrls,
-        attempt_number: previousCount + 1,
-      },
+    const bypass = await prisma.$transaction(async (tx) => {
+      const existing = await tx.bypassRequest.findFirst({
+        where: { order_id: orderId, station: station as StationType, status: "pending" },
+      });
+      if (existing) throw new AppError("Sudah ada bypass request pending untuk order ini, tunggu review admin", 409);
+
+      const previousCount = await tx.bypassRequest.count({
+        where: { order_id: orderId, station: station as StationType, status: { not: "pending" } },
+      });
+      if (previousCount >= 2) throw new AppError("Bypass request sudah mencapai batas maksimal (2x) untuk station ini", 400);
+
+      return tx.bypassRequest.create({
+        data: {
+          order_id: orderId,
+          station: station as StationType,
+          requested_by: employeeId,
+          expected_items: expectedItems,
+          actual_items: actualItems,
+          discrepancy_description: discrepancyDescription,
+          photo_evidence: photoUrls,
+          attempt_number: previousCount + 1,
+        },
+      });
     });
 
     await notifyOutletAdmins(

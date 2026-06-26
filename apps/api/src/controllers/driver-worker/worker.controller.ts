@@ -111,6 +111,8 @@ export const createBypassRequest = async (req: Request, res: Response) => {
     if (!Array.isArray(parsedSatuanItems)) throw new AppError("actual_satuan_items harus berupa array", 400);
   }
 
+  await workerService.validateBypassEligibility(employeeId, station, order_id);
+
   const files = (req.files as Express.Multer.File[]) ?? [];
 
   if (files.length > 0 && !env.CLOUDINARY_CLOUD_NAME) throw new AppError("Upload foto belum dikonfigurasi.", 501);

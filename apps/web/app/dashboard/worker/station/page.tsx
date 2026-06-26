@@ -117,6 +117,14 @@ export default function WorkerStationPage() {
       actual_quantity: received.satuan[item.laundry_item_id] ?? 0,
     }));
 
+    const totalQty =
+      actual_items.reduce((sum, i) => sum + i.actual_quantity, 0) +
+      actual_satuan_items.reduce((sum, i) => sum + i.actual_quantity, 0);
+    if (totalQty === 0) {
+      toast.error("Minimal satu item harus memiliki quantity lebih dari 0.");
+      return;
+    }
+
     setProcessingId(orderId);
     try {
       await submitItems({ stationType: station, orderId, actual_items, actual_satuan_items });
@@ -184,18 +192,18 @@ export default function WorkerStationPage() {
       <main className="lg:pl-72 p-4 md:p-8">
         <div className="max-w-5xl mx-auto space-y-6">
 
-          <div className={`flex items-center justify-between p-4 rounded-2xl border ${cfg.accentClass}`}>
-            <div className="flex items-center gap-3">
-              <div className={`p-2.5 rounded-xl ${cfg.iconClass}`}>
+          <div className={`flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl border ${cfg.accentClass}`}>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`p-2.5 rounded-xl shrink-0 ${cfg.iconClass}`}>
                 <Icon className="w-6 h-6" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold text-on-surface">{cfg.title}</h1>
-                <p className="text-sm text-on-surface-variant">{cfg.subtitle}</p>
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-on-surface truncate">{cfg.title}</h1>
+                <p className="text-sm text-on-surface-variant truncate">{cfg.subtitle}</p>
               </div>
             </div>
-            <div className="flex flex-col items-end gap-1.5">
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${cfg.badgeClass}`}>
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${cfg.badgeClass}`}>
                 {stationOrders.length} order menunggu
               </span>
               <span className={`flex items-center gap-1 text-[11px] ${isConnected ? "text-emerald-600" : "text-red-500"}`}>
