@@ -169,7 +169,7 @@ export function useAttendanceReport(params: AttendanceReportParams) {
   return useQuery({
     queryKey: ["attendance", "report", params],
     queryFn: () => attendanceService.getReport(params),
-    enabled: isAdmin && !!params.outletId, 
+    enabled: isAdmin,
     staleTime: 1000 * 60 * 5, 
   });
 }

@@ -13,7 +13,7 @@ export const getAttendanceReport = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    let { outletId, employeeId, status, startDate, endDate, page, limit } =
+    let { outletId, employeeId, role, status, startDate, endDate, page, limit } =
       attendanceReportQuerySchema.parse(req.query);
 
     if (req.user?.role === "outlet_admin") {
@@ -29,6 +29,7 @@ export const getAttendanceReport = async (
     const result = await attendanceService.getAttendanceReport(
       outletId,
       employeeId,
+      role,
       status,
       start,
       end,
@@ -48,7 +49,7 @@ export const exportAttendanceReport = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { outletId, employeeId, status, startDate, endDate } =
+    const { outletId, employeeId, role, status, startDate, endDate } =
       attendanceReportQuerySchema.parse(req.query);
 
     const start = startDate ? new Date(startDate) : undefined;
@@ -58,6 +59,7 @@ export const exportAttendanceReport = async (
     const result = await attendanceService.getAttendanceReport(
       outletId,
       employeeId,
+      role,
       status,
       start,
       end,

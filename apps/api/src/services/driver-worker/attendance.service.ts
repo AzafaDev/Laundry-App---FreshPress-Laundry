@@ -155,6 +155,7 @@ export const attendanceService = {
   async getAttendanceReport(
     outletId: string | undefined,
     employeeId: string | undefined,
+    role: "worker" | "driver" | "outlet_admin" | undefined,
     status: "on_time" | "late" | "absent" | undefined,
     startDate: Date | undefined,
     endDate: Date | undefined,
@@ -165,6 +166,7 @@ export const attendanceService = {
       ...(employeeId ? { employee_id: employeeId } : outletId ? { outlet_id: outletId } : {}),
       ...(startDate || endDate ? { date: { ...(startDate && { gte: startDate }), ...(endDate && { lte: endDate }) } } : {}),
       ...(status && { status }),
+      ...(role && { employee: { role } }),
     };
 
     const skip = (page - 1) * limit;
