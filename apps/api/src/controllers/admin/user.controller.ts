@@ -1,7 +1,7 @@
 // Admin user controller — paginated list + CRUD + soft-delete
 import type { Request, Response, NextFunction } from "express";
 import * as UserService from "../../services/admin/user.service.js";
-import { listUserQuerySchema } from "../../validations/user.validation.js";
+import { listUserQuerySchema, listCustomerQuerySchema } from "../../validations/user.validation.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 
 export const listUsers = async (
@@ -96,6 +96,20 @@ export const deleteUser = async (
       req.user.userId,
     );
     res.json({ success: true, data: user, message: "User dihapus." });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const listCustomers = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const query = listCustomerQuerySchema.parse(req.query);
+    const result = await UserService.listCustomers(query);
+    res.json({ success: true, ...result });
   } catch (err) {
     next(err);
   }

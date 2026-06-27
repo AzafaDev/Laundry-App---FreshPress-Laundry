@@ -6,6 +6,8 @@ import type {
   UserListResponse,
   CreateUserPayload,
   UpdateUserPayload,
+  CustomerListQuery,
+  CustomerListResponse,
 } from "@/types/user.types";
 
 type Envelope<T> = { success: true; data: T };
@@ -68,5 +70,21 @@ export const userService = {
       `/v1/admin/users/${id}/permanent`,
     );
     return data.data;
+  },
+};
+
+type CustomerPaginatedEnvelope = {
+  success: true;
+  items: CustomerListResponse["items"];
+  pagination: CustomerListResponse["pagination"];
+};
+
+export const customerAdminService = {
+  list: async (params: CustomerListQuery = {}): Promise<CustomerListResponse> => {
+    const { data } = await axiosInstance.get<CustomerPaginatedEnvelope>(
+      "/v1/admin/customers",
+      { params },
+    );
+    return { items: data.items, pagination: data.pagination };
   },
 };

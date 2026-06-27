@@ -56,6 +56,21 @@ export const listUserQuerySchema = z.object({
     .transform((v) => v === "true"),
 });
 
+export const listCustomerQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(10),
+  search: z.string().trim().optional(),
+  is_verified: z
+    .union([z.literal("true"), z.literal("false")])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v === "true")),
+  include_deleted: z
+    .union([z.literal("true"), z.literal("false")])
+    .optional()
+    .transform((v) => v === "true"),
+});
+
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type ListUserQuery = z.infer<typeof listUserQuerySchema>;
+export type ListCustomerQuery = z.infer<typeof listCustomerQuerySchema>;

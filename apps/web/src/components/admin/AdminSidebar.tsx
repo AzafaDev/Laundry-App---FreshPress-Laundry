@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
+  UserCircle,
   Store,
   Receipt,
   BarChart3,
@@ -64,6 +65,12 @@ const NAV: NavItem[] = [
     href: "/dashboard/admin/shifts",
     label: "Work Shifts",
     icon: Clock,
+    roles: ["super_admin"],
+  },
+  {
+    href: "/dashboard/admin/customers",
+    label: "Customers",
+    icon: UserCircle,
     roles: ["super_admin"],
   },
   {

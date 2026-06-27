@@ -70,3 +70,31 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
 }
+
+// ── Customer (admin view) ──────────────────────────────────────
+export interface CustomerAdminView {
+  id: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  avatar_url: string | null;
+  is_verified: boolean;
+  is_active: boolean;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+  _count: { orders: number; complaints: number };
+}
+
+export interface CustomerListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  is_verified?: boolean;
+  include_deleted?: boolean;
+}
+
+export interface CustomerListResponse {
+  items: CustomerAdminView[];
+  pagination: UserListPagination;
+}
