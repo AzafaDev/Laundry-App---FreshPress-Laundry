@@ -192,6 +192,11 @@ router.delete(
   requireRole("super_admin"),
   ShiftCtrl.deleteWorkShift,
 );
+router.delete(
+  "/admin/shifts/:id/permanent",
+  requireRole("super_admin"),
+  ShiftCtrl.hardDeleteWorkShift,
+);
 
 // -- Laundry Items -------------------------------------------------------------
 // GET is accessible by both super_admin and outlet_admin (needed for create order)

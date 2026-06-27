@@ -49,6 +49,10 @@ export const listWorkShiftQuerySchema = z.object({
     .union([z.literal("true"), z.literal("false")])
     .optional()
     .transform((v) => (v === undefined ? undefined : v === "true")),
+  include_deleted: z
+    .union([z.literal("true"), z.literal("false")])
+    .optional()
+    .transform((v) => v === "true"),
 });
 
 export type CreateWorkShiftInput = z.infer<typeof createWorkShiftSchema>;

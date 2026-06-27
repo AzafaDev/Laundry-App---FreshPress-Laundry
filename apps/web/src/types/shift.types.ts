@@ -5,6 +5,7 @@ export interface WorkShift {
   end_time: string;
   description: string | null;
   is_active: boolean;
+  deleted_at: string | null;
   created_at: string;
 }
 
@@ -45,6 +46,7 @@ export interface WorkShiftListQuery {
   page?: number;
   limit?: number;
   is_active?: boolean;
+  include_deleted?: boolean;
 }
 
 export interface CreateWorkShiftPayload {
