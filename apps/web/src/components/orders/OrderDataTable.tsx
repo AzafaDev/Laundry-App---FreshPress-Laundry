@@ -75,7 +75,7 @@ export const OrderDataTable = () => {
                 <th className="p-4 text-sm font-bold">Outlet</th>
                 <th className="p-4 text-sm font-bold">Status</th>
                 <th className="p-4 text-sm font-bold">Tgl Order</th>
-                <th className="p-4 text-sm font-bold">Pickup Date</th>
+                <th className="p-4 text-sm font-bold">Request Pickup Date</th>
                 <th className="p-4 text-sm font-bold">Total</th>
                 <th className="p-4 text-sm font-bold text-right">Detail</th>
               </tr>
@@ -120,7 +120,7 @@ export const OrderDataTable = () => {
                     </td>
                     <td className="p-4 text-sm">{fmtDate(order.created_at)}</td>
                     <td className="p-4 text-sm">
-                      {order.pickup_schedule ? fmtDate(order.pickup_schedule) : "—"}
+                      {order.pickup_date ? fmtDate(order.pickup_date) : "—"}
                     </td>
                     <td className="p-4 text-sm font-medium">
                       {fmtPrice(order.total_price)}
@@ -166,7 +166,7 @@ export const OrderDataTable = () => {
               <div className="flex justify-between items-end mt-1">
                 <p className="text-xs text-on-surface-variant">
                   {order.outlet.name} · {fmtDate(order.created_at)}
-                  {order.pickup_schedule ? ` · Pickup: ${fmtDate(order.pickup_schedule)}` : ""}
+                  {order.pickup_date ? ` · Pickup: ${fmtDate(order.pickup_date)}` : ""}
                 </p>
                 <p className="text-sm font-bold">{fmtPrice(order.total_price)}</p>
               </div>

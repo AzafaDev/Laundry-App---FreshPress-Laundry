@@ -157,7 +157,7 @@ export const attendanceService = {
   async getAttendanceReport(
     outletId: string | undefined,
     employeeId: string | undefined,
-    role: "washing_worker" | "ironing_worker" | "packing_worker" | "driver" | "outlet_admin" | undefined,
+    role: "washing_worker" | "ironing_worker" | "packing_worker" | "driver" | undefined,
     status: "on_time" | "late" | "absent" | undefined,
     startDate: Date | undefined,
     endDate: Date | undefined,

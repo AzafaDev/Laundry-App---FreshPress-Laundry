@@ -85,6 +85,7 @@ export const listOrders = async (
           id: true,
           invoice_number: true,
           status: true,
+          pickup_date: true,
           pickup_schedule: true,
           total_weight_kg: true,
           total_price: true,

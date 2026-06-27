@@ -31,7 +31,8 @@ export interface OrderSummary {
   id: string;
   invoice_number: string;
   status: OrderStatus;
-  pickup_schedule: string;
+  pickup_date: string | null;
+  pickup_schedule: string | null;
   total_weight_kg: string | number | null;
   total_price: string | number | null;
   delivery_fee: string | number | null;

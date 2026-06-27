@@ -35,7 +35,7 @@ export default function AttendanceReportPage() {
 
   const [filters, setFilters] = useState({
     outletId: "",
-    role: "" as "" | "washing_worker" | "ironing_worker" | "packing_worker" | "driver" | "outlet_admin",
+    role: "" as "" | "washing_worker" | "ironing_worker" | "packing_worker" | "driver",
     startDate: "",
     endDate: "",
     status: "" as "" | "on_time" | "late" | "absent",
@@ -48,7 +48,7 @@ export default function AttendanceReportPage() {
 
   const queryParams = {
     outletId: filters.outletId || undefined,
-    role: (filters.role || undefined) as "washing_worker" | "ironing_worker" | "packing_worker" | "driver" | "outlet_admin" | undefined,
+    role: (filters.role || undefined) as "washing_worker" | "ironing_worker" | "packing_worker" | "driver" | undefined,
     status: (filters.status || undefined) as "on_time" | "late" | "absent" | undefined,
     startDate: filters.startDate || undefined,
     endDate: filters.endDate || undefined,
@@ -90,7 +90,7 @@ export default function AttendanceReportPage() {
   };
 
   const resetFilters = () => {
-    setFilters({ outletId: "", role: "" as "" | "washing_worker" | "ironing_worker" | "packing_worker" | "driver" | "outlet_admin", startDate: "", endDate: "", status: "" as "" | "on_time" | "late" | "absent", page: 1, limit: 10 });
+    setFilters({ outletId: "", role: "" as "" | "washing_worker" | "ironing_worker" | "packing_worker" | "driver", startDate: "", endDate: "", status: "" as "" | "on_time" | "late" | "absent", page: 1, limit: 10 });
     toast.success("Filter direset");
   };
 
@@ -135,7 +135,7 @@ export default function AttendanceReportPage() {
             <select
               value={filters.role}
               onChange={(e) =>
-                setFilters((f) => ({ ...f, role: e.target.value as "" | "washing_worker" | "ironing_worker" | "packing_worker" | "driver" | "outlet_admin", page: 1 }))
+                setFilters((f) => ({ ...f, role: e.target.value as "" | "washing_worker" | "ironing_worker" | "packing_worker" | "driver", page: 1 }))
               }
               className="w-full pl-9 pr-4 py-2.5 border border-outline-variant rounded-lg bg-surface focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
             >
@@ -144,7 +144,6 @@ export default function AttendanceReportPage() {
               <option value="ironing_worker">Ironing Worker</option>
               <option value="packing_worker">Packing Worker</option>
               <option value="driver">Driver</option>
-              <option value="outlet_admin">Outlet Admin</option>
             </select>
           </div>
 
