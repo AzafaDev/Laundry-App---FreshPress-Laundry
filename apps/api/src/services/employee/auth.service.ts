@@ -131,13 +131,20 @@ export const resetPassword = async (rawToken: string, newPassword: string, res: 
   });
 
   if (!record) throw new AppError("Token tidak valid atau sudah kadaluarsa.", 400);
-  if (!record.employee.is_active) throw new AppError("Akun Anda tidak aktif.", 403);
+  if (record.employee.deleted_at) throw new AppError("Akun tidak ditemukan.", 404);
+
+  // Akun yang inactive = akun baru (invite flow). Aktifkan otomatis saat set password pertama kali.
+  const isFirstActivation = !record.employee.is_active;
 
   const password_hash = await bcrypt.hash(newPassword, 10);
   const [updatedEmployee] = await prisma.$transaction([
     prisma.employee.update({
       where: { id: record.employee_id },
-      data: { password_hash, token_version: { increment: 1 } },
+      data: {
+        password_hash,
+        token_version: { increment: 1 },
+        ...(isFirstActivation && { is_active: true }),
+      },
     }),
     prisma.passwordResetToken.update({
       where: { id: record.id },
@@ -166,7 +173,12 @@ export const resetPassword = async (rawToken: string, newPassword: string, res: 
 
   const { password_hash: _, ...employeeWithoutPassword } = employee;
   return {
-    employee: { ...employeeWithoutPassword, outlet_name: outlet?.name ?? null },
+    employee: {
+      ...employeeWithoutPassword,
+      // Reflect activation state accurately in the response
+      is_active: isFirstActivation ? true : employee.is_active,
+      outlet_name: outlet?.name ?? null,
+    },
   };
 };
 
