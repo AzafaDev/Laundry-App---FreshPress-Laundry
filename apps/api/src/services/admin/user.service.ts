@@ -8,6 +8,7 @@ import type {
   CreateUserInput,
   UpdateUserInput,
   ListUserQuery,
+  ListCustomerQuery,
 } from "../../validations/user.validation.js";
 
 const PUBLIC_EMPLOYEE_SELECT = {
@@ -233,4 +234,57 @@ export const softDeleteUser = async (id: string, requesterId: string) => {
   ]);
 
   return updated;
+};
+
+/** List all registered customers — paginated, searchable, filterable by verification status. */
+export const listCustomers = async (query: ListCustomerQuery) => {
+  const { page, limit, search, is_verified, include_deleted } = query;
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.CustomerWhereInput = {
+    ...(include_deleted ? {} : { deleted_at: null }),
+    ...(is_verified !== undefined && { is_verified }),
+    ...(search
+      ? {
+          OR: [
+            { full_name: { contains: search, mode: "insensitive" } },
+            { email: { contains: search, mode: "insensitive" } },
+            { phone: { contains: search, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
+
+  const [items, total] = await Promise.all([
+    prisma.customer.findMany({
+      where,
+      select: {
+        id: true,
+        full_name: true,
+        email: true,
+        phone: true,
+        avatar_url: true,
+        is_verified: true,
+        is_active: true,
+        deleted_at: true,
+        created_at: true,
+        updated_at: true,
+        _count: { select: { orders: true, complaints: true } },
+      },
+      orderBy: { created_at: "desc" },
+      skip,
+      take: limit,
+    }),
+    prisma.customer.count({ where }),
+  ]);
+
+  return {
+    items,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    },
+  };
 };

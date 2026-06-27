@@ -12,6 +12,7 @@ import {
   CalendarCheck,
   PlayCircle,
   Shirt,
+  UserCircle,
 } from "lucide-react";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
@@ -71,6 +72,14 @@ export default function AdminDashboardPage() {
             icon={<Clock className="w-6 h-6 text-primary" />}
             title="Work Shifts"
             description="Kelola jadwal shift dan penugasan karyawan per outlet."
+          />
+        )}
+        {isSuper && (
+          <DashCard
+            href="/dashboard/admin/customers"
+            icon={<UserCircle className="w-6 h-6 text-primary" />}
+            title="Customer Management"
+            description="Lihat semua customer yang teregistrasi di FreshPress."
           />
         )}
 

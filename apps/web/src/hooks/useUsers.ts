@@ -4,11 +4,12 @@ import {
   useQueryClient,
   keepPreviousData,
 } from "@tanstack/react-query";
-import { userService } from "@/services/user.service";
+import { userService, customerAdminService } from "@/services/user.service";
 import type {
   CreateUserPayload,
   UpdateUserPayload,
   UserListQuery,
+  CustomerListQuery,
 } from "@/types/user.types";
 
 const USERS_KEY = ["admin", "users"] as const;
@@ -67,3 +68,12 @@ export const useResendInvite = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: USERS_KEY }),
   });
 };
+
+const CUSTOMERS_KEY = ["admin", "customers"] as const;
+
+export const useCustomers = (query: CustomerListQuery = {}) =>
+  useQuery({
+    queryKey: [...CUSTOMERS_KEY, query],
+    queryFn: () => customerAdminService.list(query),
+    placeholderData: keepPreviousData,
+  });

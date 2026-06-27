@@ -60,6 +60,9 @@ router.get(
 // -- Users (super_admin only) --------------------------------------------------
 router.get("/admin/users", requireRole("super_admin", "outlet_admin"), UserCtrl.listUsers);
 router.get("/admin/users/:id", requireRole("super_admin", "outlet_admin"), UserCtrl.getUser);
+
+// -- Customers (super_admin only — read-only) ----------------------------------
+router.get("/admin/customers", requireRole("super_admin"), UserCtrl.listCustomers);
 router.post(
   "/admin/users",
   requireRole("super_admin"),
