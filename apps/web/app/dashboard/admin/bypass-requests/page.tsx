@@ -62,6 +62,7 @@ const fetchBypassRequests = async (
     sort_dir: "desc",
   });
   if (statusFilter !== "all") params.set("status", statusFilter);
+  if (search.trim()) params.set("search", search.trim());
   const { data } = await axiosInstance.get(`/v1/admin/bypass-requests?${params}`);
   return data;
 };
@@ -128,7 +129,7 @@ export default function BypassRequestsPage() {
   }, [on]);
 
   const { data, isFetching, isError } = useQuery({
-    queryKey: ["admin", "bypass-requests", page, statusFilter],
+    queryKey: ["admin", "bypass-requests", page, statusFilter, search],
     queryFn: () => fetchBypassRequests(page, statusFilter, search),
     placeholderData: keepPreviousData,
   });
@@ -162,20 +163,8 @@ export default function BypassRequestsPage() {
 
   const items: BypassRequest[] = data?.data ?? [];
   const pagination = data?.pagination;
-
-  // Client-side search filter
-  const filtered = search.trim()
-    ? items.filter(
-        (r) =>
-          r.order.invoice_number
-            .toLowerCase()
-            .includes(search.toLowerCase()) ||
-          r.requester.full_name
-            .toLowerCase()
-            .includes(search.toLowerCase()) ||
-          r.station.toLowerCase().includes(search.toLowerCase()),
-      )
-    : items;
+  // Search dilakukan server-side — gunakan items langsung
+  const filtered = items;
 
   const handleApprove = (_pin: string, adminNote: string) => {
     if (!selected) return;
@@ -244,7 +233,7 @@ export default function BypassRequestsPage() {
             type="text"
             placeholder="Cari invoice, worker, station..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-outline-variant bg-surface focus:outline-none focus:border-primary text-sm"
           />
         </div>
