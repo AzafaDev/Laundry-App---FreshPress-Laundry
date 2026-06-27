@@ -49,9 +49,15 @@ export const exportAttendanceReport = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { outletId, employeeId, role, status, startDate, endDate } =
-      attendanceReportQuerySchema.parse(req.query);
+    const q = attendanceReportQuerySchema.parse(req.query);
 
+    // Outlet admin hanya bisa export data outletnya sendiri
+    if (req.user?.role === "outlet_admin") {
+      if (!req.user.outletId) throw new AppError("Outlet tidak ditemukan.", 403);
+      q.outletId = req.user.outletId;
+    }
+
+    const { outletId, employeeId, role, status, startDate, endDate } = q;
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
 
