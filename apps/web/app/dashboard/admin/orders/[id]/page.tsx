@@ -256,6 +256,12 @@ export default function OrderDetailPage() {
             <Truck className="w-4 h-4" />
             <span className="text-xs font-bold uppercase tracking-wide">Driver Tasks</span>
           </div>
+          {order.pickup_schedule && (
+            <div className="flex justify-between text-sm border-b border-outline-variant pb-2 mb-1">
+              <span className="text-on-surface-variant">Pickup Date</span>
+              <span className="font-medium">{fmtDateTime(order.pickup_schedule)}</span>
+            </div>
+          )}
           {order.driver_tasks.length === 0 ? (
             <p className="text-sm text-on-surface-variant">Belum ada driver task.</p>
           ) : (

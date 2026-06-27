@@ -157,6 +157,7 @@ export const attendanceService = {
   async getAttendanceReport(
     outletId: string | undefined,
     employeeId: string | undefined,
+    role: "washing_worker" | "ironing_worker" | "packing_worker" | "driver" | undefined,
     status: "on_time" | "late" | "absent" | undefined,
     startDate: Date | undefined,
     endDate: Date | undefined,
@@ -167,6 +168,7 @@ export const attendanceService = {
       ...(employeeId ? { employee_id: employeeId } : outletId ? { outlet_id: outletId } : {}),
       ...(startDate || endDate ? { date: { ...(startDate && { gte: startDate }), ...(endDate && { lte: endDate }) } } : {}),
       ...(status && { status }),
+      ...(role && { employee: { role } }),
     };
 
     const skip = (page - 1) * limit;
@@ -187,7 +189,13 @@ export const attendanceService = {
     return {
       data: logs.map((log) => {
         const formatted = formatAttendanceRecord(log);
-        return { ...formatted, user: log.employee, user_id: log.employee_id, attendance_date: formatted.date };
+        return {
+          ...formatted,
+          user: log.employee,
+          user_id: log.employee_id,
+          attendance_date: formatted.date,
+          outlet: log.outlet,
+        };
       }),
       pagination: { page, limit, total, total_pages: Math.ceil(total / limit) },
     };

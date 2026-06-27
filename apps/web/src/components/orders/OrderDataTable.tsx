@@ -74,7 +74,8 @@ export const OrderDataTable = () => {
                 <th className="p-4 text-sm font-bold">Customer</th>
                 <th className="p-4 text-sm font-bold">Outlet</th>
                 <th className="p-4 text-sm font-bold">Status</th>
-                <th className="p-4 text-sm font-bold">Tanggal</th>
+                <th className="p-4 text-sm font-bold">Tgl Order</th>
+                <th className="p-4 text-sm font-bold">Request Pickup Date</th>
                 <th className="p-4 text-sm font-bold">Total</th>
                 <th className="p-4 text-sm font-bold text-right">Detail</th>
               </tr>
@@ -85,7 +86,7 @@ export const OrderDataTable = () => {
               {items.length === 0 && !isFetching ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="p-8 text-center text-sm text-on-surface-variant"
                   >
                     Tidak ada order ditemukan.
@@ -118,6 +119,9 @@ export const OrderDataTable = () => {
                       </span>
                     </td>
                     <td className="p-4 text-sm">{fmtDate(order.created_at)}</td>
+                    <td className="p-4 text-sm">
+                      {order.pickup_date ? fmtDate(order.pickup_date) : "—"}
+                    </td>
                     <td className="p-4 text-sm font-medium">
                       {fmtPrice(order.total_price)}
                     </td>
@@ -162,6 +166,7 @@ export const OrderDataTable = () => {
               <div className="flex justify-between items-end mt-1">
                 <p className="text-xs text-on-surface-variant">
                   {order.outlet.name} · {fmtDate(order.created_at)}
+                  {order.pickup_date ? ` · Pickup: ${fmtDate(order.pickup_date)}` : ""}
                 </p>
                 <p className="text-sm font-bold">{fmtPrice(order.total_price)}</p>
               </div>

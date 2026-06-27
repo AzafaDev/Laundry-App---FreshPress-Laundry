@@ -12,6 +12,7 @@ import { seedBypassRequests } from './bypassRequests.seed.js';
 import { seedDriverNotifications } from './driverNotifications.seed.js';
 import { seedTaskHistory } from './taskHistory.seed.js';
 import { seedReportData } from './reportData.seed.js';
+import { seedOrderDetail } from './orderDetail.seed.js';
 
 export async function runAllSeeds() {
   console.log('🌱 Starting database seeding...\n');
@@ -142,6 +143,9 @@ export async function runModuleSeed(moduleName: string) {
       break;
     case 'task-history':
       await seedTaskHistory();
+      break;
+    case 'order-detail':
+      await seedOrderDetail();
       break;
     default:
       console.log(`Module ${moduleName} not recognized`);

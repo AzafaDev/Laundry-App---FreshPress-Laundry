@@ -100,7 +100,7 @@ const NAV: NavItem[] = [
     href: "/dashboard/admin/attendance-report",
     label: "Attendance Report",
     icon: CalendarCheck,
-    roles: ["outlet_admin"],
+    roles: ["super_admin", "outlet_admin"],
   },
   {
     href: "/dashboard/admin/reports",

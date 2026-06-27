@@ -68,7 +68,7 @@ export default function PendingOrdersPage() {
                       <p className="font-medium text-sm">{order.customer.full_name}</p>
                       <p className="text-xs text-on-surface-variant">{order.customer.phone ?? order.customer.email}</p>
                     </td>
-                    <td className="p-4 text-sm">{fmtDateTime(order.pickup_schedule)}</td>
+                    <td className="p-4 text-sm">{order.pickup_schedule ? fmtDateTime(order.pickup_schedule) : "—"}</td>
                     <td className="p-4 text-sm">{fmtDateTime(order.updated_at)}</td>
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -104,7 +104,7 @@ export default function PendingOrdersPage() {
                 <span className="text-xs text-on-surface-variant">{fmtDateTime(order.updated_at)}</span>
               </div>
               <p className="font-medium text-sm">{order.customer.full_name}</p>
-              <p className="text-xs text-on-surface-variant">Pickup: {fmtDateTime(order.pickup_schedule)}</p>
+              <p className="text-xs text-on-surface-variant">Pickup: {order.pickup_schedule ? fmtDateTime(order.pickup_schedule) : "—"}</p>
               <div className="flex gap-2 pt-1">
                 <Link
                   href={`/dashboard/admin/orders/${order.id}`}

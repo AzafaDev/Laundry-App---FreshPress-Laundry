@@ -45,7 +45,7 @@ export default function AdminDashboardPage() {
           <DashCard
             href="/dashboard/admin/outlets"
             icon={<Store className="w-6 h-6 text-primary" />}
-            title="Outlet"
+            title="Outlet Management"
             description="Daftar outlet, koordinat lokasi, dan radius layanan."
           />
         )}
@@ -53,7 +53,7 @@ export default function AdminDashboardPage() {
           <DashCard
             href="/dashboard/admin/laundry-items"
             icon={<ShoppingBag className="w-6 h-6 text-primary" />}
-            title="Laundry Items"
+            title="Laundry Item Management"
             description="Master data item laundry: nama, satuan, dan harga dasar."
           />
         )}
@@ -61,7 +61,7 @@ export default function AdminDashboardPage() {
           <DashCard
             href="/dashboard/admin/clothing-types"
             icon={<Shirt className="w-6 h-6 text-primary" />}
-            title="Jenis Pakaian"
+            title="Clothing Types"
             description="Master data jenis pakaian untuk rincian order kiloan."
           />
         )}

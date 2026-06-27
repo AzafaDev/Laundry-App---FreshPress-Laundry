@@ -31,6 +31,7 @@ export const getMyLogsQuerySchema = z.object({
 export const attendanceReportQuerySchema = z.object({
   outletId: z.preprocess(emptyToUndefined, z.string().uuid("Outlet ID tidak valid").optional()),
   employeeId: z.preprocess(emptyToUndefined, z.string().uuid("Employee ID tidak valid").optional()),
+  role: z.preprocess(emptyToUndefined, z.enum(["washing_worker", "ironing_worker", "packing_worker", "driver"]).optional()),
   status: z.enum(["on_time", "late", "absent"]).optional(),
   startDate: dateStart,
   endDate: dateEnd,

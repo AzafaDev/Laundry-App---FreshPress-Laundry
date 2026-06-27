@@ -41,6 +41,7 @@ export interface AttendanceLogsResponse {
 export interface AttendanceReportParams {
   outletId?: string;
   employeeId?: string; // dulu userId
+  role?: "washing_worker" | "ironing_worker" | "packing_worker" | "driver";
   status?: AttendanceStatusFilter;
   startDate?: string;
   endDate?: string;
