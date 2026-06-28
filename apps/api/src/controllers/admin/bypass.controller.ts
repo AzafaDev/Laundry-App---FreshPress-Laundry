@@ -45,7 +45,6 @@ export const listBypassRequests = async (
         OR: [
           { order: { invoice_number: { contains: q.search, mode: "insensitive" as const } } },
           { requester: { full_name: { contains: q.search, mode: "insensitive" as const } } },
-          { station: { contains: q.search, mode: "insensitive" as const } },
         ],
       }),
     };

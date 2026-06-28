@@ -405,7 +405,7 @@ export default function OrderDetailPage() {
                         × {item.quantity} {item.laundry_item.unit}
                       </span>
                     </div>
-                    <span className="font-medium">{fmtPrice(item.price_at_order)}</span>
+                    <span className="font-medium">{fmtPrice(Number(item.price_at_order) * Number(item.quantity))}</span>
                   </div>
                   {/* Breakdown per clothing type for kiloan items */}
                   {isKiloan && breakdowns.length > 0 && (
