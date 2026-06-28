@@ -16,7 +16,7 @@ export function getSocket(): Socket {
     withCredentials: true,
     transports: ["websocket", "polling"],
     reconnection: true,
-    reconnectionAttempts: 5,
+    reconnectionAttempts: 10,
     reconnectionDelay: 3000,
     reconnectionDelayMax: 10000,
     autoConnect: true,
@@ -30,14 +30,14 @@ export function getSocket(): Socket {
     console.log("[socket] disconnected:", reason);
   });
 
+  // Catatan: jangan disconnect() permanen di sini. Reconnect karena token stale
+  // ditangani di useSocket (auth-aware: silent refresh lalu reconnect). socket.io
+  // sendiri yang mengatur batas attempt via reconnectionAttempts di atas.
   let errorCount = 0;
   g.__appSocket.on("connect_error", (err) => {
     errorCount++;
     if (errorCount === 1) {
       console.warn("[socket] connection error:", err.message);
-    } else if (errorCount === 5) {
-      console.warn("[socket] giving up after 5 attempts. Is the API server running?");
-      g.__appSocket?.disconnect();
     }
   });
 
@@ -46,6 +46,10 @@ export function getSocket(): Socket {
   });
 
   return g.__appSocket;
+}
+
+export function isSocketConnected(): boolean {
+  return g.__appSocket?.connected ?? false;
 }
 
 export function disconnectSocket() {

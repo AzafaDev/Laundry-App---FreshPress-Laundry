@@ -5,13 +5,11 @@ import type { BypassState } from "@/components/worker/stationConfig";
 
 interface UseWorkerStationSocketParams {
   station: "washing" | "ironing" | "packing" | null;
-  setIsConnected: (v: boolean) => void;
   setBypassState: React.Dispatch<React.SetStateAction<Record<string, BypassState>>>;
 }
 
 export function useWorkerStationSocket({
   station,
-  setIsConnected,
   setBypassState,
 }: UseWorkerStationSocketParams) {
   const { on } = useSocket();
@@ -50,8 +48,12 @@ export function useWorkerStationSocket({
       queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     });
 
-    const unsubConnect = on("connect", () => setIsConnected(true));
-    const unsubDisconnect = on("disconnect", () => setIsConnected(false));
+    // Resync saat socket (re)connect: begitu socket worker benar-benar masuk
+    // room outlet, ambil ulang list — menangkap order yang masuk selama gap
+    // handshake (race utama) maupun setelah reconnect mid-session.
+    const unsubConnect = on("connect", () => {
+      queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
+    });
 
     return () => {
       unsubNewOrder();
@@ -59,7 +61,6 @@ export function useWorkerStationSocket({
       unsubApproved();
       unsubRejected();
       unsubConnect();
-      unsubDisconnect();
     };
-  }, [on, queryClient, station, setIsConnected, setBypassState]);
+  }, [on, queryClient, station, setBypassState]);
 }

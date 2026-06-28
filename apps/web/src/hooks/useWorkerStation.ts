@@ -23,6 +23,7 @@ export function useWorkerStation() {
     queryFn: () => workerStationService.getStationOrders(station!),
     enabled: isWorker && station !== null,
     staleTime: 10000,
+    refetchInterval: 30000,
     refetchOnWindowFocus: true,
   });
 
