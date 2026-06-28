@@ -13,8 +13,8 @@ const dateEnd = z.preprocess(
 );
 
 export const checkInSchema = z.object({
-  lat: z.coerce.number().min(-90).max(90).optional(),
-  lng: z.coerce.number().min(-180).max(180).optional(),
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
 });
 
 export const checkOutSchema = z.object({

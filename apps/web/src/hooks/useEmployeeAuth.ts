@@ -47,7 +47,6 @@ export const useEmployeeAuth = () => {
     } finally {
       clearAuth();
       queryClient.clear();
-      queryClient.resetQueries();
       router.push("/employee/login");
     }
   };
@@ -71,8 +70,13 @@ export const useResetPassword = () => {
   const { setAuth } = useEmployeeAuthStore();
 
   return useMutation({
-    mutationFn: ({ token, newPassword }: { token: string; newPassword: string }) =>
-      employeeAuthService.resetPassword(token, newPassword),
+    mutationFn: ({
+      token,
+      newPassword,
+    }: {
+      token: string;
+      newPassword: string;
+    }) => employeeAuthService.resetPassword(token, newPassword),
     onSuccess: (data) => {
       setAuth(data.employee);
       router.replace(getDashboardPath(data.employee.role));
@@ -82,7 +86,12 @@ export const useResetPassword = () => {
 
 export const useChangePassword = () => {
   return useMutation({
-    mutationFn: ({ oldPassword, newPassword }: { oldPassword: string; newPassword: string }) =>
-      employeeAuthService.changePassword(oldPassword, newPassword),
+    mutationFn: ({
+      oldPassword,
+      newPassword,
+    }: {
+      oldPassword: string;
+      newPassword: string;
+    }) => employeeAuthService.changePassword(oldPassword, newPassword),
   });
 };

@@ -4,8 +4,6 @@ import type { getMyLogsQuerySchema } from "../../validations/attendance.validati
 import { attendanceService } from "../../services/driver-worker/attendance.service.js";
 import { requireUserId } from "../../utils/asyncHandler.js";
 import { AppError } from "../../middlewares/error.middleware.js";
-import { getEmployeeOutlet } from "../../repositories/driver-worker/attendance.repository.js";
-import { isWithinRadius } from "../../utils/distance.util.js";
 
 type MyLogsQuery = z.infer<typeof getMyLogsQuerySchema>;
 
@@ -13,10 +11,6 @@ export const checkIn = async (req: Request, res: Response) => {
   const employeeId = requireUserId(req);
   const { lat, lng } = req.body;
   if (!lat || !lng) throw new AppError("Lokasi tidak tersedia. Aktifkan GPS untuk check-in.", 400);
-
-  const outletId = await getEmployeeOutlet(employeeId);
-  const withinRadius = await isWithinRadius(outletId, lat, lng);
-  if (!withinRadius) throw new AppError("Anda harus berada di sekitar outlet untuk check-in.", 403);
 
   const attendance = await attendanceService.checkIn(employeeId, { lat, lng });
   res.status(201).json({ success: true, data: attendance });

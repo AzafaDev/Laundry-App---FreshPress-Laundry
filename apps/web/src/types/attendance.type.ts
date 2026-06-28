@@ -5,7 +5,7 @@ export type AttendanceStatusFilter = "on_time" | "late" | "absent"; // untuk fil
 
 export interface Attendance {
   id: string;
-  user_id: string;
+  employee_id: string;
   date: string;
   check_in_time: string | null;
   check_out_time: string | null;
@@ -35,6 +35,11 @@ export interface Pagination {
 export interface AttendanceLogsResponse {
   data: Attendance[];
   pagination: Pagination;
+  summary?: {
+    on_time: number;
+    late: number;
+    absent: number;
+  };
 }
 
 // Ubah userId -> employeeId untuk konsistensi dengan backend

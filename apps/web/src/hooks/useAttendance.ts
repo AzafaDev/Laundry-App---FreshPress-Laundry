@@ -24,13 +24,6 @@ export function useAttendance() {
     enabled: isEmployee && !!employeeId,
   });
 
-  const logsQuery = useQuery({
-    queryKey: ["attendance", "logs", employeeId],
-    queryFn: () => attendanceService.getMyLogs({}),
-    staleTime: 0,
-    enabled: isEmployee && !!employeeId,
-  });
-
   const shiftQuery = useQuery({
     queryKey: ["attendance", "currentShift", employeeId],
     queryFn: attendanceService.getCurrentShift,
@@ -138,14 +131,11 @@ export function useAttendance() {
     checkInTime: today?.check_in_time ?? undefined,
     checkOutTime: today?.check_out_time ?? undefined,
     attendanceId: today?.id ?? null,
-    records: logsQuery.data?.data ?? [],
-    pagination: logsQuery.data?.pagination,
     currentShift: shiftQuery.data,
     remainingSeconds,
-    isLoading:
-      todayQuery.isLoading || logsQuery.isLoading || shiftQuery.isLoading,
-    isError: todayQuery.isError || logsQuery.isError || shiftQuery.isError,
-    error: todayQuery.error ?? logsQuery.error ?? shiftQuery.error,
+    isLoading: todayQuery.isLoading || shiftQuery.isLoading,
+    isError: todayQuery.isError || shiftQuery.isError,
+    error: todayQuery.error ?? shiftQuery.error,
     checkIn: () => checkInMutation.mutate(),
     checkInAsync: checkInMutation.mutateAsync,
     checkOut: () => today?.id && checkOutMutation.mutate(today.id),
@@ -158,8 +148,24 @@ export function useAttendance() {
       queryClient.invalidateQueries({ queryKey: ["attendance", "logs", employeeId] });
       queryClient.invalidateQueries({ queryKey: ["attendance", "currentShift", employeeId] });
     },
-    fetchLogs: attendanceService.getMyLogs,
   };
+}
+
+export function useAttendanceLogs(params: {
+  page: number;
+  limit: number;
+  startDate?: string;
+  endDate?: string;
+}) {
+  const { user } = useEmployeeAuthStore();
+  const employeeId = user?.id;
+
+  return useQuery({
+    queryKey: ["attendance", "logs", employeeId, params],
+    queryFn: () => attendanceService.getMyLogs(params),
+    enabled: !!employeeId,
+    staleTime: 0,
+  });
 }
 
 export function useAttendanceReport(params: AttendanceReportParams) {

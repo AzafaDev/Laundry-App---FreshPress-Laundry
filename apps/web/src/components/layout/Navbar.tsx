@@ -9,9 +9,6 @@ import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { notificationService } from "@/services/notification.service";
-import { useCustomerNotificationSocket } from "@/hooks/useCustomerNotificationSocket";
-import { socketToast } from "@/lib/socketToast";
-
 
 export const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -29,8 +26,6 @@ export const Navbar = () => {
   });
   const notifications = data?.notifications ?? [];
   const unreadCount = notifications.filter((n) => !n.is_read).length;
-
-  useCustomerNotificationSocket((data) => socketToast(data.title, data.body));
 
   const handleLogout = () => {
     clearAuth();
