@@ -60,7 +60,9 @@ export function disconnectSocket() {
 }
 
 export function reconnectSocket() {
-  if (g.__appSocket?.connected) return g.__appSocket;
-  disconnectSocket();
+  // Kalau socket sudah ada (connected maupun masih connecting), biarkan
+  // socket.io handle reconnect otomatis — jangan destroy socket yang sedang
+  // handshake, karena multiple useSocket() mounts bisa cascade-kill satu sama lain.
+  if (g.__appSocket) return g.__appSocket;
   return getSocket();
 }
