@@ -20,6 +20,8 @@ export interface CurrentShift {
   canCheckIn: boolean;
   canCheckOut: boolean;
   serverNow?: string;
+  startEpoch?: number;
+  endEpoch?: number;
 }
 
 export const attendanceService = {
@@ -62,8 +64,9 @@ export const attendanceService = {
       success: true;
       data: Attendance[];
       pagination: Pagination;
+      summary: { on_time: number; late: number; absent: number };
     }>("/v1/attendance/my-logs", { params });
-    return { data: data.data, pagination: data.pagination };
+    return { data: data.data, pagination: data.pagination, summary: data.summary };
   },
 
   getReport: async (params: AttendanceReportParams): Promise<AttendanceLogsResponse> => {

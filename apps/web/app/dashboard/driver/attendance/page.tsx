@@ -13,8 +13,9 @@ import toast from "react-hot-toast";
 import { AttendanceCard } from "@/components/attendance/AttendanceCard";
 import { AttendanceSummary } from "@/components/attendance/AttendanceSummary";
 import { ShiftCard } from "@/components/attendance/ShiftCard";
-import { useAttendance } from "@/hooks/useAttendance";
+import { useAttendance, useAttendanceLogs } from "@/hooks/useAttendance";
 import { toLogRecord } from "@/utils/formatDate";
+import { useMemo } from "react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { motion } from "framer-motion";
 import { DriverSidebar } from "@/components/dashboard/DriverSidebar";
@@ -26,6 +27,7 @@ import { SkeletonAttendaceCard, SkeletonShiftCard, SkeletonText } from "@/compon
 export default function DriverAttendancePage() {
   const { _hasHydrated, user } = useEmployeeAuthStore();
   const att = useAttendance();
+  const { data: logsData, isLoading: isLogsLoading } = useAttendanceLogs({ page: 1, limit: 5 });
   const { latitude, longitude, permissionDenied } = useGeolocation();
 
   if (!_hasHydrated || att.isLoading) {
@@ -52,7 +54,7 @@ export default function DriverAttendancePage() {
       ? "available"
       : "checking";
 
-  const recentRecords = att.records.slice(0, 5).map(toLogRecord);
+  const recentRecords = useMemo(() => (logsData?.data ?? []).map(toLogRecord), [logsData]);
 
   const handleCheckIn = async () => {
     if (locationStatus !== "available") {
@@ -173,7 +175,7 @@ export default function DriverAttendancePage() {
             <AttendanceSummary
               records={recentRecords}
               viewAllHref="/dashboard/driver/history"
-              isLoading={att.isLoading}
+              isLoading={isLogsLoading}
             />
           </section>
         </div>

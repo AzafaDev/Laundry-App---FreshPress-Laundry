@@ -83,5 +83,7 @@ export function buildShiftPayload(
     canCheckIn: !alreadyCheckedIn && canCheckIn(now, startTime, endTime, 15),
     canCheckOut: alreadyCheckedIn && !alreadyCheckedOut && now > endTime,
     serverNow: now.toISOString(),
+    startEpoch: startTime.getTime(),
+    endEpoch: endTime.getTime(),
   };
 }

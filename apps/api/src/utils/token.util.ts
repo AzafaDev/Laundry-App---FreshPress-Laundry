@@ -47,6 +47,14 @@ export function buildAuthCookieOptions(maxAgeMs?: number) {
   };
 }
 
+export function generateTokenPair(payload: TokenPayload) {
+  const accessToken = signAccessToken(payload);
+  const refreshToken = signRefreshToken(payload);
+  const expiresMs = parseDuration(process.env.JWT_REFRESH_EXPIRES_IN || "7d");
+  const accessExpiresMs = parseDuration(process.env.JWT_EXPIRES_IN || "15m");
+  return { accessToken, refreshToken, expiresMs, accessExpiresMs };
+}
+
 export async function issueAuthTokens(res: Response, payload: TokenPayload) {
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);

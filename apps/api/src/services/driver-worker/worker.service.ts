@@ -105,7 +105,7 @@ export const workerService = {
         });
         await notifyOutletEmployees(
           order.outlet_id,
-          ["outlet_admin", "driver"],
+          ["driver"],
           "Pembayaran berhasil",
           `Pesanan ${order.invoice_number} siap untuk diantar.`,
           "payment_completed",
@@ -245,7 +245,7 @@ export const workerService = {
         });
         await notifyOutletEmployees(
           order.outlet_id,
-          ["outlet_admin", "driver"],
+          ["driver"],
           "Pembayaran berhasil",
           `Pesanan ${order.invoice_number} siap untuk diantar.`,
           "payment_completed",

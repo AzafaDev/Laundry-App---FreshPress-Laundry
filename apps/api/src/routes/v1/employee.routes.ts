@@ -29,7 +29,7 @@ const router = Router();
 
 router.post("/auth/login", authRateLimiter, validate(loginEmployeeSchema), login);
 router.post("/auth/refresh", refresh);
-router.post("/auth/logout", authenticate, logout);
+router.post("/auth/logout", logout);
 router.post("/auth/forgot-password", authRateLimiter, validate(forgotPasswordSchema), forgotPasswordHandler);
 router.post("/auth/reset-password", validate(resetPasswordSchema), resetPasswordHandler);
 router.post("/auth/change-password", authenticate, validate(changePasswordSchema), changePasswordHandler);
