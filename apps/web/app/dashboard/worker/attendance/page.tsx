@@ -64,7 +64,6 @@ export default function WorkerAttendancePage() {
     try {
       await att.checkInAsync();
     } catch {
-      // handled by checkInMutation.onError
     }
   };
 
@@ -76,7 +75,6 @@ export default function WorkerAttendancePage() {
     try {
       await att.checkOutAsync(att.attendanceId);
     } catch {
-      // handled by checkOutMutation.onError
     }
   };
 

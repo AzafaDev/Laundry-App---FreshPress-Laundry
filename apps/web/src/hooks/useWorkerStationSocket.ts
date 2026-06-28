@@ -48,9 +48,6 @@ export function useWorkerStationSocket({
       queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     });
 
-    // Resync saat socket (re)connect: begitu socket worker benar-benar masuk
-    // room outlet, ambil ulang list — menangkap order yang masuk selama gap
-    // handshake (race utama) maupun setelah reconnect mid-session.
     const unsubConnect = on("connect", () => {
       queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     });
