@@ -12,7 +12,6 @@ import type { User } from "@/types/user.types";
 import type { AssignEmployeeShiftPayload, EmployeeShift } from "@/types/shift.types";
 import { DAY_NAMES } from "@/types/shift.types";
 
-// ── Week helpers ──────────────────────────────────────────────────────────────
 /** Returns array of 7 Dates starting from Monday of the week containing `ref`. */
 function getWeekDates(ref: Date): Date[] {
   const dow = ref.getDay(); // 0=Sun
@@ -56,7 +55,6 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
 }
 
-// ── Effective Week View ───────────────────────────────────────────────────────
 interface EffectiveWeekViewProps {
   recurring: EmployeeShift[];
   dateSpecific: EmployeeShift[];
@@ -180,7 +178,6 @@ function EffectiveWeekView({ recurring, dateSpecific }: EffectiveWeekViewProps) 
   );
 }
 
-// ── Shift Row ─────────────────────────────────────────────────────────────────
 function ShiftRow({
   es, onRemove, removing, overriddenSoon = false,
 }: {
@@ -272,7 +269,6 @@ export function EmployeeShiftModal({ employee, onClose }: Props) {
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
       <div className="bg-surface-container-lowest w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden border border-outline-variant max-h-[92vh] flex flex-col">
-        {/* Header */}
         <div className="p-6 bg-surface-container-low border-b border-outline-variant flex justify-between items-center flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -295,12 +291,10 @@ export function EmployeeShiftModal({ employee, onClose }: Props) {
         </div>
 
         <div className="p-6 space-y-6 overflow-y-auto">
-          {/* Effective week view */}
           {!isLoading && (
             <EffectiveWeekView recurring={recurring} dateSpecific={dateSpecific} />
           )}
 
-          {/* Recurring shifts */}
           <section>
             <h4 className="text-sm font-bold text-on-surface mb-3 flex items-center gap-2">
               <RefreshCw className="w-3.5 h-3.5" /> Jadwal Mingguan Rutin ({recurring.length})
@@ -339,7 +333,6 @@ export function EmployeeShiftModal({ employee, onClose }: Props) {
             )}
           </section>
 
-          {/* Date-specific shifts */}
           <section>
             <h4 className="text-sm font-bold text-on-surface mb-3 flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5" /> Jadwal Tanggal Tertentu ({dateSpecific.length})
@@ -362,11 +355,9 @@ export function EmployeeShiftModal({ employee, onClose }: Props) {
             )}
           </section>
 
-          {/* Add new shift */}
           <section>
             <h4 className="text-sm font-bold text-on-surface mb-3">Tambah Jadwal</h4>
 
-            {/* Mode toggle */}
             <div className="flex rounded-lg border border-outline-variant overflow-hidden mb-4 text-sm">
               <button
                 type="button"

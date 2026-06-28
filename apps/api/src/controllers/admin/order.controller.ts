@@ -1,4 +1,3 @@
-// Admin order controller — list + detail + process
 import type { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { OrderStatus } from "../../../generated/prisma/client.js";
@@ -92,7 +91,6 @@ const processOrderSchema = z
     }
   });
 
-// ── List orders ───────────────────────────────────────────────────────────────
 export const listOrders = async (
   req: Request,
   res: Response,
@@ -155,7 +153,6 @@ export const listOrders = async (
   }
 };
 
-// ── Get order detail ──────────────────────────────────────────────────────────
 export const getOrder = async (
   req: Request,
   res: Response,
@@ -211,7 +208,6 @@ export const getOrder = async (
   }
 };
 
-// ── Process order (outlet admin: input weight + items → advance to washing) ───
 export const processOrder = async (
   req: Request,
   res: Response,
@@ -224,7 +220,6 @@ export const processOrder = async (
 
     const body = processOrderSchema.parse(req.body);
 
-    // Fetch order (with customer) and verify it belongs to this outlet and is in the right status
     const order = await prisma.order.findFirst({
       where: {
         id,
@@ -249,7 +244,6 @@ export const processOrder = async (
       return next(new AppError("Order ini sudah diproses sebelumnya.", 409));
     }
 
-    // Fetch all requested laundry items to get current prices
     const laundryItemIds = body.items.map((i) => i.laundry_item_id);
     const laundryItems = await prisma.laundryItem.findMany({
       where: { id: { in: laundryItemIds }, deleted_at: null, is_active: true },
@@ -282,8 +276,7 @@ export const processOrder = async (
     const updated = await prisma.$transaction(async (tx) => {
       await tx.orderItem.createMany({ data: orderItemsData });
 
-      // Save clothing-type breakdown if provided
-      if (body.breakdown && body.breakdown.length > 0) {
+        if (body.breakdown && body.breakdown.length > 0) {
         await tx.orderItemBreakdown.createMany({
           data: body.breakdown.map((b) => ({
             order_id: id,
@@ -325,7 +318,6 @@ export const processOrder = async (
     const fmt = (n: number) =>
       new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
 
-    // 1. Notify: order details confirmed
     await notifyCustomer(
       updated.customer_id,
       "Detail pesanan telah diinput",
@@ -334,7 +326,6 @@ export const processOrder = async (
       updated.id,
     );
 
-    // 2. Notify: payment reminder (in-app)
     await notifyCustomer(
       updated.customer_id,
       "Tagihan Pembayaran",
@@ -343,7 +334,6 @@ export const processOrder = async (
       updated.id,
     );
 
-    // 3. Email: payment reminder (fire-and-forget)
     if (order?.customer?.email) {
       sendPaymentReminderEmail(
         order.customer.email,

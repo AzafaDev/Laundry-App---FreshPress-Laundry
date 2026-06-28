@@ -8,7 +8,7 @@ import { sendVerificationEmail, sendResetPasswordEmail } from "../../lib/email.j
 import { AppError } from "../../middlewares/error.middleware.js";
 import { COOKIE_OPTS, issueTokenCookies } from "./auth.cookies.js";
 
-// Re-export Google OAuth so controllers' namespace import still works
+
 export { getGoogleAuthUrl, googleLogin } from "./auth.oauth.service.js";
 
 export const registerCustomer = async (data: { full_name: string; email: string; phone?: string }) => {

@@ -20,7 +20,7 @@ const markerIcon = L.icon({
 export interface MapPickerProps {
   lat: number;
   lng: number;
-  /** Increment this number to programmatically fly the map to lat/lng */
+ 
   flyToTrigger?: number;
   onPin: (lat: number, lng: number) => void;
   height?: string;
@@ -36,15 +36,14 @@ export default function MapPicker({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<ReturnType<typeof L.map> | null>(null);
   const markerRef = useRef<ReturnType<typeof L.marker> | null>(null);
-  // Keep callback ref up-to-date without restarting the map
+  
   const onPinRef = useRef(onPin);
   useEffect(() => { onPinRef.current = onPin; });
 
-  // ── Initialize map once on mount ──────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Guard against StrictMode double-invoke: destroy leftover instance
+    
     if ((containerRef.current as HTMLElement & { _leaflet_id?: number })._leaflet_id) {
       mapRef.current?.remove();
       mapRef.current = null;
@@ -84,19 +83,17 @@ export default function MapPicker({
       mapRef.current = null;
       markerRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // intentionally empty — runs once
+    
+  }, []); 
 
-  // ── Sync marker position when lat/lng props change ────────────────────────
   useEffect(() => {
     markerRef.current?.setLatLng([lat, lng]);
   }, [lat, lng]);
 
-  // ── Fly to location when flyToTrigger increments ──────────────────────────
   useEffect(() => {
     if (!mapRef.current || flyToTrigger === 0) return;
     mapRef.current.flyTo([lat, lng], 16, { animate: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [flyToTrigger]);
 
   return (

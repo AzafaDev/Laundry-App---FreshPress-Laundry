@@ -8,7 +8,6 @@ import { useQuery } from "@tanstack/react-query";
 import { axiosInstance } from "@/lib/axios";
 import type { LaundryItem } from "@/types/laundryItem.types";
 
-// ── ClothingType helper ───────────────────────────────────────────────────────
 interface ClothingType { id: string; name: string; is_active: boolean; }
 
 const useClothingTypes = () =>
@@ -52,26 +51,21 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
   const [step, setStep] = useState<Step>("form");
   const [error, setError] = useState("");
 
-  // kg-item weights: itemId → weight (number)
   const [kgQtys, setKgQtys] = useState<Record<string, number>>(() =>
     Object.fromEntries(kgItems.map((i) => [i.id, 0])),
   );
 
-  // pcs-item counts: itemId → count (number)
   const [pcsQtys, setPcsQtys] = useState<Record<string, number>>(() =>
     Object.fromEntries(pcsItems.map((i) => [i.id, 0])),
   );
 
-  // Clothing-type breakdown: clothingTypeId → qty (for kiloan section)
   const [breakdown, setBreakdown] = useState<Record<string, number>>({});
 
-  // Total Item auto-calculated from breakdown sum
   const totalItemPcs = useMemo(
     () => Object.values(breakdown).reduce((s, q) => s + q, 0),
     [breakdown],
   );
 
-  // Optional description / notes
   const [deskripsi, setDeskripsi] = useState("");
 
   const totalWeightKg = useMemo(
@@ -96,7 +90,6 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
     [kgSubtotals, pcsSubtotals, deliveryFeeNum],
   );
 
-  // Build items array for API (exclude zero-qty)
   const apiItems = useMemo(() => {
     const kg = kgItems
       .filter((i) => (kgQtys[i.id] ?? 0) > 0)
@@ -107,7 +100,6 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
     return [...kg, ...pcs];
   }, [kgItems, pcsItems, kgQtys, pcsQtys]);
 
-  // API breakdown array (only non-zero)
   const apiBreakdown = useMemo(
     () =>
       Object.entries(breakdown)
@@ -116,7 +108,6 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
     [breakdown],
   );
 
-  // Compose notes: include Total Item + deskripsi
   const composeNotes = () => {
     const parts: string[] = [];
     if (totalItemPcs > 0) parts.push(`Total Item: ${totalItemPcs} pcs`);
@@ -181,7 +172,6 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-surface rounded-2xl w-full max-w-2xl shadow-xl max-h-[90vh] flex flex-col">
 
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant shrink-0">
           <div>
             <h3 className="font-bold text-lg">
@@ -198,7 +188,6 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
           </button>
         </div>
 
-        {/* ── STEP 1: Form ──────────────────────────────────────────────────── */}
         {step === "form" && (
           <>
             <div className="overflow-y-auto flex-1 p-5 space-y-5">
@@ -209,7 +198,6 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
                 </p>
               )}
 
-              {/* ── KILOAN section ── */}
               {kgItems.length > 0 && (
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
@@ -262,7 +250,6 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
                     </table>
                   </div>
 
-                  {/* Breakdown jenis pakaian — auto-calculates Total Item */}
                   {clothingTypes.length > 0 && (
                     <div className="mt-3 space-y-2">
                       <div className="flex items-center justify-between">
@@ -308,7 +295,6 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
                     </div>
                   )}
 
-                  {/* Deskripsi */}
                   <div className="mt-3">
                     <label className="block text-xs font-medium text-on-surface-variant mb-1">
                       Deskripsi (opsional)
@@ -324,7 +310,6 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
                 </div>
               )}
 
-              {/* ── SATUAN section ── */}
               {pcsItems.length > 0 && (
                 <div>
                   <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
@@ -378,7 +363,6 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
                 </div>
               )}
 
-              {/* Grand total */}
               {grandTotal > 0 && (
                 <div className="rounded-xl border border-outline-variant overflow-hidden text-sm">
                   <div className="flex justify-between items-center px-4 py-2.5 bg-surface-container-low border-b border-outline-variant">
@@ -416,7 +400,6 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
           </>
         )}
 
-        {/* ── STEP 2: Confirm ───────────────────────────────────────────────── */}
         {step === "confirm" && (
           <>
             <div className="overflow-y-auto flex-1 p-5 space-y-4">
@@ -464,7 +447,6 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
                   </div>
                 )}
 
-                {/* Kiloan items */}
                 {kgSubtotals.filter((r) => r.qty > 0).length > 0 && (
                   <div className="px-4 py-3">
                     <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2">Kiloan</p>
@@ -477,7 +459,6 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
                   </div>
                 )}
 
-                {/* Pcs items */}
                 {pcsSubtotals.filter((r) => r.qty > 0).length > 0 && (
                   <div className="px-4 py-3">
                     <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2">Satuan</p>

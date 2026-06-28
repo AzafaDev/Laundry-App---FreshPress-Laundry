@@ -6,8 +6,6 @@ import { useCallback, useEffect } from "react";
 
 type EventHandler = (...args: any[]) => void;
 
-// Lebih kecil dari JWT_EXPIRES_IN backend (default 15m), supaya access token
-// yang dipakai socket buat reconnect handshake selalu fresh.
 const SILENT_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
 
@@ -28,9 +26,7 @@ export function useSocket() {
       }
       return;
     }
-    // Singleton: useSocket() dipanggil banyak komponen sekaligus, tapi cuma
-    // boleh ada 1 interval global. Jangan dikasih cleanup di sini — clear
-    // cuma terjadi di cabang !isLoggedIn di atas, saat user benar-benar logout.
+   
     if (refreshIntervalId) return;
     const authType: "employee" | "customer" = employeeUser ? "employee" : "customer";
     refreshIntervalId = setInterval(() => {

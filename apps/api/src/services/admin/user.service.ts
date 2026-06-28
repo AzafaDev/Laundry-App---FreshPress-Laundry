@@ -27,7 +27,6 @@ const PUBLIC_EMPLOYEE_SELECT = {
   updated_at: true,
 } satisfies Prisma.EmployeeSelect;
 
-/** List employees with pagination, role filter, outlet filter, and free-text search. */
 export const listUsers = async (query: ListUserQuery) => {
   const { page, limit, role, search, outlet_id, include_deleted } = query;
   const skip = (page - 1) * limit;
@@ -68,7 +67,6 @@ export const listUsers = async (query: ListUserQuery) => {
   };
 };
 
-/** Get a single employee by id. */
 export const getUserById = async (id: string) => {
   const user = await prisma.employee.findFirst({
     where: { id, deleted_at: null },
@@ -88,7 +86,6 @@ export const createUser = async (input: CreateUserInput) => {
   const existing = await prisma.employee.findUnique({ where: { email: input.email } });
   if (existing) throw new AppError("Email sudah terdaftar.", 409);
 
-  // Use provided password or a random placeholder
   const password_hash = await hashPassword(
     input.password ?? crypto.randomBytes(24).toString("hex"),
   );
@@ -107,7 +104,6 @@ export const createUser = async (input: CreateUserInput) => {
     select: PUBLIC_EMPLOYEE_SELECT,
   });
 
-  // If no password was supplied, generate a PasswordResetToken and send invite
   if (!input.password) {
     const rawToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
@@ -126,7 +122,6 @@ export const createUser = async (input: CreateUserInput) => {
   return { ...user, invite_sent: !input.password };
 };
 
-/** Patch an existing employee. */
 export const updateUser = async (id: string, input: UpdateUserInput) => {
   const target = await prisma.employee.findUnique({ where: { id } });
   if (!target || target.deleted_at) {
@@ -190,12 +185,10 @@ export const resendInvite = async (id: string) => {
   if (!target) throw new AppError("User tidak ditemukan.", 404);
   if (target.is_active) throw new AppError("User sudah aktif. Tidak perlu kirim undangan ulang.", 400);
 
-  // Invalidate all existing unused tokens first
   await prisma.passwordResetToken.deleteMany({
     where: { employee_id: id, used_at: null },
   });
 
-  // Create a fresh 24-hour token
   const rawToken = crypto.randomBytes(32).toString("hex");
   const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -236,7 +229,6 @@ export const softDeleteUser = async (id: string, requesterId: string) => {
   return updated;
 };
 
-/** List all registered customers — paginated, searchable, filterable by verification status. */
 export const listCustomers = async (query: ListCustomerQuery) => {
   const { page, limit, search, is_verified, include_deleted } = query;
   const skip = (page - 1) * limit;
