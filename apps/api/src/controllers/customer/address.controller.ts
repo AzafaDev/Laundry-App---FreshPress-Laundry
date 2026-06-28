@@ -62,6 +62,17 @@ export const geocodeSearch = asyncHandler(async (req: Request, res: Response) =>
   ok(res, result, "Geocoding berhasil.");
 });
 
+export const geocodeMultiSearch = asyncHandler(async (req: Request, res: Response) => {
+  const q = String(req.query.q ?? "").trim();
+  const limit = Math.min(Math.max(Number(req.query.limit ?? 5), 1), 10);
+  if (q.length < 3) {
+    res.json({ success: true, items: [] });
+    return;
+  }
+  const items = await AddressService.searchAddressesForCustomer(q, limit);
+  res.json({ success: true, items });
+});
+
 export const estimateDeliveryFee = asyncHandler(async (req: Request, res: Response) => {
   const customerId = req.user!.userId;
   const id = getParamId(req.params.id);

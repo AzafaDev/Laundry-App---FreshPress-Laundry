@@ -128,6 +128,14 @@ export const addressService = {
     return data.data;
   },
 
+  geocodeSearch: async (query: string, limit = 5): Promise<GeocodeResult[]> => {
+    const { data } = await axiosInstance.get<{ success: true; items: GeocodeResult[] }>(
+      "/v1/customer/geocode/search",
+      { params: { q: query, limit } },
+    );
+    return data.items;
+  },
+
   estimateDeliveryFee: async (addressId: string): Promise<DeliveryEstimate> => {
     const { data } = await axiosInstance.get<Envelope<DeliveryEstimate>>(
       `/v1/customer/addresses/${addressId}/delivery-estimate`,

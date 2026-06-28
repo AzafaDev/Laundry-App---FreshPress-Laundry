@@ -30,7 +30,4 @@ export function calculateDeliveryFee(distanceKm: number): number {
 export interface CreateCustomerOrderInput {
   pickup_address_id: string;
   pickup_date: string;
-  service_type: "wash-and-fold" | "dry-cleaning";
-  estimated_weight_kg?: number;
-  notes?: string;
 }

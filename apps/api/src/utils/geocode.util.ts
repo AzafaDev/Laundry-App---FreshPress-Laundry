@@ -119,6 +119,9 @@ export const searchAddress = async (
       limit: Math.min(Math.max(limit, 1), 10),
       no_annotations: 1,
       countrycode,
+      language: "id",
+      min_confidence: 3,
+      bounds: "94.0,-11.0,141.0,6.0",
     });
 
     const results = response.results ?? [];

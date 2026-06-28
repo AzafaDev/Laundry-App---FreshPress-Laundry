@@ -26,9 +26,20 @@ export function useCustomerNotificationSocket(onNew?: (data: { title: string; bo
       },
     );
 
+    const unsubComplaint = on(
+      "complaint:updated",
+      (data?: { complaintId?: string; orderId?: string; status?: string; resolution_notes?: string | null }) => {
+        queryClient.invalidateQueries({ queryKey: ["customer", "orders"] });
+        if (data?.orderId) {
+          queryClient.invalidateQueries({ queryKey: ["customer", "orders", data.orderId] });
+        }
+      },
+    );
+
     return () => {
       unsub();
       unsubOrderStatus();
+      unsubComplaint();
     };
   }, [on, queryClient, onNew]);
 }

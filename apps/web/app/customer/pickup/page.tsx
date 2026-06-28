@@ -72,8 +72,6 @@ export default function CustomerOrderPage() {
     await createOrderMutation.mutateAsync({
       pickup_address_id: selectedAddress.id,
       pickup_date: selectedDate,
-      service_type: "wash-and-fold",
-      notes: "Order pickup dibuat dari halaman customer.",
     });
   };
 

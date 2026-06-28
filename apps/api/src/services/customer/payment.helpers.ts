@@ -35,7 +35,7 @@ export async function applyPaymentStatus(payment: Payment, newStatus: PaymentSta
       ]);
 
       if (order.outlet_id) {
-        await notifyOutletEmployees(order.outlet_id, ["outlet_admin", "driver"], "Pembayaran berhasil", `Pesanan ${order.invoice_number} siap untuk diantar.`, "payment_completed", order.id);
+        await notifyOutletEmployees(order.outlet_id, ["outlet_admin", "driver"], "Pembayaran berhasil", `Pesanan ${order.invoice_number} telah dibayar oleh customer.`, "payment_completed", order.id);
       }
     }
 

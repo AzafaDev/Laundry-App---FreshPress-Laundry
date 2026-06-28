@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
-import { geocodeAddress } from "../../utils/geocode.util.js";
+import { geocodeAddress, searchAddress } from "../../utils/geocode.util.js";
 import { haversineKm, calculateDeliveryFee, FREE_RADIUS_KM, FLAT_RATE_ONGKIR, type CreateAddressInput, type UpdateAddressInput } from "./address.helpers.js";
 
 export type { CreateAddressInput, UpdateAddressInput };
@@ -81,6 +81,8 @@ export const deleteAddress = async (customerId: string, addressId: string) => {
 };
 
 export const geocodeForCustomer = async (query: string) => geocodeAddress(query);
+
+export const searchAddressesForCustomer = async (query: string, limit = 5) => searchAddress(query, limit);
 
 export const estimateDeliveryFee = async (customerId: string, addressId: string) => {
   const address = await prisma.customerAddress.findFirst({ where: { id: addressId, customer_id: customerId } });

@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { notifyCustomer } from "../../lib/notification.js";
+import { emitToUser } from "../../lib/socket.js";
 
 export type ComplaintStatusUpdate = "in_progress" | "resolved" | "rejected";
 
@@ -158,6 +159,13 @@ export const updateComplaintStatus = async (
       complaintId,
     );
   }
+
+  emitToUser(customerId, "complaint:updated", {
+    complaintId,
+    orderId: complaint.order_id,
+    status: newStatus,
+    resolution_notes: resolutionNotes ?? null,
+  });
 
   return updated;
 };

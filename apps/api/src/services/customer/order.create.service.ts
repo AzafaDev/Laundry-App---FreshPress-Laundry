@@ -53,7 +53,6 @@ export const createCustomerOrder = async (customerId: string, input: CreateCusto
   maxDate.setHours(23, 59, 59, 999);
   if (pickupDate > maxDate) throw new AppError("Jadwal pickup maksimal 7 hari ke depan.", 400);
 
-  const estimatedWeightKg = input.service_type === "dry-cleaning" ? 0 : Number(input.estimated_weight_kg ?? 0);
   const invoiceNumber = generateInvoiceNumber();
 
   const order = await prisma.$transaction(async (tx) => {
@@ -65,10 +64,9 @@ export const createCustomerOrder = async (customerId: string, input: CreateCusto
         pickup_address_id: input.pickup_address_id,
         status: "waiting_pickup_driver",
         pickup_date: pickupDate,
-        total_weight_kg: estimatedWeightKg,
+        total_weight_kg: 0,
         delivery_fee: calculateDeliveryFee(nearestOutlet.distance),
         total_price: 0,
-        notes: input.notes ? `[service:${input.service_type}] ${input.notes}` : `[service:${input.service_type}]`,
       },
     });
     await tx.orderStatusHistory.create({
