@@ -32,12 +32,6 @@ export const useEmployeeAuth = () => {
       setAuth(employee);
       router.push(getDashboardPath(employee.role));
     },
-    onError: (error: any) => {
-      console.log(
-        "Login employee gagal:",
-        error?.response?.data?.message || error.message,
-      );
-    },
   });
 
   const logout = async () => {

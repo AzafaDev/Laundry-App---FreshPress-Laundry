@@ -205,7 +205,6 @@ export const workerService = {
     return bypass;
   },
 
-  // Called by admin bypass controller on approve — skips shift guard
   async completeStationAfterBypass(
     station: "washing" | "ironing" | "packing",
     orderId: string,
@@ -228,7 +227,6 @@ export const workerService = {
       if (payment?.status === "paid") finalStatus = "ready_for_delivery";
     }
 
-    // checkPendingBypass = false karena bypass sudah di-approve, tidak perlu cek ulang
     await runCompleteStationTransaction(orderId, workerId, station, order.status, finalStatus, false, actualItems, bypassRequestId);
 
     if (finalStatus === "ready_for_delivery") {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useWorkerStation } from "@/hooks/useWorkerStation";
 import { useWorkerStationSocket } from "@/hooks/useWorkerStationSocket";
+import { useSocketStatus } from "@/hooks/useSocket";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import { useAttendance } from "@/hooks/useAttendance";
 import { WorkerSidebar } from "@/components/dashboard/WorkerSidebar";
@@ -23,7 +24,6 @@ export default function WorkerStationPage() {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(true);
   const [bypassState, setBypassState] = useState<Record<string, BypassState>>({});
   const [bypassModalOpen, setBypassModalOpen] = useState<string | null>(null);
   const [bypassViewId, setBypassViewId] = useState<string | null>(null);
@@ -43,7 +43,8 @@ export default function WorkerStationPage() {
   const { checkedIn } = useAttendance();
   const { stationOrders, isLoading, submitItems } = useWorkerStation();
 
-  useWorkerStationSocket({ station, setIsConnected, setBypassState });
+  const isConnected = useSocketStatus();
+  useWorkerStationSocket({ station, setBypassState });
 
   if (_hasHydrated && !station) {
     return (

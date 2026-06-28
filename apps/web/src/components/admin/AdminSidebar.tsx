@@ -40,19 +40,19 @@ const NAV: NavItem[] = [
   },
   {
     href: "/dashboard/admin/users",
-    label: "Users",
+    label: "User Management",
     icon: Users,
     roles: ["super_admin"],
   },
   {
     href: "/dashboard/admin/outlets",
-    label: "Outlets",
+    label: "Outlet Management",
     icon: Store,
     roles: ["super_admin"],
   },
   {
     href: "/dashboard/admin/laundry-items",
-    label: "Laundry Items",
+    label: "Laundry Item Management",
     icon: ShoppingBag,
     roles: ["super_admin"],
   },
@@ -70,7 +70,7 @@ const NAV: NavItem[] = [
   },
   {
     href: "/dashboard/admin/customers",
-    label: "Customers",
+    label: "Customer List",
     icon: UserCircle,
     roles: ["super_admin"],
   },
