@@ -1,8 +1,8 @@
-import { disconnectSocket, getSocket, reconnectSocket } from "@/lib/socket";
+import { disconnectSocket, getSocket, isSocketConnected, reconnectSocket } from "@/lib/socket";
 import { performSilentRefresh } from "@/lib/axios";
 import { useAuthStore } from "@/stores/authStore";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type EventHandler = (...args: any[]) => void;
 
@@ -38,6 +38,34 @@ export function useSocket() {
     }, SILENT_REFRESH_INTERVAL_MS);
   }, [isLoggedIn, employeeUser, customerUser]);
 
+  // Auth-aware reconnect: kalau handshake gagal karena token stale, refresh
+  // cookie lalu reconnect — jangan biarkan socket mati senyap. refreshRetries
+  // di-reset tiap berhasil connect; kalau refresh tetap gagal, biarkan flow 401
+  // axios yang redirect login.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const socket = getSocket();
+    const authType: "employee" | "customer" = employeeUser ? "employee" : "customer";
+    let refreshRetries = 0;
+
+    const onConnect = () => {
+      refreshRetries = 0;
+    };
+    const onConnectError = async (err: Error) => {
+      if (!err.message.includes("Unauthorized") || refreshRetries >= 2) return;
+      refreshRetries++;
+      const ok = await performSilentRefresh(authType);
+      if (ok) socket.connect();
+    };
+
+    socket.on("connect", onConnect);
+    socket.on("connect_error", onConnectError);
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("connect_error", onConnectError);
+    };
+  }, [isLoggedIn, employeeUser]);
+
   const on = useCallback((event: string, handler: EventHandler) => {
     if (!isLoggedIn) return () => {};
     const socket = getSocket();
@@ -54,4 +82,24 @@ export function useSocket() {
   }, [isLoggedIn]);
 
   return { on, emit, disconnect: disconnectSocket };
+}
+
+// Status koneksi socket yang jujur — di-seed dari socket.connected sebenarnya,
+// bukan default optimistik. Dipakai badge "Live"/"Offline".
+export function useSocketStatus() {
+  const [connected, setConnected] = useState(() => isSocketConnected());
+
+  useEffect(() => {
+    const socket = getSocket();
+    const onConnect = () => setConnected(true);
+    const onDisconnect = () => setConnected(false);
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+    };
+  }, []);
+
+  return connected;
 }
