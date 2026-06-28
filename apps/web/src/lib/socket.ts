@@ -22,28 +22,6 @@ export function getSocket(): Socket {
     autoConnect: true,
   });
 
-  g.__appSocket.on("connect", () => {
-    console.log("[socket] connected");
-  });
-
-  g.__appSocket.on("disconnect", (reason) => {
-    console.log("[socket] disconnected:", reason);
-  });
-
-  // Catatan: jangan disconnect() permanen di sini. Reconnect karena token stale
-  // ditangani di useSocket (auth-aware: silent refresh lalu reconnect). socket.io
-  // sendiri yang mengatur batas attempt via reconnectionAttempts di atas.
-  let errorCount = 0;
-  g.__appSocket.on("connect_error", (err) => {
-    errorCount++;
-    if (errorCount === 1) {
-      console.warn("[socket] connection error:", err.message);
-    }
-  });
-
-  g.__appSocket.on("connect", () => {
-    errorCount = 0;
-  });
 
   return g.__appSocket;
 }
@@ -60,9 +38,6 @@ export function disconnectSocket() {
 }
 
 export function reconnectSocket() {
-  // Kalau socket sudah ada (connected maupun masih connecting), biarkan
-  // socket.io handle reconnect otomatis — jangan destroy socket yang sedang
-  // handshake, karena multiple useSocket() mounts bisa cascade-kill satu sama lain.
   if (g.__appSocket) return g.__appSocket;
   return getSocket();
 }
