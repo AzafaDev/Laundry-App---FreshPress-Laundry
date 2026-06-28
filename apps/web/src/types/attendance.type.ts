@@ -1,7 +1,6 @@
-// apps/web/src/types/attendance.type.ts
 
 export type AttendanceStatus = "on_time" | "late" | "absent";
-export type AttendanceStatusFilter = "on_time" | "late" | "absent"; // untuk filter admin report
+export type AttendanceStatusFilter = "on_time" | "late" | "absent";
 
 export interface Attendance {
   id: string;
@@ -42,10 +41,9 @@ export interface AttendanceLogsResponse {
   };
 }
 
-// Ubah userId -> employeeId untuk konsistensi dengan backend
 export interface AttendanceReportParams {
   outletId?: string;
-  employeeId?: string; // dulu userId
+  employeeId?: string; 
   role?: "washing_worker" | "ironing_worker" | "packing_worker" | "driver";
   status?: AttendanceStatusFilter;
   startDate?: string;

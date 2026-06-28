@@ -152,7 +152,6 @@ export const resetPassword = async (rawToken: string, newPassword: string, res: 
   if (!record) throw new AppError("Token tidak valid atau sudah kadaluarsa.", 400);
   if (record.employee.deleted_at) throw new AppError("Akun tidak ditemukan.", 404);
 
-  // Akun yang inactive = akun baru (invite flow). Aktifkan otomatis saat set password pertama kali.
   const isFirstActivation = !record.employee.is_active;
 
   const password_hash = await bcrypt.hash(newPassword, 10);

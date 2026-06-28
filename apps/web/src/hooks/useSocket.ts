@@ -6,8 +6,6 @@ import { useCallback, useEffect, useState } from "react";
 
 type EventHandler = (...args: any[]) => void;
 
-// Lebih kecil dari JWT_EXPIRES_IN backend (default 15m), supaya access token
-// yang dipakai socket buat reconnect handshake selalu fresh.
 const SILENT_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 let refreshIntervalId: ReturnType<typeof setInterval> | null = null;
 
@@ -28,9 +26,6 @@ export function useSocket() {
       }
       return;
     }
-    // Singleton: useSocket() dipanggil banyak komponen sekaligus, tapi cuma
-    // boleh ada 1 interval global. Jangan dikasih cleanup di sini — clear
-    // cuma terjadi di cabang !isLoggedIn di atas, saat user benar-benar logout.
     if (refreshIntervalId) return;
     const authType: "employee" | "customer" = employeeUser ? "employee" : "customer";
     refreshIntervalId = setInterval(() => {
@@ -38,10 +33,6 @@ export function useSocket() {
     }, SILENT_REFRESH_INTERVAL_MS);
   }, [isLoggedIn, employeeUser, customerUser]);
 
-  // Auth-aware reconnect: kalau handshake gagal karena token stale, refresh
-  // cookie lalu reconnect — jangan biarkan socket mati senyap. refreshRetries
-  // di-reset tiap berhasil connect; kalau refresh tetap gagal, biarkan flow 401
-  // axios yang redirect login.
   useEffect(() => {
     if (!isLoggedIn) return;
     const socket = getSocket();
@@ -84,8 +75,6 @@ export function useSocket() {
   return { on, emit, disconnect: disconnectSocket };
 }
 
-// Status koneksi socket yang jujur — di-seed dari socket.connected sebenarnya,
-// bukan default optimistik. Dipakai badge "Live"/"Offline".
 export function useSocketStatus() {
   const [connected, setConnected] = useState(() => isSocketConnected());
 
