@@ -19,6 +19,7 @@ import {
   CalendarDays,
   MessageSquareWarning,
   X,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
@@ -155,13 +156,21 @@ export function AdminSidebar({ open = false, onClose }: AdminSidebarProps) {
         </button>
       </div>
 
-      {/* User card */}
-      <div className="mx-4 p-3 bg-surface-container-high rounded-xl flex items-center gap-3 mb-1">
+      {/* User card — klik untuk ke profile */}
+      <Link
+        href="/dashboard/profile"
+        onClick={onClose}
+        className={`mx-4 p-3 rounded-xl flex items-center gap-3 mb-1 transition-colors group ${
+          pathname === "/dashboard/profile"
+            ? "bg-primary/10 ring-1 ring-primary/30"
+            : "bg-surface-container-high hover:bg-surface-container-highest"
+        }`}
+      >
         <div className="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center font-semibold flex-shrink-0 text-sm">
           {user?.full_name?.slice(0, 1).toUpperCase() ?? "A"}
         </div>
-        <div className="flex flex-col min-w-0">
-          <span className="text-sm font-semibold text-on-surface truncate">
+        <div className="flex flex-col min-w-0 flex-1">
+          <span className="text-sm font-semibold text-on-surface truncate group-hover:text-primary transition-colors">
             {user?.full_name ?? "Admin"}
           </span>
           <span className="text-xs text-on-surface-variant truncate capitalize">
@@ -173,7 +182,8 @@ export function AdminSidebar({ open = false, onClose }: AdminSidebarProps) {
             </span>
           )}
         </div>
-      </div>
+        <UserRound className="w-4 h-4 text-on-surface-variant group-hover:text-primary transition-colors flex-shrink-0" />
+      </Link>
 
       <div className="mx-4 h-px bg-outline-variant my-3" />
 

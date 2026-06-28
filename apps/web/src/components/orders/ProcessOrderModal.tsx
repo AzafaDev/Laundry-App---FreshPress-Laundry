@@ -126,17 +126,36 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
 
   const handleReview = () => {
     setError("");
-    if (apiItems.length === 0) {
-      return setError("Minimal satu item harus diisi.");
+
+    const hasKiloan = totalWeightKg > 0;
+    const hasSatuan = pcsItems.some((i) => (pcsQtys[i.id] ?? 0) > 0);
+    const hasBreakdown = Object.values(breakdown).some((q) => q > 0);
+
+    if (!hasKiloan && !hasSatuan) {
+      return setError(
+        "Minimal isi satu item — masukkan berat kiloan atau jumlah item satuan.",
+      );
     }
-    // Kalau ada item kg tapi beratnya 0, berarti lupa diisi
-    const hasKgItem = apiItems.some((i) => {
-      const li = allItems.find((a) => a.id === i.laundry_item_id);
-      return li?.unit === "kg";
-    });
-    if (hasKgItem && totalWeightKg <= 0) {
-      return setError("Isi berat total untuk item kiloan.");
+
+    // Berat kiloan harus bilangan bulat
+    if (hasKiloan && !Number.isInteger(totalWeightKg)) {
+      return setError("Berat kiloan harus bilangan bulat (contoh: 1, 2, 3 kg — tidak boleh 0.5).");
     }
+
+    // Jika breakdown diisi, berat kiloan wajib ada
+    if (hasBreakdown && !hasKiloan) {
+      return setError(
+        "Rincian jenis pakaian diisi, tapi berat kiloan masih 0. Isi berat kiloan terlebih dahulu.",
+      );
+    }
+
+    // Jika berat kiloan diisi, breakdown wajib ada
+    if (hasKiloan && !hasBreakdown) {
+      return setError(
+        "Berat kiloan sudah diisi. Wajib mengisi rincian jenis pakaian.",
+      );
+    }
+
     setStep("confirm");
   };
 
@@ -221,13 +240,13 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
                                 <input
                                   type="number"
                                   min={0}
-                                  step={0.5}
+                                  step={1}
                                   value={qty || ""}
                                   placeholder="0"
                                   onChange={(e) =>
                                     setKgQtys((prev) => ({
                                       ...prev,
-                                      [item.id]: Math.max(0, parseFloat(e.target.value) || 0),
+                                      [item.id]: Math.max(0, Math.floor(parseFloat(e.target.value) || 0)),
                                     }))
                                   }
                                   className="w-full text-center border border-outline-variant rounded-lg py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-surface"

@@ -391,39 +391,94 @@ export default function OrderDetailPage() {
           <p className="text-sm text-on-surface-variant">
             Belum ada item — outlet admin belum memproses order ini.
           </p>
-        ) : (
-          <div className="divide-y divide-outline-variant">
-            {order.order_items.map((item: OrderItem) => {
-              const isKiloan = item.laundry_item.unit === "kg";
-              const breakdowns = isKiloan ? (order.order_item_breakdowns ?? []) : [];
-              return (
-                <div key={item.id} className="py-2 text-sm">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <span className="font-medium">{item.laundry_item.name}</span>
-                      <span className="text-on-surface-variant ml-2">
-                        × {item.quantity} {item.laundry_item.unit}
-                      </span>
-                    </div>
-                    <span className="font-medium">{fmtPrice(Number(item.price_at_order) * Number(item.quantity))}</span>
-                  </div>
-                  {/* Breakdown per clothing type for kiloan items */}
-                  {isKiloan && breakdowns.length > 0 && (
-                    <div className="mt-2 ml-3 space-y-1 border-l-2 border-outline-variant pl-3">
-                      <p className="text-xs font-semibold text-on-surface-variant mb-1">Rincian jenis pakaian:</p>
-                      {breakdowns.map((b: OrderItemBreakdown) => (
-                        <div key={b.id} className="flex justify-between text-xs text-on-surface-variant">
-                          <span>{b.clothing_type.name}</span>
-                          <span className="font-medium">{b.quantity} pcs</span>
+        ) : (() => {
+          const kiloanItems = order.order_items.filter(
+            (item: OrderItem) => item.laundry_item.unit === "kg",
+          );
+          const satuanItems = order.order_items.filter(
+            (item: OrderItem) => item.laundry_item.unit !== "kg",
+          );
+          const breakdowns = order.order_item_breakdowns ?? [];
+
+          return (
+            <div className="space-y-4">
+              {/* ── Kiloan ── */}
+              {kiloanItems.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+                    Kiloan
+                  </p>
+                  <div className="border border-outline-variant rounded-xl overflow-hidden divide-y divide-outline-variant">
+                    {kiloanItems.map((item: OrderItem) => (
+                      <div key={item.id} className="px-4 py-3 text-sm">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="font-medium">{item.laundry_item.name}</span>
+                            <span className="text-on-surface-variant ml-2">
+                              × {Number(item.quantity)} kg
+                            </span>
+                            <span className="text-xs text-on-surface-variant ml-1">
+                              ({fmtPrice(Number(item.price_at_order))}/kg)
+                            </span>
+                          </div>
+                          <span className="font-semibold">
+                            {fmtPrice(Number(item.price_at_order) * Number(item.quantity))}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        {/* Breakdown jenis pakaian */}
+                        {breakdowns.length > 0 && (
+                          <div className="mt-2 ml-3 space-y-1 border-l-2 border-outline-variant pl-3">
+                            <p className="text-xs font-semibold text-on-surface-variant mb-1">
+                              Rincian jenis pakaian:
+                            </p>
+                            {breakdowns.map((b: OrderItemBreakdown) => (
+                              <div
+                                key={b.id}
+                                className="flex justify-between text-xs text-on-surface-variant"
+                              >
+                                <span>{b.clothing_type.name}</span>
+                                <span className="font-medium">{b.quantity} pcs</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              )}
+
+              {/* ── Satuan ── */}
+              {satuanItems.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+                    Satuan
+                  </p>
+                  <div className="border border-outline-variant rounded-xl overflow-hidden divide-y divide-outline-variant">
+                    {satuanItems.map((item: OrderItem) => (
+                      <div key={item.id} className="px-4 py-3 text-sm">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="font-medium">{item.laundry_item.name}</span>
+                            <span className="text-on-surface-variant ml-2">
+                              × {Number(item.quantity)} pcs
+                            </span>
+                            <span className="text-xs text-on-surface-variant ml-1">
+                              ({fmtPrice(Number(item.price_at_order))}/pcs)
+                            </span>
+                          </div>
+                          <span className="font-semibold">
+                            {fmtPrice(Number(item.price_at_order) * Number(item.quantity))}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Process log */}
