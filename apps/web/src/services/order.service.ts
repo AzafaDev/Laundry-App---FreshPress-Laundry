@@ -80,9 +80,6 @@ export interface CreateComplaintPayload {
 export interface CreateCustomerOrderPayload {
   pickup_address_id: string;
   pickup_date: string;
-  service_type: "wash-and-fold" | "dry-cleaning";
-  estimated_weight_kg?: number;
-  notes?: string;
 }
 
 export interface ListCustomerOrdersQuery {
