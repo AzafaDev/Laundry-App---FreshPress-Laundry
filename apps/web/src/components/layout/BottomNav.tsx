@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Shirt, Truck, User, Clock, History, ClipboardList, Bell, LogIn } from "lucide-react";
+import { Home, Shirt, Truck, User, Clock, History, ClipboardList, Bell, LogIn, MapPin } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
@@ -86,6 +86,12 @@ export const BottomNav = () => {
           label="Orders"
           href="/customer/orders"
           active={pathname.startsWith("/customer/orders")}
+        />
+        <NavItem
+          icon={MapPin}
+          label="Alamat"
+          href="/customer/locations"
+          active={pathname.startsWith("/customer/locations")}
         />
         <NavItem
           icon={Bell}
