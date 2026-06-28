@@ -26,6 +26,7 @@ export function useSocket() {
       }
       return;
     }
+   
     if (refreshIntervalId) return;
     const authType: "employee" | "customer" = employeeUser ? "employee" : "customer";
     refreshIntervalId = setInterval(() => {

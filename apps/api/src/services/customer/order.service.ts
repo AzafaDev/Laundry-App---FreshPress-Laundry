@@ -2,7 +2,7 @@ import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { notifyCustomer } from "../../lib/notification.js";
 
-// Re-export from split files so controllers' namespace imports still work
+
 export { createCustomerOrder } from "./order.create.service.js";
 export { createCustomerComplaint, type CreateComplaintInput } from "./order.complaint.service.js";
 export type { CreateCustomerOrderInput } from "./order.helpers.js";

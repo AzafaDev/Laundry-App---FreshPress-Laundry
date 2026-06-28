@@ -1,7 +1,3 @@
-// src/hooks/useAdminAuth.ts
-// Login hook scoped to admin roles only (super_admin, outlet_admin).
-// Rejects workers/drivers with a friendly error instead of redirecting them.
-
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
@@ -33,7 +29,6 @@ export const useAdminAuth = () => {
     mutationFn: async (payload: EmployeeLoginPayload) => {
       const data = await employeeAuthService.login(payload);
 
-      // Role check — reject non-admin accounts immediately.
       if (!ADMIN_ROLES.includes(data.employee.role as EmployeeRole)) {
         // Logout on backend to revoke the refresh token cookie we just set.
         try {
@@ -54,7 +49,6 @@ export const useAdminAuth = () => {
       router.push(getDashboardPath(employee.role as EmployeeRole));
     },
     onError: (error: any) => {
-      // Clear any partial auth state.
       clearAuth();
       console.error(
         "Admin login gagal:",
