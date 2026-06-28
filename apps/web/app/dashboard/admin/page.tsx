@@ -47,7 +47,7 @@ export default function AdminDashboardPage() {
             href="/dashboard/admin/outlets"
             icon={<Store className="w-6 h-6 text-primary" />}
             title="Outlet Management"
-            description="Daftar outlet, koordinat lokasi, dan radius layanan."
+            description="Daftar outlet, koordinat lokasi, radius layanan, dan penugasan karyawan."
           />
         )}
         {isSuper && (
@@ -71,7 +71,7 @@ export default function AdminDashboardPage() {
             href="/dashboard/admin/shifts"
             icon={<Clock className="w-6 h-6 text-primary" />}
             title="Work Shifts"
-            description="Kelola jadwal shift dan penugasan karyawan per outlet."
+            description="Kelola jadwal shift kerja karyawan."
           />
         )}
         {isSuper && (
