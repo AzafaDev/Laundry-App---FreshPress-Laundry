@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Shirt, User, LogOut, ChevronDown, ShieldAlert, Bell } from "lucide-react";
+import { Shirt, User, LogOut, ChevronDown, Bell } from "lucide-react";
 
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
@@ -114,12 +114,6 @@ export const Navbar = () => {
                       className="flex items-center gap-2 px-4 py-3 text-sm text-on-surface hover:bg-surface-container-low transition-colors">
                       <User className="w-4 h-4" /> Profil Saya
                     </Link>
-                    {(user?.role === "super_admin" || user?.role === "outlet_admin") && (
-                      <Link href="/dashboard/admin" onClick={() => setDropdownOpen(false)}
-                        className="flex items-center gap-2 px-4 py-3 text-sm text-gray-900 hover:bg-gray-50 transition-colors">
-                        <ShieldAlert className="w-4 h-4" /> Admin Dashboard
-                      </Link>
-                    )}
                     <button onClick={handleLogout}
                       className="flex items-center gap-2 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-200">
                       <LogOut className="w-4 h-4" /> Keluar

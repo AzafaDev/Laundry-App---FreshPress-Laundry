@@ -60,6 +60,7 @@ router.get("/addresses/:id/delivery-estimate", authenticate, AddressCtrl.estimat
 
 // Geocode proxy (protected — keeps OPENCAGE_API_KEY server-side)
 router.get("/geocode", authenticate, AddressCtrl.geocodeSearch);
+router.get("/geocode/search", authenticate, AddressCtrl.geocodeMultiSearch);
 
 // Laundry Items (public)
 router.get("/laundry-items", LaundryItemCtrl.listLaundryItems);

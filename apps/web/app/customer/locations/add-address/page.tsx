@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Save, Loader2, AlertCircle, MapPin, Search } from "lucide-react";
 import { z } from "zod";
 import { addressService, type GeocodeResult } from "@/services/address.service";
 import { useAuthStore } from "@/stores/authStore";
@@ -55,6 +55,12 @@ function AddAddressPageInner() {
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const [matches, setMatches] = useState<GeocodeResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showMatches, setShowMatches] = useState(false);
+  const [regionSearching, setRegionSearching] = useState(false);
+  const skipNextSearchRef = useRef(false);
   const reverseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -76,23 +82,61 @@ function AddAddressPageInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId, user]);
 
+  // Live search as user types street field
+  useEffect(() => {
+    if (skipNextSearchRef.current) {
+      skipNextSearchRef.current = false;
+      return;
+    }
+    const q = street.trim();
+    if (q.length < 3) {
+      setMatches([]);
+      setSearching(false);
+      return;
+    }
+    const handle = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const items = await addressService.geocodeSearch(q, 5);
+        setMatches(items);
+        setShowMatches(true);
+      } catch {
+        setMatches([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 500);
+    return () => clearTimeout(handle);
+  }, [street]);
+
   const reverseGeocode = useCallback(async (newLat: number, newLng: number) => {
     setGeocoding(true); setGeocodeError(null);
     try {
       const result = await addressService.geocode(`${newLat},${newLng}`);
       if (result) {
-        const applyStructuredAddress = (geo: GeocodeResult) => {
-          setStreet(geo.street?.trim() || geo.formatted);
-          if (geo.province?.trim()) setProvince(geo.province.trim());
-          if (geo.city?.trim()) setCity(geo.city.trim());
-          if (geo.district?.trim()) setDistrict(geo.district.trim());
-          if (geo.postal_code?.trim()) setPostalCode(geo.postal_code.trim());
-        };
-        applyStructuredAddress(result);
+        skipNextSearchRef.current = true;
+        setStreet(result.street?.trim() || result.formatted);
+        if (result.province?.trim()) setProvince(result.province.trim());
+        if (result.city?.trim()) setCity(result.city.trim());
+        if (result.district?.trim()) setDistrict(result.district.trim());
+        if (result.postal_code?.trim()) setPostalCode(result.postal_code.trim());
       }
     } catch { setGeocodeError("Tidak dapat membaca lokasi ini. Isi alamat secara manual."); }
     finally { setGeocoding(false); }
   }, []);
+
+  const handleSearchByRegion = useCallback(async () => {
+    const query = [street, district, city, province].filter(Boolean).join(", ");
+    if (!query.trim()) { setGeocodeError("Isi minimal satu field wilayah untuk mencari lokasi."); return; }
+    setRegionSearching(true); setGeocodeError(null);
+    try {
+      const result = await addressService.geocode(query);
+      if (!result) { setGeocodeError("Alamat tidak ditemukan. Coba lengkapi field wilayah."); return; }
+      skipNextSearchRef.current = true;
+      setLat(result.latitude); setLng(result.longitude); setPinSet(true); setFlyToTrigger((n) => n + 1);
+    } catch { setGeocodeError("Gagal mencari koordinat. Coba lagi."); }
+    finally { setRegionSearching(false); }
+  }, [street, district, city, province]);
 
   const handlePin = useCallback((newLat: number, newLng: number) => {
     setLat(newLat); setLng(newLng); setPinSet(true);
@@ -100,24 +144,24 @@ function AddAddressPageInner() {
     reverseTimer.current = setTimeout(() => reverseGeocode(newLat, newLng), 600);
   }, [reverseGeocode]);
 
-  const handleSearchAddress = useCallback(async () => {
-    const query = [street, district, city, province].filter(Boolean).join(", ");
-    if (!query.trim()) { setGeocodeError("Isi minimal nama jalan atau kota untuk mencari koordinat."); return; }
-    setGeocoding(true); setGeocodeError(null);
-    try {
-      const result = await addressService.geocode(query);
-      if (!result) { setGeocodeError("Alamat tidak ditemukan."); return; }
-      setLat(result.latitude); setLng(result.longitude); setPinSet(true); setFlyToTrigger((n) => n + 1);
-    } catch { setGeocodeError("Gagal mencari koordinat. Coba lagi."); }
-    finally { setGeocoding(false); }
-  }, [street, district, city, province]);
+  const pickMatch = (m: GeocodeResult) => {
+    skipNextSearchRef.current = true;
+    setStreet(m.street || m.formatted);
+    setLat(m.latitude); setLng(m.longitude); setPinSet(true); setFlyToTrigger((n) => n + 1);
+    if (m.province) setProvince(m.province);
+    if (m.city) setCity(m.city);
+    if (m.district) setDistrict(m.district);
+    if (m.postal_code) setPostalCode(m.postal_code);
+    setShowMatches(false);
+    setMatches([]);
+  };
 
   const handleSave = async () => {
     setSaveError(null);
     const finalLabel = label === "custom" ? customLabel.trim() : label;
     const validationResult = addressSchema.safeParse({ label: finalLabel, address: street.trim(), province: province.trim(), city: city.trim(), district: district.trim(), postal_code: postalCode.trim() || undefined });
     if (!validationResult.success) { setSaveError(validationResult.error.issues[0].message); return; }
-    if (!pinSet) { setSaveError("Tandai lokasi di peta atau klik 'Cari di Peta' terlebih dahulu."); return; }
+    if (!pinSet) { setSaveError("Tandai lokasi di peta atau pilih dari hasil pencarian terlebih dahulu."); return; }
     setSaving(true);
     const payload = { label: finalLabel, address: street.trim(), province: province.trim(), city: city.trim(), district: district.trim(), postal_code: postalCode.trim() || undefined, latitude: lat, longitude: lng, is_primary: isPrimary };
     try {
@@ -146,18 +190,60 @@ function AddAddressPageInner() {
         </div>
       ) : (
         <main className="max-w-lg mx-auto px-4 pt-5 pb-32 flex flex-col gap-3">
-          <RegionSelector province={province} city={city} district={district} postalCode={postalCode} isOpen={regionOpen} onToggle={() => setRegionOpen((o) => !o)} onProvinceChange={setProvince} onCityChange={setCity} onDistrictChange={setDistrict} onPostalCodeChange={setPostalCode} />
-
-          <div className="bg-white rounded-xl border border-gray-200 px-4 pt-5 pb-3 relative">
-            <span className="absolute top-2 left-4 text-[11px] text-gray-400 leading-none pointer-events-none">Nama Jalan, Gedung, No. Rumah *</span>
-            <textarea value={street} onChange={(e) => setStreet(e.target.value)} placeholder="cth. Dsn. Gedangan Rt.01 Rw.07 Ds. Ngudirejo" rows={2} className="w-full text-sm text-gray-800 placeholder:text-gray-300 bg-transparent resize-none focus:outline-none" />
+          <div className="bg-white rounded-xl border border-gray-200 px-4 pt-3 pb-3 relative">
+            <span className="block text-xs text-gray-400 mb-2">Nama Jalan, Gedung, No. Rumah *</span>
+            <div className="relative flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
+              <input
+                type="text"
+                value={street}
+                onChange={(e) => setStreet(e.target.value)}
+                onFocus={() => setShowMatches(matches.length > 0)}
+                onBlur={() => setTimeout(() => setShowMatches(false), 150)}
+                placeholder="cth. Dsn. Gedangan Rt.01 Rw.07 Ds. Ngudirejo"
+                className="flex-1 text-sm text-gray-800 placeholder:text-gray-300 bg-transparent focus:outline-none"
+              />
+              <div className="flex-shrink-0">
+                {searching ? (
+                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4 text-gray-400" />
+                )}
+              </div>
+            </div>
+            {showMatches && matches.length > 0 && (
+              <ul className="absolute z-10 left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+                {matches.map((m, i) => (
+                  <li key={`${m.latitude},${m.longitude},${i}`}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => pickMatch(m)}
+                      className="w-full text-left px-4 py-2.5 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                    >
+                      <div className="flex items-start gap-2">
+                        <MapPin className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm text-gray-800 truncate">{m.formatted}</p>
+                          <p className="text-xs text-gray-400">
+                            {m.latitude.toFixed(5)}, {m.longitude.toFixed(5)}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
+
+          <RegionSelector province={province} city={city} district={district} postalCode={postalCode} isOpen={regionOpen} onToggle={() => setRegionOpen((o) => !o)} onProvinceChange={setProvince} onCityChange={setCity} onDistrictChange={setDistrict} onPostalCodeChange={setPostalCode} onSearch={handleSearchByRegion} searching={regionSearching} />
 
           <div className="bg-white rounded-xl border border-gray-200">
             <input type="text" value={detail} onChange={(e) => setDetail(e.target.value)} placeholder="Detail Lainnya (Cth: Blok / Unit No., Patokan)" className="w-full px-4 py-4 text-sm text-gray-800 placeholder:text-gray-400 bg-transparent focus:outline-none" />
           </div>
 
-          <MapPickerSection lat={lat} lng={lng} flyToTrigger={flyToTrigger} pinSet={pinSet} geocoding={geocoding} geocodeError={geocodeError} onPin={handlePin} onSearchAddress={handleSearchAddress} />
+          <MapPickerSection lat={lat} lng={lng} flyToTrigger={flyToTrigger} pinSet={pinSet} geocoding={geocoding} geocodeError={geocodeError} onPin={handlePin} />
 
           <AddressLabelSelector label={label} customLabel={customLabel} showCustomInput={showCustomInput} onSelectLabel={(l) => { setLabel(l); setShowCustomInput(false); }} onCustomLabelChange={setCustomLabel} onSelectCustom={() => { setLabel("custom"); setShowCustomInput(true); }} />
 
