@@ -89,7 +89,7 @@ const NAV: NavItem[] = [
     href: "/dashboard/admin/bypass-requests",
     label: "Bypass Requests",
     icon: ShieldAlert,
-    roles: ["outlet_admin"],
+    roles: ["super_admin", "outlet_admin"],
   },
   {
     href: "/dashboard/admin/complaints",

@@ -41,13 +41,26 @@ export const useUpdateWorkShift = () => {
   });
 };
 
-export const useDeactivateWorkShift = () => {
+/** Soft-delete: sets deleted_at + is_active=false. Blocks if shift has active assignments. */
+export const useDeleteWorkShift = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => shiftService.deactivate(id),
+    mutationFn: (id: string) => shiftService.softDelete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: SHIFTS_KEY }),
   });
 };
+
+/** Hard-delete: permanent. Only works after soft-delete. */
+export const useHardDeleteWorkShift = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => shiftService.hardDelete(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: SHIFTS_KEY }),
+  });
+};
+
+/** @deprecated Use useDeleteWorkShift */
+export const useDeactivateWorkShift = useDeleteWorkShift;
 
 // ── EmployeeShift queries ─────────────────────────────────────────────────────
 

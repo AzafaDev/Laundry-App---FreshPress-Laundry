@@ -126,14 +126,16 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
 
   const handleReview = () => {
     setError("");
-    if (totalWeightKg <= 0 && apiItems.filter((i) => {
-      const li = allItems.find((a) => a.id === i.laundry_item_id);
-      return li?.unit !== "kg";
-    }).length === 0) {
-      return setError("Isi minimal satu item kiloan atau satuan.");
-    }
     if (apiItems.length === 0) {
       return setError("Minimal satu item harus diisi.");
+    }
+    // Kalau ada item kg tapi beratnya 0, berarti lupa diisi
+    const hasKgItem = apiItems.some((i) => {
+      const li = allItems.find((a) => a.id === i.laundry_item_id);
+      return li?.unit === "kg";
+    });
+    if (hasKgItem && totalWeightKg <= 0) {
+      return setError("Isi berat total untuk item kiloan.");
     }
     setStep("confirm");
   };
@@ -142,7 +144,7 @@ export function ProcessOrderModal({ orderId, invoiceNumber, deliveryFee, onClose
     setError("");
     try {
       await processOrder.mutateAsync({
-        total_weight_kg: totalWeightKg > 0 ? totalWeightKg : 0.01,
+        total_weight_kg: totalWeightKg,
         items: apiItems,
         breakdown: apiBreakdown.length > 0 ? apiBreakdown : undefined,
         notes: composeNotes(),

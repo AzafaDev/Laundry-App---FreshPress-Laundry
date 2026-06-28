@@ -1,10 +1,12 @@
 import { z } from "zod";
 
 export const processOrderSchema = z.object({
+  // 0 diperbolehkan untuk order pcs-only (tidak ada item kiloan)
   total_weight_kg: z.coerce
-    .number({ message: "Berat total wajib diisi." })
-    .positive("Berat harus lebih dari 0.")
-    .max(999.99, "Berat maksimal 999.99 kg."),
+    .number({ message: "Berat total harus berupa angka." })
+    .min(0, "Berat tidak boleh negatif.")
+    .max(999.99, "Berat maksimal 999.99 kg.")
+    .default(0),
   items: z
     .array(
       z.object({

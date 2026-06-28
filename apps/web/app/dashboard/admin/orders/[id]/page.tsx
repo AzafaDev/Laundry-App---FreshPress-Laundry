@@ -84,49 +84,78 @@ function StatusStepper({ current }: { current: OrderStatus }) {
 }
 
 // ── Process Log Timeline ───────────────────────────────────────────────────────
-function ProcessTimeline({ logs }: { logs: ProcessLog[] }) {
+// station name → the order status that marks the START of that station
+const STATION_START_STATUS: Record<string, string> = {
+  washing: "washing",
+  ironing: "ironing",
+  packing: "packing",
+};
+
+function ProcessTimeline({
+  logs,
+  statusHistories,
+}: {
+  logs: ProcessLog[];
+  statusHistories: OrderStatusHistory[];
+}) {
   if (logs.length === 0) {
     return <p className="text-sm text-on-surface-variant">Belum ada proses di station.</p>;
   }
+
+  // Build a map: status → earliest created_at from status_histories
+  const statusStartMap: Record<string, string> = {};
+  for (const h of statusHistories) {
+    if (!statusStartMap[h.new_status]) {
+      statusStartMap[h.new_status] = h.created_at;
+    }
+  }
+
   return (
     <div className="space-y-4">
-      {logs.map((log) => (
-        <div key={log.id} className="flex gap-3">
-          <div className="flex flex-col items-center">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                log.completed_at
-                  ? "bg-secondary-container text-on-secondary-container"
-                  : "bg-primary-container text-on-primary-container"
-              }`}
-            >
-              {log.completed_at ? "✓" : "…"}
+      {logs.map((log) => {
+        const startStatus = STATION_START_STATUS[log.station];
+        const startedAt = log.started_at ?? (startStatus ? (statusStartMap[startStatus] ?? null) : null);
+        return (
+          <div key={log.id} className="flex gap-3">
+            <div className="flex flex-col items-center">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                  log.completed_at
+                    ? "bg-secondary-container text-on-secondary-container"
+                    : "bg-primary-container text-on-primary-container"
+                }`}
+              >
+                {log.completed_at ? "✓" : "…"}
+              </div>
+              <div className="w-0.5 flex-1 bg-outline-variant mt-1" />
             </div>
-            <div className="w-0.5 flex-1 bg-outline-variant mt-1" />
-          </div>
-          <div className="pb-4 flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-0.5">
-              <span className="font-medium text-sm">
-                {STATION_LABEL[log.station] ?? log.station}
-              </span>
-              {log.is_bypassed && (
-                <span className="px-2 py-0.5 text-xs rounded-full bg-tertiary-container text-on-tertiary-container font-medium">
-                  Bypass
+            <div className="pb-4 flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                <span className="font-medium text-sm">
+                  {STATION_LABEL[log.station] ?? log.station}
                 </span>
+                {log.is_bypassed && (
+                  <span className="px-2 py-0.5 text-xs rounded-full bg-tertiary-container text-on-tertiary-container font-medium">
+                    Bypass
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-on-surface-variant">
+                Worker: <span className="font-medium">{log.employee.full_name}</span>
+              </p>
+              <p className="text-xs text-on-surface-variant">
+                Mulai: <span className="font-medium text-on-surface">{fmtDateTime(startedAt)}</span>
+              </p>
+              <p className="text-xs text-on-surface-variant">
+                Selesai: <span className="font-medium text-on-surface">{fmtDateTime(log.completed_at)}</span>
+              </p>
+              {log.notes && (
+                <p className="text-xs text-on-surface-variant mt-1 italic">{log.notes}</p>
               )}
             </div>
-            <p className="text-xs text-on-surface-variant">
-              Worker: <span className="font-medium">{log.employee.full_name}</span>
-            </p>
-            <p className="text-xs text-on-surface-variant">
-              Mulai: {fmtDateTime(log.started_at)} · Selesai: {fmtDateTime(log.completed_at)}
-            </p>
-            {log.notes && (
-              <p className="text-xs text-on-surface-variant mt-1 italic">{log.notes}</p>
-            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -376,7 +405,7 @@ export default function OrderDetailPage() {
                         × {item.quantity} {item.laundry_item.unit}
                       </span>
                     </div>
-                    <span className="font-medium">{fmtPrice(item.price_at_order)}</span>
+                    <span className="font-medium">{fmtPrice(Number(item.price_at_order) * Number(item.quantity))}</span>
                   </div>
                   {/* Breakdown per clothing type for kiloan items */}
                   {isKiloan && breakdowns.length > 0 && (
@@ -402,7 +431,7 @@ export default function OrderDetailPage() {
         <h3 className="text-xs font-bold uppercase tracking-wide text-on-surface-variant">
           Timeline Proses Station
         </h3>
-        <ProcessTimeline logs={order.process_logs} />
+        <ProcessTimeline logs={order.process_logs} statusHistories={order.status_histories} />
       </div>
 
       {/* Status history */}

@@ -4,12 +4,17 @@ import { useState } from "react";
 import {
   Plus,
   Pencil,
-  PowerOff,
+  Trash2,
+  ShieldAlert,
   ChevronLeft,
   ChevronRight,
   Clock,
 } from "lucide-react";
-import { useWorkShifts, useDeactivateWorkShift } from "@/hooks/useShifts";
+import {
+  useWorkShifts,
+  useDeleteWorkShift,
+  useHardDeleteWorkShift,
+} from "@/hooks/useShifts";
 import type { WorkShift } from "@/types/shift.types";
 import { WorkShiftFormModal } from "./WorkShiftFormModal";
 
@@ -27,23 +32,47 @@ function formatTime(timeStr: string): string {
 
 export function WorkShiftTable() {
   const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState<"active" | "deleted">("active");
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<WorkShift | null>(null);
 
-  const { data, isFetching, isError } = useWorkShifts({ page, limit: 15 });
-  const deactivate = useDeactivateWorkShift();
+  const { data, isFetching, isError } = useWorkShifts({
+    page,
+    limit: 15,
+    include_deleted: statusFilter === "deleted" || undefined,
+  });
 
-  const items = data?.items ?? [];
+  const softDelete = useDeleteWorkShift();
+  const hardDelete = useHardDeleteWorkShift();
+
+  const allItems = data?.items ?? [];
+  const items =
+    statusFilter === "deleted"
+      ? allItems.filter((s) => !!s.deleted_at)
+      : allItems.filter((s) => !s.deleted_at);
   const pagination = data?.pagination;
 
-  const handleDeactivate = (shift: WorkShift) => {
-    if (!confirm(`Nonaktifkan shift "${shift.name}"?`)) return;
-    deactivate.mutate(shift.id);
+  const handleDelete = (shift: WorkShift) => {
+    if (!confirm(`Hapus shift "${shift.name}"?\nShift tidak akan bisa digunakan karyawan.`)) return;
+    softDelete.mutate(shift.id);
+  };
+
+  const handleHardDelete = (shift: WorkShift) => {
+    if (!confirm(`Hapus PERMANEN shift "${shift.name}"?\n\nData tidak dapat dipulihkan.`)) return;
+    hardDelete.mutate(shift.id);
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-3">
+        <select
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value as typeof statusFilter); setPage(1); }}
+          className="px-4 py-2.5 bg-surface border border-outline-variant rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          <option value="active">Aktif</option>
+          <option value="deleted">Terhapus</option>
+        </select>
         <button
           onClick={() => setCreating(true)}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-lg text-sm font-semibold hover:opacity-90 transition-all"
@@ -76,66 +105,97 @@ export function WorkShiftTable() {
               )}
               {!isError && items.length === 0 && !isFetching && (
                 <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 py-8 text-center text-on-surface-variant"
-                  >
-                    Belum ada shift. Klik "Tambah Shift" untuk membuat yang baru.
+                  <td colSpan={6} className="px-4 py-8 text-center text-on-surface-variant">
+                    {statusFilter === "deleted"
+                      ? "Tidak ada shift yang terhapus."
+                      : 'Belum ada shift. Klik "Tambah Shift" untuk membuat yang baru.'}
                   </td>
                 </tr>
               )}
-              {items.map((s) => (
-                <tr
-                  key={s.id}
-                  className="border-t border-outline-variant hover:bg-surface-container-low"
-                >
-                  <td className="px-4 py-3 font-medium text-on-surface flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-primary flex-shrink-0" />
-                    {s.name}
-                  </td>
-                  <td className="px-4 py-3 text-on-surface-variant font-mono">
-                    {formatTime(s.start_time)}
-                  </td>
-                  <td className="px-4 py-3 text-on-surface-variant font-mono">
-                    {formatTime(s.end_time)}
-                  </td>
-                  <td className="px-4 py-3 text-on-surface-variant max-w-xs truncate">
-                    {s.description ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    {s.is_active ? (
-                      <span className="px-2 py-1 text-xs rounded-md bg-primary/10 text-primary">
-                        Aktif
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 text-xs rounded-md bg-surface-container-high text-on-surface-variant">
-                        Nonaktif
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => setEditing(s)}
-                        className="p-2 rounded-md hover:bg-surface-container-high text-on-surface-variant"
-                        aria-label="Edit shift"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      {s.is_active && (
-                        <button
-                          onClick={() => handleDeactivate(s)}
-                          disabled={deactivate.isPending}
-                          className="p-2 rounded-md hover:bg-error-container/30 text-error disabled:opacity-50"
-                          aria-label="Nonaktifkan shift"
-                        >
-                          <PowerOff className="w-4 h-4" />
-                        </button>
+              {items.map((s) => {
+                const isDeleted = !!s.deleted_at;
+                return (
+                  <tr
+                    key={s.id}
+                    className={`border-t border-outline-variant ${
+                      isDeleted
+                        ? "bg-error-container/10 opacity-60"
+                        : "hover:bg-surface-container-low"
+                    }`}
+                  >
+                    <td className="px-4 py-3 font-medium text-on-surface">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-primary flex-shrink-0" />
+                        <span className={isDeleted ? "line-through text-on-surface-variant" : ""}>
+                          {s.name}
+                        </span>
+                        {isDeleted && (
+                          <span className="text-xs text-error font-normal">(terhapus)</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-on-surface-variant font-mono">
+                      {formatTime(s.start_time)}
+                    </td>
+                    <td className="px-4 py-3 text-on-surface-variant font-mono">
+                      {formatTime(s.end_time)}
+                    </td>
+                    <td className="px-4 py-3 text-on-surface-variant max-w-xs truncate">
+                      {s.description ?? "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {isDeleted ? (
+                        <span className="px-2 py-1 text-xs rounded-md bg-error/10 text-error">
+                          Terhapus
+                        </span>
+                      ) : s.is_active ? (
+                        <span className="px-2 py-1 text-xs rounded-md bg-primary/10 text-primary">
+                          Aktif
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs rounded-md bg-surface-container-high text-on-surface-variant">
+                          Nonaktif
+                        </span>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-2">
+                        {!isDeleted && (
+                          <>
+                            <button
+                              onClick={() => setEditing(s)}
+                              className="p-2 rounded-md hover:bg-surface-container-high text-on-surface-variant"
+                              aria-label="Edit shift"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(s)}
+                              disabled={softDelete.isPending}
+                              className="p-2 rounded-md hover:bg-error-container/30 text-error disabled:opacity-50"
+                              aria-label="Hapus shift"
+                              title="Soft delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+                        {isDeleted && (
+                          <button
+                            onClick={() => handleHardDelete(s)}
+                            disabled={hardDelete.isPending}
+                            className="p-2 rounded-md hover:bg-error/20 text-error disabled:opacity-50"
+                            aria-label="Hapus permanen"
+                            title="Hapus permanen dari database"
+                          >
+                            <ShieldAlert className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -156,9 +216,7 @@ export function WorkShiftTable() {
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
-                onClick={() =>
-                  setPage((p) => Math.min(pagination.totalPages, p + 1))
-                }
+                onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
                 disabled={pagination.page >= pagination.totalPages || isFetching}
                 className="p-2 rounded-md hover:bg-surface-container-high disabled:opacity-40"
               >

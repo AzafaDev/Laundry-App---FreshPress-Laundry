@@ -67,7 +67,20 @@ export const deleteWorkShift = async (
 ): Promise<void> => {
   try {
     const shift = await ShiftService.deleteWorkShift(req.params.id as string);
-    res.json({ success: true, data: shift, message: "Shift dinonaktifkan." });
+    res.json({ success: true, data: shift, message: "Shift dihapus." });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const hardDeleteWorkShift = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const result = await ShiftService.hardDeleteWorkShift(req.params.id as string);
+    res.json({ success: true, data: result, message: "Shift dihapus permanen." });
   } catch (err) {
     next(err);
   }

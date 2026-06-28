@@ -15,6 +15,7 @@ const listBypassQuerySchema = z.object({
   status: z.enum(["pending", "approved", "rejected"]).optional(),
   outlet_id: z.string().uuid().optional(),
   sort_dir: z.enum(["asc", "desc"]).default("desc"),
+  search: z.string().trim().optional(),
 });
 
 const reviewBypassSchema = z.object({
@@ -39,8 +40,12 @@ export const listBypassRequests = async (
 
     const where = {
       ...(q.status !== undefined && { status: q.status as BypassStatus }),
-      ...(outletId !== undefined && {
-        order: { outlet_id: outletId },
+      ...(outletId !== undefined && { order: { outlet_id: outletId } }),
+      ...(q.search && {
+        OR: [
+          { order: { invoice_number: { contains: q.search, mode: "insensitive" as const } } },
+          { requester: { full_name: { contains: q.search, mode: "insensitive" as const } } },
+        ],
       }),
     };
 
