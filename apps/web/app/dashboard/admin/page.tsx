@@ -78,7 +78,7 @@ export default function AdminDashboardPage() {
           <DashCard
             href="/dashboard/admin/customers"
             icon={<UserCircle className="w-6 h-6 text-primary" />}
-            title="Customer Management"
+            title="Customer List"
             description="Lihat semua customer yang teregistrasi di FreshPress."
           />
         )}
