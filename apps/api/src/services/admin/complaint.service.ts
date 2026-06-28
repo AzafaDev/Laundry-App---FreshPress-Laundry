@@ -48,7 +48,10 @@ export const listComplaints = async (options: ListComplaintsOptions) => {
     prisma.complaint.count({ where }),
   ]);
 
-  return { complaints, total, page, limit, totalPages: Math.ceil(total / limit) };
+  return {
+    items: complaints,
+    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+  };
 };
 
 export const getComplaintStats = async (outletId?: string) => {
