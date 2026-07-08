@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { attendanceService } from "@/services/attendance.service";
 import { formatTime } from "@/utils/formatDate";
-import { useGeolocation } from "./useGeolocation";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
@@ -28,7 +28,7 @@ export function useAttendance() {
     queryKey: ["attendance", "currentShift", employeeId],
     queryFn: attendanceService.getCurrentShift,
     staleTime: 0,
-    enabled: isEmployee && !!employeeId,
+    enabled: isEmployee && !!employeeId, 
   });
 
   const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
@@ -156,6 +156,7 @@ export function useAttendanceLogs(params: {
   limit: number;
   startDate?: string;
   endDate?: string;
+  status?: "on_time" | "late" | "absent";
 }) {
   const { user } = useEmployeeAuthStore();
   const employeeId = user?.id;

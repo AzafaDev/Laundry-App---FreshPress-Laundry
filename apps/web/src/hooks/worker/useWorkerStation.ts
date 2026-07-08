@@ -59,7 +59,7 @@ export function useWorkerStation() {
     isLoading: stationOrdersQuery.isLoading,
     isError: stationOrdersQuery.isError,
     isCompleted: !!stationOrdersQuery.data,
-    submitItems: submitItemsMutation.mutateAsync,
+    submitItems: submitItemsMutation.mutateAsync, 
     isSubmittingItems: submitItemsMutation.isPending,
     createBypassRequest: createBypassMutation.mutateAsync,
     isCreatingBypass: createBypassMutation.isPending,

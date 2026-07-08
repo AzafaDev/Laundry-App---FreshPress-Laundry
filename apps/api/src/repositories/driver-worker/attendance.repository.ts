@@ -29,7 +29,6 @@ export async function getEmployeeShiftForDate(
     where: { employee_id: employeeId, date: dateOnly, is_active: true },
     include: { shift: true },
   });
-
   const employeeShift = dateSpecific ?? await prisma.employeeShift.findFirst({
     where: { employee_id: employeeId, day_of_week: dbDay, date: null, is_active: true },
     include: { shift: true },
@@ -40,7 +39,6 @@ export async function getEmployeeShiftForDate(
   const shift = employeeShift.shift;
   const startTime = wibTimeOnDate(wibMidnightDate, shift.start_time.getUTCHours(), shift.start_time.getUTCMinutes(), shift.start_time.getUTCSeconds());
   let endTime = wibTimeOnDate(wibMidnightDate, shift.end_time.getUTCHours(), shift.end_time.getUTCMinutes(), shift.end_time.getUTCSeconds());
-
   if (endTime <= startTime) endTime = new Date(endTime.getTime() + 24 * 60 * 60 * 1000);
 
   return { shiftName: shift.name, startTime, endTime };

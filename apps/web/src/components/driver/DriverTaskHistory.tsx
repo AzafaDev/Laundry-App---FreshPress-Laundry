@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, CheckCircle2, MapPin, Clock, PackageCheck } from "lucide-react";
-import { driverTaskService } from "@/services/driverTask.service";
+import { useDriverTaskHistory } from "@/hooks/driver/useDriverTasks";
 import { TaskTypeIcon } from "./TaskTypeIcon";
 
 const LIMIT = 10;
@@ -57,10 +56,7 @@ function HistorySkeleton() {
 export function DriverTaskHistory() {
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["driver", "task-history", page],
-    queryFn: () => driverTaskService.getTaskHistory(page, LIMIT),
-  });
+  const { data, isLoading } = useDriverTaskHistory(page, LIMIT);
 
   if (isLoading) return <HistorySkeleton />;
 
@@ -91,7 +87,6 @@ export function DriverTaskHistory() {
           {tasks.map((task) => {
             const isPickup = task.task_type === "pickup";
             const duration = formatDuration(task.taken_at, task.completed_at);
-
             return (
               <div key={task.id} className="bg-surface border border-outline-variant rounded-2xl overflow-hidden">
                 <div className={`h-0.5 w-full ${isPickup ? "bg-tertiary" : "bg-primary"}`} />

@@ -60,6 +60,7 @@ export const attendanceService = {
     if (!withinRadius) throw new AppError("Anda harus berada di sekitar outlet untuk check-in.", 403);
 
     const outletId = employee.outlet_id;
+
     const checkInData: CheckInData = {
       check_in_time: now,
       outlet_id: outletId,
@@ -107,7 +108,6 @@ export const attendanceService = {
     if (!attendance) throw new AppError("Record absensi tidak ditemukan", 404);
     if (attendance.employee_id !== employeeId) throw new AppError("Anda tidak memiliki akses ke absensi ini", 403);
     if (attendance.check_out_time) throw new AppError("Anda sudah check-out hari ini", 403);
-
     const shift = await getEmployeeShiftForDate(employeeId, attendance.date);
     if (!shift) throw new AppError("Data shift tidak ditemukan untuk absensi ini", 400);
 
@@ -121,11 +121,11 @@ export const attendanceService = {
       if (hasActive) throw new AppError("Selesaikan task aktif sebelum check-out", 403);
     }
 
-    const updated = await prisma.attendance.update({
-      where: { id: attendanceId },
-      data: { check_out_time: now },
+    const updated = await prisma.$transaction(async (tx) => {
+      const current = await tx.attendance.findUnique({ where: { id: attendanceId }, select: { check_out_time: true } });
+      if (current?.check_out_time) throw new AppError("Anda sudah check-out hari ini", 403);
+      return tx.attendance.update({ where: { id: attendanceId }, data: { check_out_time: now } });
     });
-
     if (employee?.outlet_id) {
       emitToRoom(`outlet:${employee.outlet_id}`, "attendance:checkout", {
         employeeId,
@@ -140,13 +140,17 @@ export const attendanceService = {
     return updated;
   },
 
-  async getMyAttendanceLogs(employeeId: string, page: number, limit: number, startDate?: Date, endDate?: Date) {
+  async getMyAttendanceLogs(employeeId: string, page: number, limit: number, startDate?: Date, endDate?: Date, status?: "on_time" | "late" | "absent") {
     const where = {
       employee_id: employeeId,
-      ...(startDate || endDate ? { date: { ...(startDate && { gte: startDate }), ...(endDate && { lte: endDate }) } } : {}),
+      ...(status ? { status } : {}),
+      ...(startDate || endDate ? { date: {
+        ...(startDate && { gte: startDate }),
+        ...(endDate && { lte: endDate }) } } : {}),
     };
 
     const skip = (page - 1) * limit;
+
     const [logs, total, on_time, late, absent] = await Promise.all([
       prisma.attendance.findMany({ where, orderBy: { date: "desc" }, skip, take: limit }),
       prisma.attendance.count({ where }),
@@ -227,6 +231,7 @@ export const attendanceService = {
       }),
     ]);
     if (!shiftInfo) return null;
+
     return buildShiftPayload(
       shiftInfo,
       now,

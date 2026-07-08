@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, CheckCircle2, Clock, PackageCheck } from "lucide-react";
-import { useTaskHistory } from "@/hooks/useWorkerStation";
+import { useTaskHistory } from "@/hooks/worker/useWorkerStation";
 import { stationConfig } from "./stationConfig";
 import type { StationType } from "@/services/workerStation.service";
 
@@ -61,7 +61,6 @@ function HistorySkeleton() {
 
 export function WorkerTaskHistory() {
   const [page, setPage] = useState(1);
-
   const { data, isLoading } = useTaskHistory(page, LIMIT);
 
   if (isLoading) return <HistorySkeleton />;

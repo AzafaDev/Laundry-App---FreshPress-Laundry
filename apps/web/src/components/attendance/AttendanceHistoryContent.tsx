@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Home, ChevronRight, CheckCircle2, AlertTriangle, XCircle, CalendarDays } from "lucide-react";
-import { useAttendanceLogs } from "@/hooks/useAttendance";
+import { useAttendanceLogs } from "@/hooks/attendance/useAttendance";
 import { toLogRecord } from "@/utils/formatDate";
 import { AttendanceLog } from "@/components/attendance/AttendanceLog";
 
@@ -59,6 +59,7 @@ export function AttendanceHistoryContent({ role, dashboardHref, pageTitle }: Pro
     limit: 10,
     startDate: presetStart || undefined,
     endDate: presetEnd || undefined,
+    status: statusFilter === "all" ? undefined : statusFilter,
   });
 
   const stats = useMemo(() => ({
@@ -68,11 +69,7 @@ export function AttendanceHistoryContent({ role, dashboardHref, pageTitle }: Pro
     absent: data?.summary?.absent ?? 0,
   }), [data?.summary]);
 
-  const rawRecords = useMemo(() => (data?.data ?? []).map(toLogRecord), [data]);
-  const filteredRecords = useMemo(
-    () => (statusFilter === "all" ? rawRecords : rawRecords.filter((r) => r.status === statusFilter)),
-    [rawRecords, statusFilter]
-  );
+  const records = useMemo(() => (data?.data ?? []).map(toLogRecord), [data]);
 
   const presets: { key: DatePreset; label: string }[] = [
     { key: "this_week", label: "Minggu ini" },
@@ -204,8 +201,8 @@ export function AttendanceHistoryContent({ role, dashboardHref, pageTitle }: Pro
       </div>
 
       <AttendanceLog
-        records={filteredRecords}
-        pagination={statusFilter === "all" ? data?.pagination : undefined}
+        records={records}
+        pagination={data?.pagination}
         onPageChange={(p) => setPage(p)}
         isLoading={isLoading}
       />

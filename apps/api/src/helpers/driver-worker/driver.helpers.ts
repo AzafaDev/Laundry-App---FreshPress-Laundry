@@ -18,6 +18,7 @@ export async function emitClaimEvents(task: DriverTaskDetail, employeeId: string
     outlet?.latitude && outlet?.longitude && addr?.latitude && addr?.longitude
       ? calcEtaText(Number(outlet.latitude), Number(outlet.longitude), Number(addr.latitude), Number(addr.longitude))
       : null;
+
   const etaSuffix = etaText ? `, estimasi ${etaText}` : "";
 
   if (task.task_type === "pickup") {
@@ -51,7 +52,6 @@ export async function emitCompleteEvents(
     driverId: employeeId,
     completedAt: new Date(),
   });
-
   emitToUser(task.order.customer_id, "order:status-updated", {
     orderId: task.order_id,
     status: newOrderStatus,
@@ -60,7 +60,6 @@ export async function emitCompleteEvents(
         ? "Laundry Anda telah tiba di outlet dan akan segera diproses."
         : "Driver telah tiba di lokasi Anda dengan pesanan laundry Anda.",
   });
-
   if (task.task_type === "pickup") {
     await notifyCustomer(
       task.order.customer_id,

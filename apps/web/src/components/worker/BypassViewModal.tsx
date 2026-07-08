@@ -1,7 +1,7 @@
 "use client";
 
 import { X, Flag, Loader2, ImageIcon, Shirt, Tag } from "lucide-react";
-import { useBypassDetail } from "@/hooks/useWorkerStation";
+import { useBypassDetail } from "@/hooks/worker/useWorkerStation";
 
 interface BypassViewModalProps {
   open: boolean;
@@ -26,7 +26,6 @@ export function BypassViewModal({ open, orderId, invoiceNumber, onClose }: Bypas
   const { data: bypass, isLoading: loading } = useBypassDetail(orderId, open);
 
   if (!open) return null;
-
   return (
     <div className="fixed inset-0 bg-black/60 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-surface-container-lowest w-full sm:max-w-[38rem] rounded-t-2xl sm:rounded-2xl shadow-2xl border border-outline-variant flex flex-col max-h-[92dvh]">

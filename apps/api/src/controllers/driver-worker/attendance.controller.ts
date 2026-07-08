@@ -26,8 +26,8 @@ export const checkOut = async (req: Request, res: Response) => {
 
 export const getMyLogs = async (req: Request, res: Response) => {
   const employeeId = requireUserId(req);
-  const { page, limit, startDate, endDate } = req.query as unknown as MyLogsQuery;
-  const result = await attendanceService.getMyAttendanceLogs(employeeId, page, limit, startDate, endDate);
+  const { page, limit, startDate, endDate, status } = req.query as unknown as MyLogsQuery;
+  const result = await attendanceService.getMyAttendanceLogs(employeeId, page, limit, startDate, endDate, status);
   res.json({ success: true, ...result });
 };
 
