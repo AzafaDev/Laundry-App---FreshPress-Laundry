@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
-import { useDriverSocket } from "@/hooks/useDriverSocket";
+import { useDriverSocket } from "@/hooks/driver/useDriverSocket";
 
 export default function DriverLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -11,7 +11,6 @@ export default function DriverLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!_hasHydrated) return;
-
     if (!user) {
       router.replace("/employee/login");
       return;
@@ -20,7 +19,6 @@ export default function DriverLayout({ children }: { children: ReactNode }) {
       router.replace("/access-denied");
     }
   }, [user, _hasHydrated, router]);
-
   useDriverSocket();
 
   return <>{children}</>;

@@ -66,9 +66,7 @@ export const submitItems = async (req: Request, res: Response) => {
     actual_satuan_items?: { laundry_item_id: string; actual_quantity: number }[];
   };
   if (!Array.isArray(actual_items)) throw new AppError("actual_items harus berupa array", 400);
-
   const result = await workerService.submitItems(employeeId, station, orderId, actual_items, actual_satuan_items ?? []);
-
   if ("requiresBypass" in result) {
     return res.status(409).json(result);
   }
@@ -78,7 +76,6 @@ export const submitItems = async (req: Request, res: Response) => {
 
 export const createBypassRequest = async (req: Request, res: Response) => {
   const employeeId = requireUserId(req);
-
   const station = ROLE_TO_STATION[req.user!.role];
   if (!station) throw new AppError("Role Anda tidak memiliki akses bypass", 403);
 
@@ -92,7 +89,6 @@ export const createBypassRequest = async (req: Request, res: Response) => {
   if (!order_id) throw new AppError("order_id wajib diisi", 400);
   if (!discrepancy_description) throw new AppError("discrepancy_description wajib diisi", 400);
   if (!actual_items) throw new AppError("actual_items wajib diisi", 400);
-
   let parsedActualItems: { clothing_type_id: string; actual_quantity: number }[];
   try {
     parsedActualItems = JSON.parse(actual_items);
@@ -110,13 +106,10 @@ export const createBypassRequest = async (req: Request, res: Response) => {
     }
     if (!Array.isArray(parsedSatuanItems)) throw new AppError("actual_satuan_items harus berupa array", 400);
   }
-
   await workerService.validateBypassEligibility(employeeId, station, order_id);
-
   const files = (req.files as Express.Multer.File[]) ?? [];
 
   if (files.length > 0 && !env.CLOUDINARY_CLOUD_NAME) throw new AppError("Upload foto belum dikonfigurasi.", 501);
-
   const photoUrls = await Promise.all(
     files.map(async (file) => {
       const base64 = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;

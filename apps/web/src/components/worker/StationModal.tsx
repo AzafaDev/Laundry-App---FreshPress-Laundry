@@ -18,7 +18,6 @@ export function StationModal({ orderId, orders, onClose, onConfirm, isProcessing
 
   const breakdownItems = order?.order_item_breakdowns ?? [];
   const pcsItems = (order?.order_items ?? []).filter((i) => i.laundry_item.unit === "pcs");
-
   const [receivedBreakdown, setReceivedBreakdown] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
     for (const item of breakdownItems) {
@@ -26,7 +25,6 @@ export function StationModal({ orderId, orders, onClose, onConfirm, isProcessing
     }
     return initial;
   });
-
   const [receivedSatuan, setReceivedSatuan] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
     for (const item of pcsItems) {

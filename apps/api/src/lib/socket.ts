@@ -61,7 +61,6 @@ export function initSocketServer(httpServer: HttpServer): IOServer {
   return io;
 }
 
-
 export function emitToRoom(room: string, event: string, data: any) {
   if (!io) return;
   io.to(room).emit(event, data);

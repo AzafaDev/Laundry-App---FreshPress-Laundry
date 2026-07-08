@@ -7,8 +7,8 @@ import { CheckInPrompt } from "@/components/dashboard/CheckInPrompt";
 import { EmployeeWelcomeBanner } from "@/components/dashboard/EmployeeWelcomeBanner";
 import { StationStatusCard, LockedStationPreview } from "@/components/worker/StationStatusCard";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
-import { useAttendance } from "@/hooks/useAttendance";
-import { useWorkerStation } from "@/hooks/useWorkerStation";
+import { useAttendance } from "@/hooks/attendance/useAttendance";
+import { useWorkerStation } from "@/hooks/worker/useWorkerStation";
 export default function WorkerDashboardPage() {
   const { _hasHydrated, user } = useEmployeeAuthStore();
   const { currentShift, checkedIn, checkInTime } = useAttendance();

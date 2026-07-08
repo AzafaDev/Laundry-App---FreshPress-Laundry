@@ -59,6 +59,7 @@ export const attendanceService = {
     limit?: number;
     startDate?: string;
     endDate?: string;
+    status?: "on_time" | "late" | "absent";
   }): Promise<AttendanceLogsResponse> => {
     const { data } = await axiosInstance.get<{
       success: true;
@@ -66,6 +67,7 @@ export const attendanceService = {
       pagination: Pagination;
       summary: { on_time: number; late: number; absent: number };
     }>("/v1/attendance/my-logs", { params });
+
     return { data: data.data, pagination: data.pagination, summary: data.summary };
   },
 

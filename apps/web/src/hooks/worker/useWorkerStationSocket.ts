@@ -7,7 +7,6 @@ interface UseWorkerStationSocketParams {
   station: "washing" | "ironing" | "packing" | null;
   setBypassState: React.Dispatch<React.SetStateAction<Record<string, BypassState>>>;
 }
-
 export function useWorkerStationSocket({
   station,
   setBypassState,
@@ -17,17 +16,14 @@ export function useWorkerStationSocket({
 
   useEffect(() => {
     if (!station) return;
-
     const unsubNewOrder = on("station:new-order", (data: { station: string }) => {
       if (data.station === station) {
         queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
       }
     });
-
     const unsubBypassCreated = on("bypass:created", () => {
       queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     });
-
     const unsubApproved = on("bypass:approved", (data: { orderId: string }) => {
       setBypassState((prev) => {
         const next = { ...prev };
@@ -36,7 +32,6 @@ export function useWorkerStationSocket({
       });
       queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     });
-
     const unsubRejected = on("bypass:rejected", (data: { orderId: string; admin_notes?: string }) => {
       setBypassState((prev) => {
         if (!prev[data.orderId]) return prev;
@@ -47,12 +42,12 @@ export function useWorkerStationSocket({
       });
       queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     });
-
     const unsubConnect = on("connect", () => {
       queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     });
 
     return () => {
+      /* cleanup semua listener */
       unsubNewOrder();
       unsubBypassCreated();
       unsubApproved();

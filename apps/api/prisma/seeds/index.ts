@@ -14,6 +14,7 @@ import { seedTaskHistory } from './taskHistory.seed.js';
 import { seedReportData } from './reportData.seed.js';
 import { seedOrderDetail } from './orderDetail.seed.js';
 import { seedExtraOrders } from './extraOrders.seed.js';
+import { seedTodayAbsent } from './todayAbsent.seed.js';
 
 export async function runAllSeeds() {
   console.log('🌱 Starting database seeding...\n');
@@ -151,6 +152,9 @@ export async function runModuleSeed(moduleName: string) {
       break;
     case 'extra-orders':
       await seedExtraOrders();
+      break;
+    case 'today-absent':
+      await seedTodayAbsent();
       break;
     default:
       console.log(`Module ${moduleName} not recognized`);

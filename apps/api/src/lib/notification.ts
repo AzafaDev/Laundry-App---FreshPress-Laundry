@@ -44,7 +44,6 @@ export async function createNotification({
       related_entity_id: relatedEntityId,
     },
   });
-
   emitToUser(userId, "notification:new", notification);
 
   return notification;

@@ -1,5 +1,4 @@
 "use client";
-
 import Link from "next/link";
 import {
   Home,
@@ -13,7 +12,7 @@ import toast from "react-hot-toast";
 import { AttendanceCard } from "@/components/attendance/AttendanceCard";
 import { AttendanceSummary } from "@/components/attendance/AttendanceSummary";
 import { ShiftCard } from "@/components/attendance/ShiftCard";
-import { useAttendance, useAttendanceLogs } from "@/hooks/useAttendance";
+import { useAttendance, useAttendanceLogs } from "@/hooks/attendance/useAttendance";
 import { toLogRecord } from "@/utils/formatDate";
 import { useMemo } from "react";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -29,6 +28,15 @@ export default function DriverAttendancePage() {
   const att = useAttendance();
   const { data: logsData, isLoading: isLogsLoading } = useAttendanceLogs({ page: 1, limit: 5 });
   const { latitude, longitude, permissionDenied } = useGeolocation();
+
+  const recentRecords = useMemo(() => (logsData?.data ?? []).map(toLogRecord), [logsData]);
+
+  const locationStatus =
+    permissionDenied
+      ? "denied"
+      : latitude && longitude
+      ? "available"
+      : "checking";
 
   if (!_hasHydrated || att.isLoading) {
     return (
@@ -47,15 +55,6 @@ export default function DriverAttendancePage() {
     );
   }
 
-  const locationStatus =
-    permissionDenied
-      ? "denied"
-      : latitude && longitude
-      ? "available"
-      : "checking";
-
-  const recentRecords = useMemo(() => (logsData?.data ?? []).map(toLogRecord), [logsData]);
-
   const handleCheckIn = async () => {
     if (locationStatus !== "available") {
       toast.error("Aktifkan akses lokasi untuk check-in", { icon: "📍" });
@@ -64,7 +63,6 @@ export default function DriverAttendancePage() {
     try {
       await att.checkInAsync();
     } catch {
-      // handled by checkInMutation.onError
     }
   };
 
@@ -153,6 +151,7 @@ export default function DriverAttendancePage() {
 
           <ShiftCard currentShift={att.currentShift ?? null} />
 
+          {/* Tombol check-in hanya aktif kalau canCheckIn true (dari server) */}
           <AttendanceCard
             checkedIn={att.checkedIn}
             checkInTime={att.checkInTime}

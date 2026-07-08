@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
-import { useAttendanceReport } from "@/hooks/useAttendance";
+import { useAttendanceReport } from "@/hooks/attendance/useAttendance";
 import { useOutlets } from "@/hooks/useOutlets";
 import { Download, ChevronLeft, ChevronRight, Calendar, Filter, Loader2, Building2 } from "lucide-react";
 import toast from "react-hot-toast";

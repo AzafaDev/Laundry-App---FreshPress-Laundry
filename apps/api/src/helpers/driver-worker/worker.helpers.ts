@@ -145,7 +145,6 @@ export function compareItems(
   actualSatuanItems: { laundry_item_id: string; actual_quantity: number }[],
 ): { isMatch: boolean; discrepancies: Discrepancy[] } {
   const discrepancies: Discrepancy[] = [];
-
   for (const item of breakdownItems) {
     const submitted = actualItems.find((a) => a.clothing_type_id === item.clothing_type_id);
     const actual = submitted?.actual_quantity ?? 0;
@@ -153,7 +152,6 @@ export function compareItems(
       discrepancies.push({ item_type: "breakdown", item_id: item.clothing_type_id, name: item.clothing_type.name, expected: Number(item.quantity), actual });
     }
   }
-
   for (const item of satuanOrderItems) {
     const submitted = actualSatuanItems.find((a) => a.laundry_item_id === item.laundry_item_id);
     const actual = submitted?.actual_quantity ?? 0;
@@ -161,6 +159,5 @@ export function compareItems(
       discrepancies.push({ item_type: "satuan", item_id: item.laundry_item_id, name: item.laundry_item.name, expected: Number(item.quantity), actual });
     }
   }
-
   return { isMatch: discrepancies.length === 0, discrepancies };
 }

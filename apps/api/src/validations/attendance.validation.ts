@@ -26,6 +26,7 @@ export const getMyLogsQuerySchema = z.object({
   endDate: dateEnd,
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
+  status: z.enum(["on_time", "late", "absent"]).optional(),
 });
 
 export const attendanceReportQuerySchema = z.object({
@@ -36,5 +37,5 @@ export const attendanceReportQuerySchema = z.object({
   startDate: dateStart,
   endDate: dateEnd,
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
+  limit: z.coerce.number().int().positive().max(100).default(20), 
 });

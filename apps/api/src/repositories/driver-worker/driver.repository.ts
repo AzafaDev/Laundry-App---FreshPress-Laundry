@@ -38,13 +38,11 @@ export async function runClaimTransaction(taskId: string, employeeId: string, em
     if (task.status !== "available") throw new AppError("Task tidak tersedia untuk diklaim", 409);
     if (task.driver_id !== null) throw new AppError("Task sudah diambil driver lain", 409);
     if (task.order.outlet_id !== employeeOutletId) throw new AppError("Task bukan dari outlet Anda", 403);
-
     const updateResult = await tx.driverTask.updateMany({
       where: { id: taskId, status: "available", driver_id: null },
       data: { driver_id: employeeId, status: "in_progress", taken_at: new Date() },
     });
     if (updateResult.count === 0) throw new AppError("Task sudah diambil driver lain", 409);
-
     const claimStatusMap: Record<string, OrderStatus> = {
       pickup: "laundry_to_outlet",
       delivery: "delivery_to_customer",
@@ -71,7 +69,6 @@ export async function runClaimTransaction(taskId: string, employeeId: string, em
         note: `Driver claimed ${task.task_type} task`,
       },
     });
-
     return tx.driverTask.findUniqueOrThrow({
       where: { id: taskId },
       select: DRIVER_TASK_DETAIL_SELECT,
@@ -92,7 +89,6 @@ export async function runCompleteTransaction(
   if (!newOrderStatus) throw new AppError("Invalid task type", 400);
 
   const oldOrderStatus: OrderStatus = task.task_type === "pickup" ? "laundry_to_outlet" : "delivery_to_customer";
-
   if (task.order.status !== oldOrderStatus) {
     throw new AppError("Status order tidak sesuai untuk diselesaikan", 409);
   }
@@ -103,7 +99,6 @@ export async function runCompleteTransaction(
       data: { status: "completed", completed_at: new Date() },
     });
     if (taskUpdate.count === 0) throw new AppError("Task sudah diselesaikan atau tidak valid", 409);
-
     const orderUpdate = await tx.order.updateMany({
       where: { id: task.order_id, status: oldOrderStatus },
       data: {
@@ -114,7 +109,6 @@ export async function runCompleteTransaction(
       },
     });
     if (orderUpdate.count === 0) throw new AppError("Status order tidak sesuai untuk diselesaikan", 409);
-
     await tx.orderStatusHistory.create({
       data: {
         order_id: task.order_id,

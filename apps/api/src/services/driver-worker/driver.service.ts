@@ -115,7 +115,9 @@ export const driverService = {
       employeeId,
       employeeOutletId,
     );
-    await emitClaimEvents(claimed, employeeId, driverName);
+    emitClaimEvents(claimed, employeeId, driverName).catch((err) =>
+      console.error("[claimTask] emitClaimEvents failed:", err),
+    );
     return withDistance(claimed);
   },
 
@@ -171,13 +173,13 @@ export const driverService = {
       throw new AppError("Task tidak sedang berlangsung", 400);
     if (task.driver_id !== employeeId)
       throw new AppError("Anda tidak terassign ke task ini", 403);
-
     const { updatedTask, newOrderStatus } = await runCompleteTransaction(
       task,
       taskId,
       employeeId,
     );
-    await emitCompleteEvents(task, employeeId, newOrderStatus);
-    return updatedTask;
+    emitCompleteEvents(task, employeeId, newOrderStatus).catch((err) =>
+      console.error("[completeTask] emitCompleteEvents failed:", err),
+    );
   },
 };
