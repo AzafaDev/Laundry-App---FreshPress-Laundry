@@ -22,3 +22,6 @@ const envSchema = z.object({
 });
 
 export const env = envSchema.parse(process.env);
+
+console.log("[DEBUG JWT_EXPIRES_IN]", JSON.stringify(env.JWT_EXPIRES_IN), "length:", env.JWT_EXPIRES_IN.length);
+console.log("[DEBUG JWT_REFRESH_EXPIRES_IN]", JSON.stringify(env.JWT_REFRESH_EXPIRES_IN), "length:", env.JWT_REFRESH_EXPIRES_IN.length);
