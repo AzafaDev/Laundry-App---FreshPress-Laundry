@@ -19,7 +19,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production
+    environment: vps-api-production
     defaults:
       run:
         working-directory: apps/api
