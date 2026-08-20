@@ -1,5 +1,7 @@
 export const FREE_RADIUS_KM = Number(5);
 export const FLAT_RATE_ONGKIR = Number(10_000);
+export const EXTRA_RADIUS_KM = Number(10);
+export const EXTRA_RATE_PER_KM = Number(10_000);
 
 export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
@@ -24,7 +26,9 @@ export function generateInvoiceNumber(): string {
 
 export function calculateDeliveryFee(distanceKm: number): number {
   if (distanceKm <= FREE_RADIUS_KM) return 0;
-  return FLAT_RATE_ONGKIR;
+  if (distanceKm <= EXTRA_RADIUS_KM) return FLAT_RATE_ONGKIR;
+  const extraKm = Math.ceil(distanceKm - EXTRA_RADIUS_KM);
+  return FLAT_RATE_ONGKIR + extraKm * EXTRA_RATE_PER_KM;
 }
 
 export interface CreateCustomerOrderInput {
