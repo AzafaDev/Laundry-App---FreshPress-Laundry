@@ -1,8 +1,9 @@
 import { prisma } from '../../src/lib/prisma.js';
+import { seededCustomerEmails } from './customers.seed.js';
 
 // Seed 3 order dengan status `waiting_payment` (+ Payment pending) untuk customer tertentu.
 // Berguna untuk testing halaman pembayaran customer tanpa perlu menjalani seluruh alur order.
-const TARGET_CUSTOMER_EMAIL = 'testcustomer@freshpress.com';
+const TARGET_CUSTOMER_EMAIL = seededCustomerEmails[0];
 
 export async function seedWaitingPaymentOrders(customerEmail: string = TARGET_CUSTOMER_EMAIL) {
   const customer = await prisma.customer.findUnique({ where: { email: customerEmail } });
