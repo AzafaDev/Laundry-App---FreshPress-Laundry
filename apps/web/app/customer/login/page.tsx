@@ -9,7 +9,7 @@ import { useAuthStore } from "@/stores/authStore";
 import type { User as UserType } from "@/types/user.types";
 import { LoginBrandingPanel } from "@/components/customer/LoginBrandingPanel";
 import { DemoAccountPicker } from "@/components/ui/DemoAccountPicker";
-import { CUSTOMER_ACCOUNTS } from "@/lib/demoAccounts";
+import { CUSTOMER_ACCOUNT_GROUPS } from "@/lib/demoAccounts";
 
 interface LoginErrors {
   email?: string;
@@ -109,7 +109,7 @@ function CustomerLoginContent() {
             </div>
 
             <DemoAccountPicker
-              accounts={CUSTOMER_ACCOUNTS}
+              groups={CUSTOMER_ACCOUNT_GROUPS}
               onPick={(demoEmail, demoPassword) => {
                 setEmail(demoEmail);
                 setPassword(demoPassword);
