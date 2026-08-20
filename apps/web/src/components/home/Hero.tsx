@@ -31,6 +31,7 @@ export const Hero = () => {
     queryFn: laundryItemService.listForCustomer,
   });
 
+  console.log(laundryItems)
   const cheapest = (unit: string) =>
     laundryItems
       .filter((i) => i.unit === unit)

@@ -14,6 +14,7 @@ interface Props {
 }
 
 export function AddressPicker({ addresses, selectedAddressId, loadingAddresses, hasAddressError, onSelect, onRetry }: Props) {
+  console.log(addresses)
   return (
     <section className="rounded-3xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm space-y-4">
       <div className="flex items-center gap-3">

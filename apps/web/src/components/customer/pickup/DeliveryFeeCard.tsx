@@ -53,9 +53,6 @@ export function DeliveryFeeCard({ loadingEstimate, hasEstimateError, deliveryEst
                 : "Gratis"}
             </span>
           </div>
-          {!deliveryEstimate.nearest_outlet.within_service_area && (
-            <p className="text-xs text-red-600 pt-1">Alamat ini berada di luar area layanan outlet terdekat.</p>
-          )}
         </div>
       )}
     </section>
