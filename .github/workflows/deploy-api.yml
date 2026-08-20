@@ -51,6 +51,13 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
+          # Gagal cepat dengan pesan jelas kalau secret ter-mangle saat disalin.
+          # Tanpa ini, key rusak cuma muncul sebagai "Permission denied (publickey)".
+          ssh-keygen -y -f ~/.ssh/id_ed25519 > /dev/null 2>&1 || {
+            echo "::error::SSH_PRIVATE_KEY rusak formatnya. Set ulang dari file:"
+            echo "::error::gh secret set SSH_PRIVATE_KEY -R <repo> < path/ke/private_key"
+            exit 1
+          }
 
       - name: Upload artifact
         id: upload
