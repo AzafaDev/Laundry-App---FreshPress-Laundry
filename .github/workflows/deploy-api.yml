@@ -1,0 +1,113 @@
+name: Deploy API
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "apps/api/**"
+      - ".github/workflows/deploy-api.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+env:
+  APP_DIR: /opt/laundry-api-v2
+  SERVICE: laundry-api-v2
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Migrate database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npx prisma migrate deploy
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Upload artifact
+        id: upload
+        env:
+          HOST: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+        run: |
+          REL="$APP_DIR/releases/$(date +%Y%m%d%H%M%S)-${GITHUB_SHA::7}"
+          echo "rel=$REL" >> "$GITHUB_OUTPUT"
+          ssh "$HOST" "mkdir -p $REL"
+          rsync -az --delete dist/ "$HOST:$REL/dist/"
+          rsync -az package.json package-lock.json "$HOST:$REL/"
+
+      - name: Install production deps on server
+        env:
+          HOST: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+          REL: ${{ steps.upload.outputs.rel }}
+        # --ignore-scripts wajib: postinstall memanggil `prisma generate`,
+        # tapi prisma CLI itu devDependency dan tidak ikut --omit=dev.
+        # Aman karena generated/prisma sudah ter-compile ke dalam dist/.
+        run: ssh "$HOST" "cd $REL && npm ci --omit=dev --ignore-scripts"
+
+      - name: Activate release
+        env:
+          HOST: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+          REL: ${{ steps.upload.outputs.rel }}
+        run: |
+          ssh "$HOST" "ln -sfn $APP_DIR/shared/.env $REL/.env"
+          ssh "$HOST" "ln -sfn $REL $APP_DIR/current"
+          ssh "$HOST" "sudo systemctl restart $SERVICE"
+
+      - name: Health check
+        env:
+          HOST: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+        # Semua route ada di bawah /api/v1 dan tidak ada route "/", jadi 404
+        # tetap berarti server hidup. Yang diuji: ada respons HTTP, bukan 2xx.
+        run: |
+          ssh "$HOST" "sleep 5
+            systemctl is-active --quiet $SERVICE || { journalctl -u $SERVICE -n 50 --no-pager; exit 1; }
+            curl -sf -o /dev/null --max-time 5 localhost:8090/api/v1 \
+              || curl -s -o /dev/null -w 'HTTP %{http_code}\n' --max-time 5 localhost:8090/api/v1"
+
+      - name: Rollback on failure
+        if: failure() && steps.upload.outputs.rel != ''
+        env:
+          HOST: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+          REL: ${{ steps.upload.outputs.rel }}
+        run: |
+          ssh "$HOST" "PREV=\$(ls -dt $APP_DIR/releases/* | grep -v '^$REL\$' | head -1)
+            if [ -n \"\$PREV\" ]; then
+              ln -sfn \$PREV $APP_DIR/current
+              sudo systemctl restart $SERVICE
+              echo \"rolled back ke \$PREV\"
+            fi
+            rm -rf $REL"
+
+      - name: Prune old releases
+        if: success()
+        env:
+          HOST: ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
+        run: ssh "$HOST" "ls -dt $APP_DIR/releases/* | tail -n +4 | xargs -r rm -rf"
