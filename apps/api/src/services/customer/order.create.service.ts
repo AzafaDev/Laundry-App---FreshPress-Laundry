@@ -36,10 +36,9 @@ export const createCustomerOrder = async (customerId: string, input: CreateCusto
       distance: haversineKm(Number(pickupAddress.latitude), Number(pickupAddress.longitude), Number(outlet.latitude), Number(outlet.longitude)),
       service_radius_km: Number(outlet.service_radius_km),
     }))
-    .filter((outlet) => outlet.distance <= outlet.service_radius_km)
     .sort((a, b) => a.distance - b.distance)[0];
 
-  if (!nearestOutlet) throw new AppError("Alamat berada di luar jangkauan outlet.", 400);
+  if (!nearestOutlet) throw new AppError("Tidak ada outlet aktif.", 404);
 
   const pickupDate = new Date(`${input.pickup_date}T00:00:00.000Z`);
   if (Number.isNaN(pickupDate.getTime())) throw new AppError("Tanggal pickup tidak valid.", 400);
