@@ -10,20 +10,23 @@ import { useAuthStore } from "@/stores/authStore";
 import { RegionSelector } from "@/components/address/RegionSelector";
 import { MapPickerSection } from "@/components/address/MapPickerSection";
 import { AddressLabelSelector } from "@/components/address/AddressLabelSelector";
+import { useTranslation } from "@/i18n/useTranslation";
 
-const addressSchema = z.object({
-  label: z.string().min(1, "Label alamat wajib diisi."),
-  address: z.string().min(5, "Nama jalan minimal 5 karakter."),
-  province: z.string().min(2, "Provinsi wajib diisi."),
-  city: z.string().min(2, "Kota wajib diisi."),
-  district: z.string().min(2, "Kecamatan wajib diisi."),
-  postal_code: z.string().regex(/^\d{5}$/, "Kode pos harus 5 digit angka.").optional().or(z.literal("")),
-});
+const buildAddressSchema = (t: (key: string) => string) =>
+  z.object({
+    label: z.string().min(1, t("locations.form.labelRequired")),
+    address: z.string().min(5, t("locations.form.streetMin")),
+    province: z.string().min(2, t("locations.form.provinceRequired")),
+    city: z.string().min(2, t("locations.form.cityRequired")),
+    district: z.string().min(2, t("locations.form.districtRequired")),
+    postal_code: z.string().regex(/^\d{5}$/, t("locations.form.postalCodeFormat")).optional().or(z.literal("")),
+  });
 
 const DEFAULT_LAT = -7.250445;
 const DEFAULT_LNG = 112.768845;
 
 function AddAddressPageInner() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const editId = searchParams.get("edit");
@@ -121,22 +124,22 @@ function AddAddressPageInner() {
         if (result.district?.trim()) setDistrict(result.district.trim());
         if (result.postal_code?.trim()) setPostalCode(result.postal_code.trim());
       }
-    } catch { setGeocodeError("Tidak dapat membaca lokasi ini. Isi alamat secara manual."); }
+    } catch { setGeocodeError(t("locations.form.reverseGeocodeError")); }
     finally { setGeocoding(false); }
-  }, []);
+  }, [t]);
 
   const handleSearchByRegion = useCallback(async () => {
     const query = [street, district, city, province].filter(Boolean).join(", ");
-    if (!query.trim()) { setGeocodeError("Isi minimal satu field wilayah untuk mencari lokasi."); return; }
+    if (!query.trim()) { setGeocodeError(t("locations.form.regionSearchEmpty")); return; }
     setRegionSearching(true); setGeocodeError(null);
     try {
       const result = await addressService.geocode(query);
-      if (!result) { setGeocodeError("Alamat tidak ditemukan. Coba lengkapi field wilayah."); return; }
+      if (!result) { setGeocodeError(t("locations.form.geocodeNotFound")); return; }
       skipNextSearchRef.current = true;
       setLat(result.latitude); setLng(result.longitude); setPinSet(true); setFlyToTrigger((n) => n + 1);
-    } catch { setGeocodeError("Gagal mencari koordinat. Coba lagi."); }
+    } catch { setGeocodeError(t("locations.form.geocodeSearchError")); }
     finally { setRegionSearching(false); }
-  }, [street, district, city, province]);
+  }, [street, district, city, province, t]);
 
   const handlePin = useCallback((newLat: number, newLng: number) => {
     setLat(newLat); setLng(newLng); setPinSet(true);
@@ -167,9 +170,9 @@ function AddAddressPageInner() {
   const handleSave = async () => {
     setSaveError(null);
     const finalLabel = label === "custom" ? customLabel.trim() : label;
-    const validationResult = addressSchema.safeParse({ label: finalLabel, address: street.trim(), province: province.trim(), city: city.trim(), district: district.trim(), postal_code: postalCode.trim() || undefined });
+    const validationResult = buildAddressSchema(t).safeParse({ label: finalLabel, address: street.trim(), province: province.trim(), city: city.trim(), district: district.trim(), postal_code: postalCode.trim() || undefined });
     if (!validationResult.success) { setSaveError(validationResult.error.issues[0].message); return; }
-    if (!pinSet) { setSaveError("Tandai lokasi di peta atau pilih dari hasil pencarian terlebih dahulu."); return; }
+    if (!pinSet) { setSaveError(t("locations.form.pinRequired")); return; }
     setSaving(true);
     const payload = { label: finalLabel, address: street.trim(), province: province.trim(), city: city.trim(), district: district.trim(), postal_code: postalCode.trim() || undefined, latitude: lat, longitude: lng, is_primary: isPrimary };
     try {
@@ -177,7 +180,7 @@ function AddAddressPageInner() {
       else { await addressService.create(payload); }
       router.push("/customer/locations");
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Gagal menyimpan alamat. Coba lagi.";
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? t("locations.form.saveError");
       setSaveError(msg);
     } finally { setSaving(false); }
   };
@@ -188,18 +191,18 @@ function AddAddressPageInner() {
         <Link href="/customer/locations" className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </Link>
-        <h1 className="text-base font-bold text-gray-800">{isEditMode ? "Edit Alamat" : "Tambah Alamat"}</h1>
+        <h1 className="text-base font-bold text-gray-800">{isEditMode ? t("locations.form.editTitle") : t("locations.form.addTitle")}</h1>
       </header>
 
       {loadingEdit ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-sm text-gray-500">Memuat data alamat...</p>
+          <p className="text-sm text-gray-500">{t("locations.form.loadingEdit")}</p>
         </div>
       ) : (
         <main className="max-w-lg mx-auto px-4 pt-5 pb-32 flex flex-col gap-3">
           <div className="bg-white rounded-xl border border-gray-200 px-4 pt-3 pb-3 relative">
-            <span className="block text-xs text-gray-400 mb-2">Nama Jalan, Gedung, No. Rumah *</span>
+            <span className="block text-xs text-gray-400 mb-2">{t("locations.form.streetLabel")}</span>
             <div className="relative flex items-center gap-2">
               <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
               <input
@@ -208,7 +211,7 @@ function AddAddressPageInner() {
                 onChange={(e) => setStreet(e.target.value)}
                 onFocus={() => setShowMatches(matches.length > 0)}
                 onBlur={() => setTimeout(() => setShowMatches(false), 150)}
-                placeholder="cth. Dsn. Gedangan Rt.01 Rw.07 Ds. Ngudirejo"
+                placeholder={t("locations.form.streetPlaceholder")}
                 className="flex-1 text-sm text-gray-800 placeholder:text-gray-300 bg-transparent focus:outline-none"
               />
               <div className="flex-shrink-0">
@@ -248,7 +251,7 @@ function AddAddressPageInner() {
           <RegionSelector province={province} city={city} district={district} postalCode={postalCode} isOpen={regionOpen} onToggle={() => setRegionOpen((o) => !o)} onProvinceChange={setProvince} onCityChange={setCity} onDistrictChange={setDistrict} onPostalCodeChange={setPostalCode} onSearch={handleSearchByRegion} searching={regionSearching} />
 
           <div className="bg-white rounded-xl border border-gray-200">
-            <input type="text" value={detail} onChange={(e) => setDetail(e.target.value)} placeholder="Detail Lainnya (Cth: Blok / Unit No., Patokan)" className="w-full px-4 py-4 text-sm text-gray-800 placeholder:text-gray-400 bg-transparent focus:outline-none" />
+            <input type="text" value={detail} onChange={(e) => setDetail(e.target.value)} placeholder={t("locations.form.detailPlaceholder")} className="w-full px-4 py-4 text-sm text-gray-800 placeholder:text-gray-400 bg-transparent focus:outline-none" />
           </div>
 
           <div className="flex justify-end">
@@ -268,8 +271,8 @@ function AddAddressPageInner() {
 
           <div className="bg-white rounded-xl border border-gray-200 px-4 py-4 flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-gray-800">Jadikan Alamat Utama</p>
-              <p className="text-xs text-gray-500 mt-0.5">Digunakan sebagai lokasi pickup default.</p>
+              <p className="text-sm font-medium text-gray-800">{t("locations.form.setPrimaryTitle")}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{t("locations.form.setPrimaryDesc")}</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer shrink-0">
               <input type="checkbox" checked={isPrimary} onChange={() => setIsPrimary((v) => !v)} className="sr-only peer" />
@@ -288,7 +291,7 @@ function AddAddressPageInner() {
       <div className="fixed bottom-16 lg:bottom-0 left-0 w-full bg-white border-t border-gray-200 px-4 py-3 z-50">
         <button type="button" onClick={handleSave} disabled={saving} className="w-full h-12 bg-primary text-on-primary rounded-xl text-sm font-bold shadow flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-primary/90 transition-all active:scale-[0.98]">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {saving ? "Menyimpan..." : isEditMode ? "Simpan Perubahan" : "Simpan Alamat"}
+          {saving ? t("locations.form.saving") : isEditMode ? t("locations.form.saveChanges") : t("locations.form.saveAddress")}
         </button>
       </div>
     </div>

@@ -4,6 +4,7 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import { ReactQueryProvider } from "@/components/ui/ReactQueryProvider";
 import { WhatsAppCTA } from "@/components/ui/WhatsAppCTA";
+import { LocaleHtmlSync } from "@/components/ui/LocaleHtmlSync";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,6 +27,7 @@ export default function RootLayout({
       className={`${geistSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <LocaleHtmlSync />
         <ReactQueryProvider>{children}</ReactQueryProvider>
         <Toaster
           position="top-center"

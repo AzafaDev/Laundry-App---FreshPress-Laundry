@@ -1,28 +1,7 @@
-import { Star } from "lucide-react";
+"use client";
 
-const reviews = [
-  {
-    name: "Siti Rahayu",
-    location: "Jakarta Selatan",
-    rating: 5,
-    text: "Sangat puas! Pakaian dikembalikan dalam kondisi bersih, rapi, dan wangi. Kurir tepat waktu dan ramah. Pasti akan order lagi!",
-    initial: "SR",
-  },
-  {
-    name: "Budi Santoso",
-    location: "Bandung",
-    rating: 5,
-    text: "Layanan express 6 jam benar-benar menyelamatkan saya. Pakaian kerja siap tepat waktu. Highly recommended!",
-    initial: "BS",
-  },
-  {
-    name: "Dewi Lestari",
-    location: "Surabaya",
-    rating: 5,
-    text: "Dry cleaning gaun pengantin saya hasilnya luar biasa. Sangat profesional dan harganya sangat worth it!",
-    initial: "DL",
-  },
-];
+import { Star } from "lucide-react";
+import { useTranslation } from "@/i18n/useTranslation";
 
 const Stars = ({ count }: { count: number }) => (
   <div className="flex gap-0.5">
@@ -32,21 +11,48 @@ const Stars = ({ count }: { count: number }) => (
   </div>
 );
 
-export const TestimonialsSection = ({ id }: { id?: string }) => (
+export const TestimonialsSection = ({ id }: { id?: string }) => {
+  const { t } = useTranslation();
+
+  const reviews = [
+    {
+      name: "Siti Rahayu",
+      location: "Jakarta Selatan",
+      rating: 5,
+      text: t("home.testimonials.review1Text"),
+      initial: "SR",
+    },
+    {
+      name: "Budi Santoso",
+      location: "Bandung",
+      rating: 5,
+      text: t("home.testimonials.review2Text"),
+      initial: "BS",
+    },
+    {
+      name: "Dewi Lestari",
+      location: "Surabaya",
+      rating: 5,
+      text: t("home.testimonials.review3Text"),
+      initial: "DL",
+    },
+  ];
+
+  return (
   <section id={id} className="bg-surface-container-low py-20 px-4 md:px-8">
     <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="text-center mb-12">
         <span className="text-primary font-bold uppercase tracking-widest text-xs">
-          Ulasan Pelanggan
+          {t("home.testimonials.eyebrow")}
         </span>
         <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mt-2">
-          Dipercaya ribuan pelanggan.
+          {t("home.testimonials.title")}
         </h2>
         <div className="flex items-center justify-center gap-3 mt-4">
           <Stars count={5} />
           <span className="text-gray-500 text-sm font-medium">
-            4.9/5 dari 10.000+ ulasan
+            {t("home.testimonials.ratingSummary")}
           </span>
         </div>
       </div>
@@ -76,4 +82,5 @@ export const TestimonialsSection = ({ id }: { id?: string }) => (
       </div>
     </div>
   </section>
-);
+  );
+};

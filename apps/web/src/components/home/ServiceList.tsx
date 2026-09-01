@@ -4,13 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/authStore";
 import { laundryItemService } from "@/services/laundryItem.service";
-
-const CARD_META = [
-  { emoji: "🧺", tag: "Terpopuler", tagColor: "bg-primary text-white" },
-  { emoji: "👔", tag: "Esensial", tagColor: "bg-surface-container-high text-on-surface-variant" },
-  { emoji: "✨", tag: "Premium", tagColor: "bg-tertiary-container text-on-tertiary-container" },
-  { emoji: "⚡", tag: "Kilat", tagColor: "bg-secondary/10 text-secondary" },
-];
+import { useTranslation } from "@/i18n/useTranslation";
 
 const formatPrice = (price: string | number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 })
@@ -19,6 +13,13 @@ const formatPrice = (price: string | number) =>
     .trim();
 
 export const ServiceList = ({ id }: { id?: string }) => {
+  const { t } = useTranslation();
+  const CARD_META = [
+    { emoji: "🧺", tag: t("home.services.tagPopular"), tagColor: "bg-primary text-white" },
+    { emoji: "👔", tag: t("home.services.tagEssential"), tagColor: "bg-surface-container-high text-on-surface-variant" },
+    { emoji: "✨", tag: t("home.services.tagPremium"), tagColor: "bg-tertiary-container text-on-tertiary-container" },
+    { emoji: "⚡", tag: t("home.services.tagExpress"), tagColor: "bg-secondary/10 text-secondary" },
+  ];
   const user = useAuthStore((s) => s.user);
   const ctaHref = user ? "/customer/pickup" : "/register";
   const { data: items = [], isLoading } = useQuery({
@@ -43,14 +44,13 @@ export const ServiceList = ({ id }: { id?: string }) => {
         {/* Header */}
         <div className="mb-12">
           <span className="text-primary font-bold uppercase tracking-widest text-xs">
-            Harga & Layanan
+            {t("home.services.eyebrow")}
           </span>
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mt-2">
-            Harga transparan, hasil memuaskan.
+            {t("home.services.title")}
           </h2>
           <p className="text-gray-500 mt-3">
-            Semua harga sudah termasuk jemput & antar gratis. Tidak ada biaya
-            tersembunyi.
+            {t("home.services.description")}
           </p>
         </div>
 
@@ -98,7 +98,7 @@ export const ServiceList = ({ id }: { id?: string }) => {
             href={ctaHref}
             className="inline-block bg-primary text-white px-8 py-4 rounded-xl font-bold text-sm hover:bg-primary-container hover:text-on-primary-container transition-all shadow-md"
           >
-            Pesan Sekarang
+            {t("home.services.cta")}
           </Link>
         </div>
       </div>

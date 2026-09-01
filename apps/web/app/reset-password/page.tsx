@@ -14,22 +14,23 @@ import {
 } from "lucide-react";
 import { axiosInstance } from "@/lib/axios";
 import { z } from "zod";
-
-const resetPasswordSchema = z
-  .object({
-    password: z
-      .string()
-      .min(8, "Password minimal 8 karakter.")
-      .regex(/[a-zA-Z]/, "Password harus mengandung huruf.")
-      .regex(/\d/, "Password harus mengandung angka."),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Konfirmasi password tidak cocok.",
-    path: ["confirmPassword"],
-  });
+import { useTranslation } from "@/i18n/useTranslation";
 
 function ResetPasswordContent() {
+  const { t } = useTranslation();
+  const resetPasswordSchema = z
+    .object({
+      password: z
+        .string()
+        .min(8, t("resetPassword.passwordMin"))
+        .regex(/[a-zA-Z]/, t("resetPassword.needsLetter"))
+        .regex(/\d/, t("resetPassword.needsNumber")),
+      confirmPassword: z.string(),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: t("resetPassword.mismatch"),
+      path: ["confirmPassword"],
+    });
   const searchParams = useSearchParams();
   const router = useRouter();
   const token = searchParams.get("token");
@@ -54,12 +55,12 @@ function ResetPasswordContent() {
   const strengthScore = evaluateStrength(password);
   const strengthLabel =
     strengthScore === 0
-      ? "Lemah"
+      ? t("resetPassword.strengthWeak")
       : strengthScore === 1
-        ? "Cukup"
+        ? t("resetPassword.strengthFair")
         : strengthScore === 2
-          ? "Kuat"
-          : "Sangat Kuat";
+          ? t("resetPassword.strengthStrong")
+          : t("resetPassword.strengthVeryStrong");
   const strengthColor =
     strengthScore <= 1
       ? "bg-error"
@@ -76,7 +77,7 @@ function ResetPasswordContent() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!token) { setServerError("Token tidak valid. Minta link reset password baru."); return; }
+    if (!token) { setServerError(t("resetPassword.invalidToken")); return; }
 
     const result = resetPasswordSchema.safeParse({ password, confirmPassword });
     if (!result.success) {
@@ -93,7 +94,7 @@ function ResetPasswordContent() {
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? "Reset password gagal. Token mungkin sudah kadaluarsa.";
+          ?.message ?? t("resetPassword.resetFailed");
       setServerError(msg);
     } finally {
       setLoading(false);
@@ -111,7 +112,7 @@ function ResetPasswordContent() {
           FreshPress Laundry
         </h1>
         <p className="text-body-md font-body-md text-on-surface-variant mt-2">
-          Kebersihan terjamin, waktu Anda berharga.
+          {t("resetPassword.tagline")}
         </p>
       </header>
 
@@ -120,21 +121,20 @@ function ResetPasswordContent() {
         {success ? (
           <div className="text-center py-6 space-y-4">
             <CheckCircle className="w-16 h-16 text-primary mx-auto" />
-            <h2 className="text-headline-md font-headline-md text-primary">Password Berhasil Diubah!</h2>
-            <p className="text-body-md font-body-md text-on-surface-variant">Anda akan diarahkan ke halaman login...</p>
+            <h2 className="text-headline-md font-headline-md text-primary">{t("resetPassword.successTitle")}</h2>
+            <p className="text-body-md font-body-md text-on-surface-variant">{t("resetPassword.successDesc")}</p>
             <Link href="/login" className="inline-block bg-primary text-on-primary py-3 px-8 rounded-xl font-bold hover:opacity-90 transition-all">
-              Masuk Sekarang
+              {t("resetPassword.loginNow")}
             </Link>
           </div>
         ) : (
         <>
         <div className="mb-xl">
           <h2 className="text-headline-md font-headline-md text-on-surface">
-            Buat Kata Sandi Baru
+            {t("resetPassword.title")}
           </h2>
           <p className="text-body-md font-body-md text-on-surface-variant mt-sm">
-            Demi keamanan akun Anda, silakan buat kata sandi baru yang kuat dan
-            unik.
+            {t("resetPassword.subtitle")}
           </p>
         </div>
 
@@ -150,7 +150,7 @@ function ResetPasswordContent() {
               htmlFor="new-password"
               className="text-label-md font-label-md text-on-surface-variant"
             >
-              Kata Sandi Baru
+              {t("resetPassword.newPasswordLabel")}
             </label>
             <div className="relative">
               <input
@@ -207,7 +207,7 @@ function ResetPasswordContent() {
                 ) : (
                   <span className="w-4 h-4 rounded-full border border-outline" />
                 )}
-                Minimal 8 karakter
+                {t("resetPassword.reqMinLength")}
               </li>
               <li className="flex items-center gap-2 text-label-sm font-label-sm text-on-surface-variant">
                 {hasLetterAndNumber ? (
@@ -215,7 +215,7 @@ function ResetPasswordContent() {
                 ) : (
                   <span className="w-4 h-4 rounded-full border border-outline" />
                 )}
-                Kombinasi huruf dan angka
+                {t("resetPassword.reqLetterNumber")}
               </li>
             </ul>
           </div>
@@ -226,7 +226,7 @@ function ResetPasswordContent() {
               htmlFor="confirm-password"
               className="text-label-md font-label-md text-on-surface-variant"
             >
-              Konfirmasi Kata Sandi
+              {t("resetPassword.confirmLabel")}
             </label>
             <div className="relative">
               <input
@@ -258,7 +258,7 @@ function ResetPasswordContent() {
             disabled={loading}
             className="w-full h-12 bg-primary hover:bg-primary-container text-on-primary font-bold rounded-lg transition-all shadow-sm active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? "Menyimpan..." : "Simpan & Masuk"}
+            {loading ? t("resetPassword.saving") : t("resetPassword.saveAndLogin")}
           </button>
         </form>
         </>
@@ -272,7 +272,7 @@ function ResetPasswordContent() {
           className="text-label-md font-label-md text-primary hover:text-primary-container transition-colors flex items-center gap-1"
         >
           <ArrowLeft className="w-4 h-4" />
-          Batal dan kembali ke Login
+          {t("resetPassword.cancelBack")}
         </Link>
       </footer>
 

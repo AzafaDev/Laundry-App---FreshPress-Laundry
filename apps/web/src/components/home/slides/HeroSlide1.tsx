@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Star } from "lucide-react";
+import { useTranslation } from "@/i18n/useTranslation";
 
 interface Props {
   ctaHref: string;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function HeroSlide1({ ctaHref, startingPrice }: Props) {
+  const { t } = useTranslation();
   return (
     <div className="h-full overflow-y-auto bg-white flex flex-col justify-center">
       <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8">
@@ -20,21 +22,21 @@ export function HeroSlide1({ ctaHref, startingPrice }: Props) {
               <div className="flex">
                 {[...Array(5)].map((_, i) => <Star key={i} className="w-3.5 h-3.5 fill-primary text-primary" />)}
               </div>
-              <span>200.000+ ulasan di seluruh Indonesia</span>
+              <span>{t("home.hero.slide1.rating")}</span>
             </div>
             <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-tight mb-4">
-              Laundry & Dry Cleaning{" "}
-              <span className="text-primary">Selesai 24 Jam</span>
+              {t("home.hero.slide1.titleLine1")}{" "}
+              <span className="text-primary">{t("home.hero.slide1.titleLine2")}</span>
             </h1>
             <p className="text-base md:text-lg text-gray-500 mb-7">
-              Jemput dari rumah, cuci profesional oleh tenaga ahli kami, lalu antar kembali ke depan pintu Anda.
+              {t("home.hero.slide1.description")}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
               <Link href={ctaHref} className="bg-primary text-white px-8 py-3.5 rounded-xl text-base font-bold shadow-md hover:bg-primary-container hover:text-on-primary-container transition-all active:scale-95 text-center">
-                Jadwalkan Penjemputan
+                {t("home.hero.slide1.ctaPrimary")}
               </Link>
               <a href="#how-it-works" className="border border-gray-300 text-gray-900 px-8 py-3.5 rounded-xl text-base font-semibold hover:bg-gray-50 transition-colors text-center">
-                Cara Kerja
+                {t("home.hero.slide1.ctaSecondary")}
               </a>
             </div>
           </div>
@@ -55,7 +57,7 @@ export function HeroSlide1({ ctaHref, startingPrice }: Props) {
                   <span className="text-primary font-bold">✓</span>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400 font-medium">Mulai dari</p>
+                  <p className="text-xs text-gray-400 font-medium">{t("common.startingFrom")}</p>
                   <p className="text-gray-900 font-bold text-sm">{startingPrice}</p>
                 </div>
               </div>

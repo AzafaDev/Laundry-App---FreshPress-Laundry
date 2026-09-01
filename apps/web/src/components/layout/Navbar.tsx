@@ -9,12 +9,17 @@ import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { notificationService } from "@/services/notification.service";
+import { useCustomerNotificationSocket } from "@/hooks/useCustomerNotificationSocket";
+import { socketToast } from "@/lib/socketToast";
+import { useTranslation } from "@/i18n/useTranslation";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 export const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { user, clearAuth } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
+  const { t } = useTranslation();
 
   const isAuthenticated = !!user;
 
@@ -34,12 +39,12 @@ export const Navbar = () => {
   };
 
   const desktopLinks = [
-    { label: "Home", href: "/" },
+    { key: "home", label: t("nav.home"), href: "/" },
     ...(isAuthenticated ? [
-      { label: "Pickup", href: "/customer/pickup" },
-      { label: "Orders", href: "/customer/orders" },
-      { label: "Alamat", href: "/customer/locations" },
-      { label: "Notifikasi", href: "/customer/notifications" },
+      { key: "pickup", label: t("nav.pickup"), href: "/customer/pickup" },
+      { key: "orders", label: t("nav.orders"), href: "/customer/orders" },
+      { key: "address", label: t("nav.address"), href: "/customer/locations" },
+      { key: "notifications", label: t("nav.notifications"), href: "/customer/notifications" },
     ] : []),
   ];
 
@@ -48,7 +53,7 @@ export const Navbar = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white border-b border-gray-100 shadow-sm">
-      <div className="flex justify-center md:justify-between items-center px-4 md:px-8 h-14 md:h-16 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center px-4 md:px-8 h-14 md:h-16 max-w-7xl mx-auto">
 
         {/* Brand — centered on mobile, left on desktop */}
         <Link href="/" className="flex items-center gap-2">
@@ -56,29 +61,33 @@ export const Navbar = () => {
           <span className="text-lg md:text-xl font-bold text-primary">FreshPress</span>
         </Link>
 
-        {/* Desktop full nav */}
-        <nav className="hidden md:flex gap-6 items-center">
-          {desktopLinks.map((link) => (
-            <Link key={link.label} href={link.href}
-              className={`relative px-2 py-1 rounded-lg transition-colors text-sm font-medium ${
-                isActive(link.href)
-                  ? "text-primary font-semibold"
-                  : "text-gray-600 hover:text-primary hover:bg-gray-100"
-              }`}
-            >
-              {link.label === "Notifikasi" && unreadCount > 0 ? (
-                <span className="inline-flex items-center gap-1">
-                  <Bell className="w-4 h-4" />
-                  {link.label}
-                  <span className="min-w-[16px] h-4 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center px-1">
-                    {unreadCount > 99 ? "99+" : unreadCount}
+        {/* Desktop: nav links + language switcher + auth, all right-aligned */}
+        <div className="hidden md:flex items-center gap-8">
+          <nav className="flex gap-6 items-center">
+            {desktopLinks.map((link) => (
+              <Link key={link.key} href={link.href}
+                className={`relative px-2 py-1 rounded-lg transition-colors text-sm font-medium ${
+                  isActive(link.href)
+                    ? "text-primary font-semibold"
+                    : "text-gray-600 hover:text-primary hover:bg-gray-100"
+                }`}
+              >
+                {link.key === "notifications" && unreadCount > 0 ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Bell className="w-4 h-4" />
+                    {link.label}
+                    <span className="min-w-[16px] h-4 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center px-1">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
                   </span>
-                </span>
-              ) : link.label}
-            </Link>
-          ))}
+                ) : link.label}
+              </Link>
+            ))}
+          </nav>
 
-          <div className="flex items-center gap-4 ml-4 border-l border-gray-300 pl-6">
+          <LanguageSwitcher />
+
+          <div className="flex items-center gap-4">
             {isAuthenticated ? (
               <div className="relative">
                 <button
@@ -102,32 +111,37 @@ export const Navbar = () => {
                   <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50">
                     {!user?.is_verified && (
                       <div className="px-4 py-2 bg-amber-50 border-b border-amber-200">
-                        <p className="text-xs text-amber-700 font-medium">⚠️ Akun belum terverifikasi</p>
+                        <p className="text-xs text-amber-700 font-medium">{t("nav.unverified")}</p>
                       </div>
                     )}
                     <Link href="/profile" onClick={() => setDropdownOpen(false)}
                       className="flex items-center gap-2 px-4 py-3 text-sm text-on-surface hover:bg-surface-container-low transition-colors">
-                      <User className="w-4 h-4" /> Profil Saya
+                      <User className="w-4 h-4" /> {t("nav.profileMenu")}
                     </Link>
                     <button onClick={handleLogout}
                       className="flex items-center gap-2 w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-200">
-                      <LogOut className="w-4 h-4" /> Keluar
+                      <LogOut className="w-4 h-4" /> {t("nav.logout")}
                     </button>
                   </div>
                 )}
               </div>
             ) : (
               <>
-                <Link href="/customer/login" className="text-gray-700 text-sm font-medium hover:text-primary transition-colors">
-                  Masuk
+                <Link href="/customer/login" className="inline-flex items-center gap-2 bg-white text-primary px-5 py-2.5 rounded-xl text-sm font-bold border border-primary shadow-sm hover:bg-primary-400 transition-colors">
+                  {t("nav.login")}
                 </Link>
                 <Link href="/customer/register" className="bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-primary/90 transition-colors">
-                  Daftar
+                  {t("nav.register")}
                 </Link>
               </>
             )}
           </div>
-        </nav>
+        </div>
+
+        {/* Mobile: just the language switcher */}
+        <div className="md:hidden">
+          <LanguageSwitcher />
+        </div>
       </div>
 
       {/* Backdrop untuk tutup dropdown */}

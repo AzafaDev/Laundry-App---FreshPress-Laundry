@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AlertCircle, CheckCircle2, Loader2, MapPin } from "lucide-react";
 import type { CustomerAddress } from "@/services/address.service";
+import { useTranslation } from "@/i18n/useTranslation";
 
 interface Props {
   addresses: CustomerAddress[];
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function AddressPicker({ addresses, selectedAddressId, loadingAddresses, hasAddressError, onSelect, onRetry }: Props) {
+  const { t } = useTranslation();
   return (
     <section className="rounded-3xl border border-outline-variant bg-surface-container-lowest p-5 shadow-sm space-y-4">
       <div className="flex items-center gap-3">
@@ -21,14 +23,14 @@ export function AddressPicker({ addresses, selectedAddressId, loadingAddresses, 
           <MapPin className="w-5 h-5" />
         </div>
         <div>
-          <h2 className="text-base font-bold text-on-surface">Pilih Alamat Pickup</h2>
-          <p className="text-sm text-on-surface-variant">Kurir akan menjemput dari alamat ini.</p>
+          <h2 className="text-base font-bold text-on-surface">{t("pickup.addressPicker.title")}</h2>
+          <p className="text-sm text-on-surface-variant">{t("pickup.addressPicker.subtitle")}</p>
         </div>
       </div>
 
       {loadingAddresses && (
         <div className="flex items-center gap-3 rounded-2xl border border-outline-variant bg-surface px-4 py-5 text-sm text-on-surface-variant">
-          <Loader2 className="w-4 h-4 animate-spin text-primary" />Memuat alamat...
+          <Loader2 className="w-4 h-4 animate-spin text-primary" />{t("pickup.addressPicker.loading")}
         </div>
       )}
 
@@ -37,9 +39,9 @@ export function AddressPicker({ addresses, selectedAddressId, loadingAddresses, 
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 w-4 h-4 shrink-0" />
             <div className="space-y-3">
-              <p>Gagal memuat alamat pickup.</p>
+              <p>{t("pickup.addressPicker.loadError")}</p>
               <button onClick={onRetry} className="inline-flex items-center rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 transition-colors">
-                Coba lagi
+                {t("pickup.addressPicker.retry")}
               </button>
             </div>
           </div>
@@ -48,9 +50,9 @@ export function AddressPicker({ addresses, selectedAddressId, loadingAddresses, 
 
       {!loadingAddresses && !hasAddressError && addresses.length === 0 && (
         <div className="rounded-2xl border border-dashed border-outline-variant bg-surface px-4 py-5 text-sm text-on-surface-variant">
-          <p>Anda belum punya alamat pickup. Tambahkan alamat dulu agar order bisa diproses.</p>
+          <p>{t("pickup.addressPicker.noAddress")}</p>
           <Link href="/customer/locations/add-address" className="mt-4 inline-flex items-center rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-on-primary hover:bg-primary/90 transition-colors">
-            Tambah alamat pickup
+            {t("pickup.addressPicker.addAddress")}
           </Link>
         </div>
       )}
@@ -71,7 +73,7 @@ export function AddressPicker({ addresses, selectedAddressId, loadingAddresses, 
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-bold text-on-surface">{address.label}</span>
                       {address.is_primary && (
-                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">Utama</span>
+                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">{t("pickup.addressPicker.primary")}</span>
                       )}
                     </div>
                     <p className="mt-1 text-sm text-on-surface-variant truncate">{address.address}</p>
@@ -83,7 +85,7 @@ export function AddressPicker({ addresses, selectedAddressId, loadingAddresses, 
             );
           })}
           <Link href="/customer/locations" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-            <MapPin className="w-4 h-4" />Kelola alamat
+            <MapPin className="w-4 h-4" />{t("pickup.addressPicker.manageAddress")}
           </Link>
         </div>
       )}

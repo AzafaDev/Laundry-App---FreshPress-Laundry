@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Home, Shirt, Truck, User, Clock, History, ClipboardList, Bell, LogIn, MapPin } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { useTranslation } from "@/i18n/useTranslation";
 
 type Role = "customer" | "guest" | "driver" | "worker" | null;
 
@@ -47,6 +48,7 @@ export const BottomNav = () => {
   const pathname = usePathname();
   const { user: customerUser } = useAuthStore();
   const { user: employeeUser } = useEmployeeAuthStore();
+  const { t } = useTranslation();
 
   let activeRole: Role = null;
   if (employeeUser) {
@@ -64,9 +66,9 @@ export const BottomNav = () => {
   if (activeRole === "guest") {
     return (
       <nav className="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center bg-surface py-2 px-4 border-t border-outline-variant shadow-lg rounded-t-xl pb-safe">
-        <NavItem icon={Home} label="Home" href="/" active={pathname === "/"} />
-        <NavItem icon={LogIn} label="Masuk" href="/customer/login" active={pathname === "/customer/login"} />
-        <NavItem icon={User} label="Daftar" href="/customer/register" active={pathname === "/customer/register"} />
+        <NavItem icon={Home} label={t("nav.home")} href="/" active={pathname === "/"} />
+        <NavItem icon={LogIn} label={t("nav.login")} href="/customer/login" active={pathname === "/customer/login"} />
+        <NavItem icon={User} label={t("nav.register")} href="/customer/register" active={pathname === "/customer/register"} />
       </nav>
     );
   }
@@ -74,16 +76,16 @@ export const BottomNav = () => {
   if (activeRole === "customer") {
     return (
       <nav className="lg:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center bg-surface py-2 px-4 border-t border-outline-variant shadow-lg rounded-t-xl pb-safe">
-        <NavItem icon={Home} label="Home" href="/" active={pathname === "/"} />
+        <NavItem icon={Home} label={t("nav.home")} href="/" active={pathname === "/"} />
         <NavItem
           icon={Truck}
-          label="Pickup"
+          label={t("nav.pickup")}
           href="/customer/pickup"
           active={pathname.startsWith("/customer/pickup")}
         />
         <NavItem
           icon={Shirt}
-          label="Orders"
+          label={t("nav.orders")}
           href="/customer/orders"
           active={pathname.startsWith("/customer/orders")}
         />
@@ -95,13 +97,13 @@ export const BottomNav = () => {
         />
         <NavItem
           icon={Bell}
-          label="Notifikasi"
+          label={t("nav.notifications")}
           href="/customer/notifications"
           active={pathname.startsWith("/customer/notifications")}
         />
         <NavItem
           icon={User}
-          label="Profil"
+          label={t("nav.profile")}
           href="/profile"
           active={pathname === "/profile"}
         />

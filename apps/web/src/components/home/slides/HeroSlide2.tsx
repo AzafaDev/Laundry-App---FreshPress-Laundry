@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Scale, Shirt } from "lucide-react";
+import { useTranslation } from "@/i18n/useTranslation";
 
 interface Props {
   ctaHref: string;
@@ -9,33 +10,42 @@ interface Props {
   satuanPrice: string;
 }
 
-const SERVICES = [
-  {
-    icon: Scale,
-    type: "Cuci Kiloan",
-    tag: "Paling Populer",
-    tagColor: "bg-primary text-white",
-    description: "Cocok untuk cucian sehari-hari. Dihitung per kilogram, hemat dan praktis.",
-    features: ["Cuci + Setrika", "Proses 24 Jam", "Gratis Pickup & Antar"],
-    priceKey: "kiloan" as const,
-    cardBg: "bg-white border-primary/30 shadow-md",
-    iconBg: "bg-primary/10 text-primary",
-  },
-  {
-    icon: Shirt,
-    type: "Cuci Satuan",
-    tag: "Perawatan Khusus",
-    tagColor: "bg-purple-100 text-purple-700",
-    description: "Untuk pakaian premium, jas, kebaya, dan item spesial lainnya.",
-    features: ["Perlakuan Individual", "Dry Cleaning Tersedia", "Dikemas Rapi"],
-    priceKey: "satuan" as const,
-    cardBg: "bg-white border-purple-200 shadow-md",
-    iconBg: "bg-purple-100 text-purple-600",
-  },
-];
-
 export function HeroSlide2({ ctaHref, kiloanPrice, satuanPrice }: Props) {
+  const { t } = useTranslation();
   const priceMap = { kiloan: kiloanPrice, satuan: satuanPrice };
+
+  const SERVICES = [
+    {
+      icon: Scale,
+      type: t("home.hero.slide2.kiloanType"),
+      tag: t("home.hero.slide2.kiloanTag"),
+      tagColor: "bg-primary text-white",
+      description: t("home.hero.slide2.kiloanDescription"),
+      features: [
+        t("home.hero.slide2.kiloanFeature1"),
+        t("home.hero.slide2.kiloanFeature2"),
+        t("home.hero.slide2.kiloanFeature3"),
+      ],
+      priceKey: "kiloan" as const,
+      cardBg: "bg-white border-primary/30 shadow-md",
+      iconBg: "bg-primary/10 text-primary",
+    },
+    {
+      icon: Shirt,
+      type: t("home.hero.slide2.satuanType"),
+      tag: t("home.hero.slide2.satuanTag"),
+      tagColor: "bg-purple-100 text-purple-700",
+      description: t("home.hero.slide2.satuanDescription"),
+      features: [
+        t("home.hero.slide2.satuanFeature1"),
+        t("home.hero.slide2.satuanFeature2"),
+        t("home.hero.slide2.satuanFeature3"),
+      ],
+      priceKey: "satuan" as const,
+      cardBg: "bg-white border-purple-200 shadow-md",
+      iconBg: "bg-purple-100 text-purple-600",
+    },
+  ];
 
   return (
     <div className="h-full overflow-y-auto bg-gradient-to-br from-slate-50 via-white to-primary/5 flex flex-col justify-center">
@@ -43,13 +53,13 @@ export function HeroSlide2({ ctaHref, kiloanPrice, satuanPrice }: Props) {
         {/* Header */}
         <div className="text-center mb-6">
           <span className="inline-block bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-3">
-            Pilih Layanan Anda
+            {t("home.hero.slide2.eyebrow")}
           </span>
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">
-            Dua Cara Cuci, <span className="text-primary">Satu Solusi</span>
+            {t("home.hero.slide2.titleLine1")} <span className="text-primary">{t("home.hero.slide2.titleLine2")}</span>
           </h2>
           <p className="text-gray-500 text-sm md:text-base max-w-lg mx-auto">
-            Pilih layanan yang sesuai dengan kebutuhan laundry Anda hari ini.
+            {t("home.hero.slide2.description")}
           </p>
         </div>
 
@@ -79,7 +89,7 @@ export function HeroSlide2({ ctaHref, kiloanPrice, satuanPrice }: Props) {
               </ul>
 
               <div className="pt-2 border-t border-gray-100">
-                <p className="text-xs text-gray-400 mb-0.5">Mulai dari</p>
+                <p className="text-xs text-gray-400 mb-0.5">{t("common.startingFrom")}</p>
                 <p className="text-xl font-extrabold text-primary">{priceMap[priceKey]}</p>
               </div>
 
@@ -87,7 +97,7 @@ export function HeroSlide2({ ctaHref, kiloanPrice, satuanPrice }: Props) {
                 href={ctaHref}
                 className="w-full text-center bg-primary text-white py-2.5 rounded-xl text-sm font-bold hover:bg-primary/90 active:scale-95 transition-all"
               >
-                Pesan Sekarang
+                {t("home.hero.slide2.cta")}
               </Link>
             </div>
           ))}

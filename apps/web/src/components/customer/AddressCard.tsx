@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Loader2, MapPin, Pencil, Star, StarOff, Trash2 } from "lucide-react";
 import type { CustomerAddress } from "@/services/address.service";
+import { useTranslation } from "@/i18n/useTranslation";
 
 interface Props {
   addr: CustomerAddress;
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function AddressCard({ addr, isActioning, onSetPrimary, onDelete }: Props) {
+  const { t } = useTranslation();
   return (
     <div className={`rounded-2xl border bg-surface-container-lowest shadow-sm overflow-hidden transition-all ${addr.is_primary ? "border-primary/40 ring-1 ring-primary/20" : "border-outline-variant"}`}>
       <div className="p-md flex items-start justify-between gap-md">
@@ -23,7 +25,7 @@ export function AddressCard({ addr, isActioning, onSetPrimary, onDelete }: Props
             <div className="flex items-center gap-xs flex-wrap">
               <span className="text-label-md font-bold text-on-surface">{addr.label}</span>
               {addr.is_primary && (
-                <span className="text-label-sm bg-primary/10 text-primary px-xs py-0.5 rounded-full font-medium">Utama</span>
+                <span className="text-label-sm bg-primary/10 text-primary px-xs py-0.5 rounded-full font-medium">{t("locations.primary")}</span>
               )}
             </div>
             <p className="text-body-sm text-on-surface-variant mt-xs truncate">{addr.address}</p>
@@ -36,15 +38,15 @@ export function AddressCard({ addr, isActioning, onSetPrimary, onDelete }: Props
 
         <div className="flex items-center gap-xs shrink-0">
           {!addr.is_primary && (
-            <button onClick={() => onSetPrimary(addr.id)} disabled={isActioning} title="Jadikan Utama" className="p-xs rounded-lg text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-colors disabled:opacity-50">
+            <button onClick={() => onSetPrimary(addr.id)} disabled={isActioning} title={t("locations.setPrimary")} className="p-xs rounded-lg text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-colors disabled:opacity-50">
               {isActioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <StarOff className="w-4 h-4" />}
             </button>
           )}
           {addr.is_primary && <Star className="w-4 h-4 text-primary fill-primary" />}
-          <Link href={`/customer/locations/add-address?edit=${addr.id}`} title="Edit Alamat" className="p-xs rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors">
+          <Link href={`/customer/locations/add-address?edit=${addr.id}`} title={t("locations.editAddress")} className="p-xs rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors">
             <Pencil className="w-4 h-4" />
           </Link>
-          <button onClick={() => onDelete(addr.id)} disabled={isActioning} title="Hapus Alamat" className="p-xs rounded-lg text-on-surface-variant hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50">
+          <button onClick={() => onDelete(addr.id)} disabled={isActioning} title={t("locations.deleteAddress")} className="p-xs rounded-lg text-on-surface-variant hover:bg-red-50 hover:text-red-600 transition-colors disabled:opacity-50">
             {isActioning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
           </button>
         </div>

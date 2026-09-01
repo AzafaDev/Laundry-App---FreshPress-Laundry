@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { ImagePlus, X } from "lucide-react";
+import { useTranslation } from "@/i18n/useTranslation";
 
 const MAX_PHOTOS = 3;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function PhotoUploadSection({ photos, photoError, onAddPhotos, onRemovePhoto, onError }: Props) {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -27,8 +29,8 @@ export function PhotoUploadSection({ photos, photoError, onAddPhotos, onRemovePh
     e.target.value = "";
     if (files.length === 0) return;
     const invalid = files.find((f) => !ALLOWED_TYPES.includes(f.type));
-    if (invalid) { onError("Format tidak didukung. Gunakan jpg, png, atau webp."); return; }
-    if (photos.length + files.length > MAX_PHOTOS) { onError(`Maksimal ${MAX_PHOTOS} foto.`); return; }
+    if (invalid) { onError(t("complaint.unsupportedFormat")); return; }
+    if (photos.length + files.length > MAX_PHOTOS) { onError(t("complaint.maxPhotos", { max: MAX_PHOTOS })); return; }
     onAddPhotos(files);
   };
 
@@ -36,11 +38,11 @@ export function PhotoUploadSection({ photos, photoError, onAddPhotos, onRemovePh
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <label className="text-sm font-bold text-on-surface">
-          Foto Bukti <span className="text-xs font-normal text-on-surface-variant">(opsional, maks. {MAX_PHOTOS})</span>
+          {t("complaint.photoLabel")} <span className="text-xs font-normal text-on-surface-variant">{t("complaint.photoOptional", { max: MAX_PHOTOS })}</span>
         </label>
         {photos.length < MAX_PHOTOS && (
           <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline">
-            <ImagePlus className="w-3.5 h-3.5" />Tambah foto
+            <ImagePlus className="w-3.5 h-3.5" />{t("complaint.addPhoto")}
           </button>
         )}
       </div>
@@ -60,7 +62,7 @@ export function PhotoUploadSection({ photos, photoError, onAddPhotos, onRemovePh
           ))}
           {photos.length < MAX_PHOTOS && (
             <button type="button" onClick={() => fileInputRef.current?.click()} className="w-20 h-20 rounded-lg border-2 border-dashed border-outline-variant flex flex-col items-center justify-center gap-1 text-on-surface-variant hover:border-primary hover:text-primary transition-colors">
-              <ImagePlus className="w-5 h-5" /><span className="text-xs">Tambah</span>
+              <ImagePlus className="w-5 h-5" /><span className="text-xs">{t("complaint.add")}</span>
             </button>
           )}
         </div>
@@ -69,8 +71,8 @@ export function PhotoUploadSection({ photos, photoError, onAddPhotos, onRemovePh
       {photos.length === 0 && (
         <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full rounded-xl border-2 border-dashed border-outline-variant py-4 flex flex-col items-center gap-2 text-on-surface-variant hover:border-primary hover:text-primary transition-colors">
           <ImagePlus className="w-6 h-6" />
-          <span className="text-xs font-medium">Klik untuk menambahkan foto</span>
-          <span className="text-xs">jpg, png, webp • maks. 5 MB per foto</span>
+          <span className="text-xs font-medium">{t("complaint.clickToAdd")}</span>
+          <span className="text-xs">{t("complaint.photoHint")}</span>
         </button>
       )}
 

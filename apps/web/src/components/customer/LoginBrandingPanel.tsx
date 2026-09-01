@@ -1,8 +1,21 @@
 "use client";
 
 import { CheckCircle, Clock, Shirt, Star, Truck } from "lucide-react";
+import { useTranslation } from "@/i18n/useTranslation";
 
 export function LoginBrandingPanel() {
+  const { t } = useTranslation();
+  const FEATURES = [
+    { icon: Truck, text: t("auth.branding.feature1") },
+    { icon: Clock, text: t("auth.branding.feature2") },
+    { icon: CheckCircle, text: t("auth.branding.feature3") },
+    { icon: Star, text: t("auth.branding.feature4") },
+  ];
+  const STATS = [
+    { value: "10K+", label: t("auth.branding.statCustomers") },
+    { value: "4.9★", label: t("auth.branding.statRating") },
+    { value: "24J", label: t("auth.branding.statDelivery") },
+  ];
   return (
     <div className="hidden lg:flex flex-col gap-8 pr-8">
       <div className="flex items-center gap-3">
@@ -14,20 +27,15 @@ export function LoginBrandingPanel() {
 
       <div className="space-y-3">
         <h1 className="text-4xl md:text-5xl font-bold text-on-background leading-tight">
-          Laundry bersih, hidup lebih <span className="text-primary">produktif.</span>
+          {t("auth.branding.tagline1")} <span className="text-primary">{t("auth.branding.taglineHighlight")}</span>
         </h1>
         <p className="text-lg text-on-surface-variant">
-          Layanan antar-jemput laundry premium langsung ke pintu Anda.
+          {t("auth.branding.subtitle")}
         </p>
       </div>
 
       <ul className="space-y-3">
-        {[
-          { icon: Truck, text: "Antar-jemput gratis ke lokasi Anda" },
-          { icon: Clock, text: "Selesai dalam 24 jam, ekspres tersedia" },
-          { icon: CheckCircle, text: "Dijamin bersih atau uang kembali" },
-          { icon: Star, text: "Rating 4.9/5 dari ribuan pelanggan" },
-        ].map(({ icon: Icon, text }) => (
+        {FEATURES.map(({ icon: Icon, text }) => (
           <li key={text} className="flex items-center gap-3">
             <span className="flex-shrink-0 bg-primary/10 p-1.5 rounded-lg">
               <Icon className="w-4 h-4 text-primary" />
@@ -38,7 +46,7 @@ export function LoginBrandingPanel() {
       </ul>
 
       <div className="grid grid-cols-3 gap-4">
-        {[{ value: "10K+", label: "Pelanggan" }, { value: "4.9★", label: "Rating" }, { value: "24J", label: "Pengiriman" }].map(({ value, label }) => (
+        {STATS.map(({ value, label }) => (
           <div key={label} className="bg-primary/5 rounded-2xl p-4 text-center border border-primary/10">
             <p className="text-2xl font-bold text-primary">{value}</p>
             <p className="text-xs text-on-surface-variant mt-1">{label}</p>

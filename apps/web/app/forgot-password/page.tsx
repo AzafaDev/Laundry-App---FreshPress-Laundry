@@ -5,12 +5,13 @@ import Link from "next/link";
 import { Shirt, Mail, ArrowRight, ArrowLeft, ShieldCheck } from "lucide-react";
 import { axiosInstance } from "@/lib/axios";
 import { z } from "zod";
-
-const forgotPasswordSchema = z.object({
-  email: z.string().email("Format email tidak valid."),
-});
+import { useTranslation } from "@/i18n/useTranslation";
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation();
+  const forgotPasswordSchema = z.object({
+    email: z.string().email(t("forgotPassword.emailInvalid")),
+  });
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -35,7 +36,7 @@ export default function ForgotPasswordPage() {
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? "Gagal mengirim. Coba lagi.";
+          ?.message ?? t("forgotPassword.sendFailed");
       setServerError(msg);
     } finally {
       setLoading(false);
@@ -66,12 +67,10 @@ export default function ForgotPasswordPage() {
                   <Mail className="text-on-primary-container w-8 h-8" />
                 </div>
                 <h2 className="text-headline-md font-headline-md text-on-surface">
-                  Cek Email Anda
+                  {t("forgotPassword.checkEmailTitle")}
                 </h2>
                 <p className="text-body-md font-body-md text-on-surface-variant">
-                  Kami telah mengirimkan instruksi pemulihan kata sandi ke{" "}
-                  <span className="font-semibold text-primary">{email}</span>.
-                  Tautan ini berlaku selama 60 menit.
+                  {t("forgotPassword.checkEmailDesc", { email })}
                 </p>
                 <button
                   onClick={() => {
@@ -80,7 +79,7 @@ export default function ForgotPasswordPage() {
                   }}
                   className="text-label-md font-label-md text-primary hover:text-primary-container transition-colors"
                 >
-                  Kirim ke email lain
+                  {t("forgotPassword.sendToOther")}
                 </button>
               </div>
             ) : (
@@ -88,11 +87,10 @@ export default function ForgotPasswordPage() {
               <>
                 <div className="text-center mb-lg">
                   <h2 className="text-headline-md font-headline-md text-on-surface mb-sm">
-                    Lupa Kata Sandi?
+                    {t("forgotPassword.title")}
                   </h2>
                   <p className="text-body-md font-body-md text-on-surface-variant">
-                    Masukkan email Anda yang terdaftar untuk menerima instruksi
-                    pemulihan kata sandi.
+                    {t("forgotPassword.subtitle")}
                   </p>
                 </div>
 
@@ -107,7 +105,7 @@ export default function ForgotPasswordPage() {
                       htmlFor="email"
                       className="text-label-md font-label-md text-on-surface-variant block ml-1"
                     >
-                      Alamat Email
+                      {t("forgotPassword.emailLabel")}
                     </label>
                     <div className="relative">
                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-outline" />
@@ -132,7 +130,7 @@ export default function ForgotPasswordPage() {
                       <span className="inline-block w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                       <>
-                        Kirim
+                        {t("forgotPassword.send")}
                         <ArrowRight className="w-[18px] h-[18px]" />
                       </>
                     )}
@@ -145,7 +143,7 @@ export default function ForgotPasswordPage() {
                     className="group flex items-center gap-xs text-label-md font-label-md text-primary hover:text-primary-container transition-colors"
                   >
                     <ArrowLeft className="w-[18px] h-[18px] group-hover:-translate-x-0.5 transition-transform" />
-                    Kembali ke Halaman Login
+                    {t("forgotPassword.backToLogin")}
                   </Link>
                 </div>
               </>
@@ -166,7 +164,7 @@ export default function ForgotPasswordPage() {
       {/* Contextual Footer */}
       <footer className="py-lg px-margin-mobile text-center">
         <p className="text-label-sm font-label-sm text-outline">
-          © 2024 FreshPress Laundry. Layanan Kebersihan Profesional.
+          {t("forgotPassword.footer")}
         </p>
       </footer>
 
@@ -184,11 +182,10 @@ export default function ForgotPasswordPage() {
             <div className="bg-white/90 backdrop-blur-md p-lg rounded-xl border border-white/20 shadow-lg">
               <ShieldCheck className="text-primary w-6 h-6 mb-sm" />
               <h3 className="text-headline-sm font-headline-sm text-on-surface mb-xs">
-                Keamanan Akun Anda
+                {t("forgotPassword.sideTitle")}
               </h3>
               <p className="text-body-md font-body-md text-on-surface-variant">
-                Kami menjaga privasi Anda dengan serius. Tautan pemulihan ini
-                hanya akan berlaku selama 60 menit demi keamanan akun Anda.
+                {t("forgotPassword.sideDesc")}
               </p>
             </div>
           </div>

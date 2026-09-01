@@ -18,6 +18,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { axiosInstance } from "@/lib/axios";
+import { useTranslation } from "@/i18n/useTranslation";
 
 /* ------------------------------------------------------------------ */
 /*  Tipe                                                               */
@@ -31,6 +32,7 @@ interface FormErrors {
 }
 
 function VerifyContent() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
@@ -57,11 +59,11 @@ function VerifyContent() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const errs: FormErrors = {};
-    if (password.length < 8) errs.password = "Password minimal 8 karakter.";
+    if (password.length < 8) errs.password = t("verify.passwordMin");
     else if (!/[a-zA-Z]/.test(password) || !/\d/.test(password))
-      errs.password = "Password harus mengandung huruf dan angka.";
+      errs.password = t("verify.passwordLetterNumber");
     if (password !== confirmPassword)
-      errs.confirmPassword = "Konfirmasi password tidak cocok.";
+      errs.confirmPassword = t("verify.passwordMismatch");
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
@@ -72,7 +74,7 @@ function VerifyContent() {
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? "Verifikasi gagal. Token mungkin sudah kadaluarsa.";
+          ?.message ?? t("verify.verifyFailed");
       setErrors({ server: msg });
     } finally {
       setLoading(false);
@@ -83,7 +85,7 @@ function VerifyContent() {
   const handleResend = async (e: FormEvent) => {
     e.preventDefault();
     if (!resendEmail.trim()) {
-      setErrors({ email: "Email wajib diisi." });
+      setErrors({ email: t("verify.emailRequired") });
       return;
     }
     setResendLoading(true);
@@ -95,7 +97,7 @@ function VerifyContent() {
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? "Gagal mengirim ulang. Coba lagi.";
+          ?.message ?? t("verify.resendFailed");
       setErrors({ email: msg });
     } finally {
       setResendLoading(false);
@@ -124,10 +126,10 @@ function VerifyContent() {
             {success && (
               <div className="text-center py-6 space-y-4">
                 <CheckCircle className="w-16 h-16 text-primary mx-auto" />
-                <h2 className="text-2xl font-bold text-primary">Verifikasi Berhasil!</h2>
-                <p className="text-on-surface-variant">Akun Anda telah aktif. Selamat bergabung dengan FreshPress!</p>
+                <h2 className="text-2xl font-bold text-primary">{t("verify.successTitle")}</h2>
+                <p className="text-on-surface-variant">{t("verify.successDesc")}</p>
                 <Link href="/login" className="inline-block mt-4 bg-primary text-on-primary py-3 px-8 rounded-2xl font-bold hover:opacity-90 transition-all">
-                  Masuk Sekarang
+                  {t("verify.loginNow")}
                 </Link>
               </div>
             )}
@@ -139,8 +141,8 @@ function VerifyContent() {
                   <div className="w-14 h-14 mx-auto mb-4 bg-primary-container rounded-full flex items-center justify-center">
                     <Lock className="w-7 h-7 text-on-primary-container" />
                   </div>
-                  <h2 className="text-2xl md:text-3xl font-bold text-on-surface mb-2">Buat Password</h2>
-                  <p className="text-sm text-on-surface-variant">Atur password untuk melengkapi pendaftaran akun Anda.</p>
+                  <h2 className="text-2xl md:text-3xl font-bold text-on-surface mb-2">{t("verify.createPasswordTitle")}</h2>
+                  <p className="text-sm text-on-surface-variant">{t("verify.createPasswordDesc")}</p>
                 </div>
 
                 {errors.server && (
@@ -148,9 +150,9 @@ function VerifyContent() {
                     <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                     <div>
                       {errors.server}
-                      {errors.server.includes("kadaluarsa") && (
+                      {errors.server === t("verify.verifyFailed") && (
                         <p className="mt-1">
-                          <Link href="/verify" className="underline font-medium">Minta link verifikasi baru</Link>
+                          <Link href="/verify" className="underline font-medium">{t("verify.requestNewLink")}</Link>
                         </p>
                       )}
                     </div>
@@ -159,13 +161,13 @@ function VerifyContent() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-1">
-                    <label htmlFor="password" className="text-sm font-medium text-on-surface-variant block">Password Baru</label>
+                    <label htmlFor="password" className="text-sm font-medium text-on-surface-variant block">{t("verify.newPasswordLabel")}</label>
                     <div className="relative group">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-outline group-focus-within:text-primary transition-colors" />
                       <input
                         id="password"
                         type={showPwd ? "text" : "password"}
-                        placeholder="Minimal 8 karakter"
+                        placeholder={t("verify.newPasswordPlaceholder")}
                         value={password}
                         onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: undefined })); }}
                         className={`w-full pl-12 pr-12 py-3.5 border-2 rounded-2xl bg-surface transition-all outline-none text-base ${errors.password ? "border-error" : "border-outline-variant"} focus:border-primary focus:ring-4 focus:ring-primary/10`}
@@ -178,13 +180,13 @@ function VerifyContent() {
                   </div>
 
                   <div className="space-y-1">
-                    <label htmlFor="confirmPassword" className="text-sm font-medium text-on-surface-variant block">Konfirmasi Password</label>
+                    <label htmlFor="confirmPassword" className="text-sm font-medium text-on-surface-variant block">{t("verify.confirmPasswordLabel")}</label>
                     <div className="relative group">
                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-outline group-focus-within:text-primary transition-colors" />
                       <input
                         id="confirmPassword"
                         type={showConfirm ? "text" : "password"}
-                        placeholder="Ulangi password"
+                        placeholder={t("verify.confirmPasswordPlaceholder")}
                         value={confirmPassword}
                         onChange={(e) => { setConfirm(e.target.value); setErrors((p) => ({ ...p, confirmPassword: undefined })); }}
                         className={`w-full pl-12 pr-12 py-3.5 border-2 rounded-2xl bg-surface transition-all outline-none text-base ${errors.confirmPassword ? "border-error" : "border-outline-variant"} focus:border-primary focus:ring-4 focus:ring-primary/10`}
@@ -198,16 +200,16 @@ function VerifyContent() {
 
                   <div className="bg-surface-container p-4 rounded-2xl space-y-2">
                     <p className="text-xs font-bold text-on-surface flex items-center gap-2">
-                      <Info className="w-4 h-4" />Kriteria Password:
+                      <Info className="w-4 h-4" />{t("verify.criteriaTitle")}
                     </p>
                     <ul className="space-y-1">
                       <li className={`flex items-center gap-2 text-xs ${passwordCriteria.minLength ? "text-primary" : "text-on-surface-variant opacity-70"}`}>
                         {passwordCriteria.minLength ? <CheckCircle className="w-4 h-4" /> : <div className="w-4 h-4 rounded-full border border-current" />}
-                        Minimal 8 karakter
+                        {t("verify.criteriaMinLength")}
                       </li>
                       <li className={`flex items-center gap-2 text-xs ${passwordCriteria.hasLetterAndNumber ? "text-primary" : "text-on-surface-variant opacity-70"}`}>
                         {passwordCriteria.hasLetterAndNumber ? <CheckCircle className="w-4 h-4" /> : <div className="w-4 h-4 rounded-full border border-current" />}
-                        Kombinasi huruf &amp; angka
+                        {t("verify.criteriaLetterNumber")}
                       </li>
                     </ul>
                   </div>
@@ -217,7 +219,7 @@ function VerifyContent() {
                     disabled={loading}
                     className="w-full py-4 bg-primary text-on-primary rounded-2xl font-bold text-base hover:opacity-90 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (<>Verifikasi &amp; Aktifkan Akun <ArrowRight className="w-5 h-5" /></>)}
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (<>{t("verify.verifyAndActivate")} <ArrowRight className="w-5 h-5" /></>)}
                   </button>
                 </form>
               </>
@@ -230,25 +232,25 @@ function VerifyContent() {
                   <div className="w-14 h-14 mx-auto mb-4 bg-primary-container rounded-full flex items-center justify-center">
                     <Mail className="w-7 h-7 text-on-primary-container" />
                   </div>
-                  <h2 className="text-2xl font-bold text-on-surface mb-2">Verifikasi Email</h2>
+                  <h2 className="text-2xl font-bold text-on-surface mb-2">{t("verify.verifyEmailTitle")}</h2>
                   <p className="text-sm text-on-surface-variant">
-                    Masukkan email terdaftar Anda untuk mendapatkan link verifikasi baru. Link berlaku <strong>1 jam</strong>.
+                    {t("verify.verifyEmailDesc")}
                   </p>
                 </div>
 
                 {resendSent ? (
                   <div className="text-center py-4 space-y-3">
                     <CheckCircle className="w-12 h-12 text-primary mx-auto" />
-                    <p className="font-semibold text-on-surface">Email verifikasi telah dikirim!</p>
-                    <p className="text-sm text-on-surface-variant">Silakan cek inbox atau folder spam Anda.</p>
+                    <p className="font-semibold text-on-surface">{t("verify.emailSentTitle")}</p>
+                    <p className="text-sm text-on-surface-variant">{t("verify.emailSentDesc")}</p>
                     <button onClick={() => { setResendSent(false); setResendEmail(""); }} className="text-sm text-primary font-medium hover:underline flex items-center gap-1 mx-auto">
-                      <RefreshCw className="w-4 h-4" /> Kirim ke email lain
+                      <RefreshCw className="w-4 h-4" /> {t("verify.sendToOther")}
                     </button>
                   </div>
                 ) : (
                   <form onSubmit={handleResend} className="space-y-4">
                     <div className="space-y-1">
-                      <label htmlFor="resendEmail" className="text-sm font-medium text-on-surface-variant block">Alamat Email</label>
+                      <label htmlFor="resendEmail" className="text-sm font-medium text-on-surface-variant block">{t("verify.emailLabel")}</label>
                       <div className="relative group">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-outline group-focus-within:text-primary transition-colors" />
                         <input
@@ -267,7 +269,7 @@ function VerifyContent() {
                       disabled={resendLoading}
                       className="w-full py-3.5 bg-primary text-on-primary rounded-2xl font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
                     >
-                      {resendLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (<>Kirim Link Verifikasi <ArrowRight className="w-5 h-5" /></>)}
+                      {resendLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (<>{t("verify.sendVerificationLink")} <ArrowRight className="w-5 h-5" /></>)}
                     </button>
                   </form>
                 )}
@@ -276,8 +278,8 @@ function VerifyContent() {
           </div>
 
           <p className="text-center mt-6 text-sm text-on-surface-variant">
-            Sudah terverifikasi?{" "}
-            <Link href="/login" className="text-primary font-semibold hover:underline">Masuk sekarang</Link>
+            {t("verify.alreadyVerified")}{" "}
+            <Link href="/login" className="text-primary font-semibold hover:underline">{t("verify.loginNowLink")}</Link>
           </p>
         </div>
       </div>
@@ -286,9 +288,9 @@ function VerifyContent() {
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3 text-sm">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-primary" />
-            <span className="font-medium text-on-surface-variant">FreshPress Security Guaranteed</span>
+            <span className="font-medium text-on-surface-variant">{t("verify.securityBadge")}</span>
           </div>
-          <Link href="#" className="font-medium text-on-surface-variant hover:text-primary transition-colors">Butuh Bantuan?</Link>
+          <Link href="#" className="font-medium text-on-surface-variant hover:text-primary transition-colors">{t("verify.needHelp")}</Link>
         </div>
       </footer>
     </main>
