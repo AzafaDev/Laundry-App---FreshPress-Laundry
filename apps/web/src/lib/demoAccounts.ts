@@ -1,6 +1,10 @@
 // Sumber tunggal akun demo hasil seeding (apps/api/prisma/seeds).
 // Dipakai oleh section akun demo di landing page dan tombol autofill di halaman login.
 
+import type { useTranslation } from "@/i18n/useTranslation";
+
+type T = ReturnType<typeof useTranslation>["t"];
+
 export const DEMO_PASSWORD = "Password123";
 
 export type DemoAudience = "customer" | "employee";
@@ -19,51 +23,57 @@ export const DEMO_OUTLETS = [
   { number: 2, name: "Purwadhika", district: "Cisauk, Kab. Tangerang" },
 ] as const;
 
-export const DEMO_WORKER_ROLES = [
-  { key: "driver", label: "Driver", desc: "Jemput & antar order, lihat rute pelanggan." },
-  { key: "washing_worker", label: "Washing Worker", desc: "Proses cuci, input berat & item." },
-  { key: "ironing_worker", label: "Ironing Worker", desc: "Tahap setrika setelah cuci selesai." },
-  { key: "packing_worker", label: "Packing Worker", desc: "Packing akhir sebelum diantar." },
+export const DEMO_WORKER_ROLE_KEYS = [
+  "driver",
+  "washing_worker",
+  "ironing_worker",
+  "packing_worker",
 ] as const;
+
+export type DemoWorkerRoleKey = (typeof DEMO_WORKER_ROLE_KEYS)[number];
+
+export const getWorkerRoles = (t: T) =>
+  DEMO_WORKER_ROLE_KEYS.map((key) => ({
+    key,
+    label: t(`demoAccounts.workerRoles.${key}.label`),
+    desc: t(`demoAccounts.workerRoles.${key}.desc`),
+  }));
 
 export const DEMO_SHIFTS = ["morning", "afternoon"] as const;
 
 export type DemoShift = (typeof DEMO_SHIFTS)[number];
 
-export const DEMO_SHIFT_LABEL: Record<DemoShift, string> = {
-  morning: "Pagi",
-  afternoon: "Siang",
-};
+export const getShiftLabel = (t: T, shift: DemoShift) => t(`demoAccounts.shift.${shift}`);
 
 export const workerEmail = (roleKey: string, shift: DemoShift, outletNumber: number) =>
   `${roleKey}.${shift}.${outletNumber}@freshpress.com`;
 
-export const CUSTOMER_ACCOUNTS: DemoAccount[] = [
+export const getCustomerAccounts = (t: T): DemoAccount[] => [
   {
     email: "testcustomer@freshpress.com",
-    label: "Customer",
-    desc: "Punya 6 alamat tersimpan untuk menguji ongkir & radius layanan.",
+    label: t("demoAccounts.customer.label"),
+    desc: t("demoAccounts.customer.desc"),
     audience: "customer",
   },
 ];
 
-export const ADMIN_ACCOUNTS: DemoAccount[] = [
+export const getAdminAccounts = (t: T): DemoAccount[] => [
   {
     email: "superadmin@freshpress.com",
-    label: "Super Admin",
-    desc: "Akses seluruh outlet, pegawai, dan laporan global.",
+    label: t("demoAccounts.superAdmin.label"),
+    desc: t("demoAccounts.superAdmin.desc"),
     audience: "employee",
   },
   {
     email: "outletadmin.1@freshpress.com",
-    label: "Outlet Admin — Rumah Akmal",
-    desc: "Terbatas pada satu outlet saja.",
+    label: t("demoAccounts.outletAdmin.label", { outlet: DEMO_OUTLETS[0].name }),
+    desc: t("demoAccounts.outletAdmin.desc"),
     audience: "employee",
   },
   {
     email: "outletadmin.2@freshpress.com",
-    label: "Outlet Admin — Purwadhika",
-    desc: "Terbatas pada satu outlet saja.",
+    label: t("demoAccounts.outletAdmin.label", { outlet: DEMO_OUTLETS[1].name }),
+    desc: t("demoAccounts.outletAdmin.desc"),
     audience: "employee",
   },
 ];
@@ -111,20 +121,23 @@ export const formatWibClock = (wibMinutes: number) =>
 
 export type DemoAccountGroup = { title: string; hint?: string; accounts: DemoAccount[] };
 
-export const EMPLOYEE_ACCOUNT_GROUPS: DemoAccountGroup[] = [
+export const getEmployeeAccountGroups = (t: T): DemoAccountGroup[] => [
   {
-    title: "Admin",
-    hint: "Tidak terikat shift — bisa dipakai kapan saja.",
-    accounts: ADMIN_ACCOUNTS,
+    title: t("demoAccounts.groups.adminTitle"),
+    hint: t("demoAccounts.groups.noShiftHint"),
+    accounts: getAdminAccounts(t),
   },
-  ...DEMO_WORKER_ROLES.map((role) => ({
+  ...getWorkerRoles(t).map((role) => ({
     title: role.label,
     hint: role.desc,
     accounts: DEMO_OUTLETS.flatMap((outlet) =>
       DEMO_SHIFTS.map((shift) => ({
         email: workerEmail(role.key, shift, outlet.number),
-        label: `Outlet ${outlet.number} — ${outlet.name}`,
-        desc: `Shift ${DEMO_SHIFT_LABEL[shift]} ${SHIFT_WINDOWS[shift].range}`,
+        label: t("demoAccounts.groups.outletLabel", { number: outlet.number, name: outlet.name }),
+        desc: t("demoAccounts.groups.shiftDesc", {
+          shift: getShiftLabel(t, shift),
+          range: SHIFT_WINDOWS[shift].range,
+        }),
         audience: "employee" as const,
         shift,
       })),
@@ -132,10 +145,10 @@ export const EMPLOYEE_ACCOUNT_GROUPS: DemoAccountGroup[] = [
   })),
 ];
 
-export const CUSTOMER_ACCOUNT_GROUPS: DemoAccountGroup[] = [
+export const getCustomerAccountGroups = (t: T): DemoAccountGroup[] => [
   {
-    title: "Customer",
-    hint: "Tidak terikat shift — bisa dipakai kapan saja.",
-    accounts: CUSTOMER_ACCOUNTS,
+    title: t("demoAccounts.groups.customerTitle"),
+    hint: t("demoAccounts.groups.noShiftHint"),
+    accounts: getCustomerAccounts(t),
   },
 ];

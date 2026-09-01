@@ -701,4 +701,79 @@ export const en = {
     loginOtherAccount: "Log in with a different account",
     login: "Log In",
   },
+  demoAccounts: {
+    shift: {
+      morning: "Morning",
+      afternoon: "Afternoon",
+    },
+    customer: {
+      label: "Customer",
+      desc: "Has 6 saved addresses to test delivery fees & service radius.",
+    },
+    superAdmin: {
+      label: "Super Admin",
+      desc: "Access to all outlets, staff, and global reports.",
+    },
+    outletAdmin: {
+      label: "Outlet Admin — {{outlet}}",
+      desc: "Limited to a single outlet only.",
+    },
+    workerRoles: {
+      driver: {
+        label: "Driver",
+        desc: "Picks up & delivers orders, sees customer routes.",
+      },
+      washing_worker: {
+        label: "Washing Worker",
+        desc: "Handles washing, enters weight & items.",
+      },
+      ironing_worker: {
+        label: "Ironing Worker",
+        desc: "Ironing stage after washing is done.",
+      },
+      packing_worker: {
+        label: "Packing Worker",
+        desc: "Final packing before delivery.",
+      },
+    },
+    groups: {
+      adminTitle: "Admin",
+      customerTitle: "Customer",
+      noShiftHint: "Not tied to a shift — usable any time.",
+      outletLabel: "Outlet {{number}} — {{name}}",
+      shiftDesc: "{{shift}} Shift {{range}}",
+    },
+    picker: {
+      autofill: "Autofill with a demo account",
+      canCheckInNow: "Can check in now",
+      outsideShiftHours: "Outside shift hours",
+      outsideHoursWarning: "It's currently {{time}} WIB — outside operating hours ({{morning}} and {{afternoon}}). You can still log in, but check-in attendance will be rejected. That's expected, not a bug.",
+      filledAs: "Filled in as {{email}} — just press log in.",
+    },
+    section: {
+      eyebrow: "Demo Accounts",
+      title: "Try every role without signing up.",
+      description: "This app has seven roles with different access and views. Pick one below — the account list is already waiting on the login page, just press “Autofill with a demo account”.",
+      passwordLabel: "Password for every account:",
+      loginAs: "Log in as {{role}} →",
+      oneAccountNoShift: "1 account · no shift",
+      outletAdminMeta: "{{count}} accounts · no shift",
+      workerMeta: "{{count}} accounts · Morning & Afternoon shift",
+      roles: {
+        customer: {
+          title: "Customer",
+          desc: "Place an order, choose an address, pay, then track its status until it's delivered back.",
+        },
+        superAdmin: {
+          title: "Super Admin",
+          desc: "Access to every outlet: staff, laundry items, sales reports, and bypass requests.",
+        },
+        outletAdmin: {
+          title: "Outlet Admin",
+          desc: "Manage a single outlet only — staff, shift schedules, and orders coming into that outlet.",
+        },
+      },
+      shiftNote: "About driver & worker attendance: every role has a Morning ({{morning}}) and Afternoon ({{afternoon}}) shift account. Check-in is only possible within that account's shift window — outside of that the system rejects it, and that's expected. The login page marks which account can check in right now.",
+    },
+  },
 };
