@@ -11,10 +11,12 @@ import { orderService, type CustomerOrder, type CustomerOrderStatus, type ListCu
 import { useAuthStore } from "@/stores/authStore";
 import { OrderFilters } from "@/components/customer/orders/OrderFilters";
 import { OrderCard } from "@/components/customer/orders/OrderCard";
+import { useTranslation } from "@/i18n/useTranslation";
 
 const LIMIT = 10;
 
 export default function CustomerOrdersPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, _hasHydrated } = useAuthStore();
@@ -85,7 +87,7 @@ export default function CustomerOrdersPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex items-center gap-3 text-on-surface-variant">
           <Loader2 className="w-5 h-5 animate-spin text-primary" />
-          <span className="text-sm font-medium">Menyiapkan halaman...</span>
+          <span className="text-sm font-medium">{t("orders.preparingPage")}</span>
         </div>
       </div>
     );
@@ -97,16 +99,16 @@ export default function CustomerOrdersPage() {
       <main className="max-w-4xl mx-auto px-4 md:px-8 py-8 space-y-6">
         <div className="space-y-4">
           <Link href="/customer/pickup" className="inline-flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">
-            <ArrowLeft className="w-4 h-4" />Buat order baru
+            <ArrowLeft className="w-4 h-4" />{t("orders.createNew")}
           </Link>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary mb-2">Riwayat Pesanan</span>
-              <h1 className="text-3xl font-bold text-on-surface">Status laundry kamu.</h1>
-              {!hasFilters && page === 1 && <p className="text-sm text-on-surface-variant mt-1">Diperbarui otomatis setiap 20 detik.</p>}
+              <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary mb-2">{t("orders.badge")}</span>
+              <h1 className="text-3xl font-bold text-on-surface">{t("orders.title")}</h1>
+              {!hasFilters && page === 1 && <p className="text-sm text-on-surface-variant mt-1">{t("orders.autoRefresh")}</p>}
             </div>
             <button onClick={() => void refetch()} disabled={isFetching} className="self-start sm:self-auto inline-flex items-center gap-2 rounded-xl border border-outline-variant px-4 py-2.5 text-sm font-medium text-on-surface hover:border-primary hover:text-primary transition-colors disabled:opacity-50">
-              <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />Refresh
+              <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />{t("orders.refresh")}
             </button>
           </div>
         </div>
@@ -115,13 +117,13 @@ export default function CustomerOrdersPage() {
 
         {isLoading && (
           <div className="rounded-2xl border border-outline-variant bg-surface px-4 py-8 flex items-center justify-center gap-3 text-sm text-on-surface-variant">
-            <Loader2 className="w-5 h-5 animate-spin text-primary" />Memuat pesanan...
+            <Loader2 className="w-5 h-5 animate-spin text-primary" />{t("orders.loading")}
           </div>
         )}
         {!isLoading && isError && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-5 text-sm text-red-700">
-            <p className="font-semibold mb-2">Gagal memuat data pesanan.</p>
-            <button onClick={() => void refetch()} className="inline-flex items-center rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 transition-colors">Coba lagi</button>
+            <p className="font-semibold mb-2">{t("orders.loadError")}</p>
+            <button onClick={() => void refetch()} className="inline-flex items-center rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 transition-colors">{t("orders.retry")}</button>
           </div>
         )}
         {!isLoading && !isError && orders.length === 0 && (
@@ -131,22 +133,22 @@ export default function CustomerOrdersPage() {
             </div>
             {hasFilters ? (
               <>
-                <p className="font-semibold text-on-surface mb-1">Tidak ada pesanan ditemukan</p>
-                <p className="text-sm text-on-surface-variant mb-5">Coba ubah filter atau hapus pencarian.</p>
-                <button onClick={clearFilters} className="inline-flex items-center gap-2 rounded-xl border border-outline-variant px-5 py-2.5 text-sm font-bold text-on-surface hover:border-primary hover:text-primary transition-colors">Hapus Filter</button>
+                <p className="font-semibold text-on-surface mb-1">{t("orders.noOrdersFilteredTitle")}</p>
+                <p className="text-sm text-on-surface-variant mb-5">{t("orders.noOrdersFilteredDesc")}</p>
+                <button onClick={clearFilters} className="inline-flex items-center gap-2 rounded-xl border border-outline-variant px-5 py-2.5 text-sm font-bold text-on-surface hover:border-primary hover:text-primary transition-colors">{t("orders.clearFilters")}</button>
               </>
             ) : (
               <>
-                <p className="font-semibold text-on-surface mb-1">Belum ada pesanan</p>
-                <p className="text-sm text-on-surface-variant mb-5">Buat order pertama Anda untuk mulai melihat tracking progress.</p>
-                <Link href="/customer/order" className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-primary-container transition-colors">Buat Order Sekarang</Link>
+                <p className="font-semibold text-on-surface mb-1">{t("orders.noOrdersTitle")}</p>
+                <p className="text-sm text-on-surface-variant mb-5">{t("orders.noOrdersDesc")}</p>
+                <Link href="/customer/order" className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-primary-container transition-colors">{t("orders.orderNow")}</Link>
               </>
             )}
           </div>
         )}
 
         {!isLoading && !isError && orders.length > 0 && (
-          <p className="text-xs text-on-surface-variant">Menampilkan {orders.length} dari {total} pesanan</p>
+          <p className="text-xs text-on-surface-variant">{t("orders.showing", { shown: orders.length, total })}</p>
         )}
         {!isLoading && !isError && orders.length > 0 && (
           <div className="space-y-4">
@@ -167,11 +169,11 @@ export default function CustomerOrdersPage() {
         {!isLoading && !isError && totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 pt-2">
             <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="inline-flex items-center gap-1 rounded-xl border border-outline-variant px-3 py-2 text-sm font-medium text-on-surface disabled:opacity-40 hover:border-primary hover:text-primary transition-colors">
-              <ChevronLeft className="w-4 h-4" />Sebelumnya
+              <ChevronLeft className="w-4 h-4" />{t("orders.previous")}
             </button>
             <span className="text-sm text-on-surface-variant px-2">{page} / {totalPages}</span>
             <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="inline-flex items-center gap-1 rounded-xl border border-outline-variant px-3 py-2 text-sm font-medium text-on-surface disabled:opacity-40 hover:border-primary hover:text-primary transition-colors">
-              Berikutnya<ChevronRight className="w-4 h-4" />
+              {t("orders.next")}<ChevronRight className="w-4 h-4" />
             </button>
           </div>
         )}

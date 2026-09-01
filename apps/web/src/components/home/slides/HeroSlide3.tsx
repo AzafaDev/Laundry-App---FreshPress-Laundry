@@ -2,49 +2,52 @@
 
 import Link from "next/link";
 import { BadgeCheck, RefreshCw, Sparkles, Wind } from "lucide-react";
-
-const GUARANTEES = [
-  {
-    icon: Sparkles,
-    label: "Bersih",
-    desc: "Noda membandel hilang sempurna dengan deterjen premium kami.",
-    color: "text-blue-500",
-    bg: "bg-blue-50",
-  },
-  {
-    icon: Wind,
-    label: "Wangi",
-    desc: "Aroma segar tahan lama yang membuat pakaian terasa baru.",
-    color: "text-purple-500",
-    bg: "bg-purple-50",
-  },
-  {
-    icon: BadgeCheck,
-    label: "Rapi",
-    desc: "Disetrika dan dikemas dengan presisi oleh tenaga profesional.",
-    color: "text-green-500",
-    bg: "bg-green-50",
-  },
-];
+import { useTranslation } from "@/i18n/useTranslation";
 
 interface Props {
   ctaHref: string;
 }
 
 export function HeroSlide3({ ctaHref }: Props) {
+  const { t } = useTranslation();
+
+  const GUARANTEES = [
+    {
+      icon: Sparkles,
+      label: t("home.hero.slide3.cleanLabel"),
+      desc: t("home.hero.slide3.cleanDesc"),
+      color: "text-blue-500",
+      bg: "bg-blue-50",
+    },
+    {
+      icon: Wind,
+      label: t("home.hero.slide3.freshLabel"),
+      desc: t("home.hero.slide3.freshDesc"),
+      color: "text-purple-500",
+      bg: "bg-purple-50",
+    },
+    {
+      icon: BadgeCheck,
+      label: t("home.hero.slide3.neatLabel"),
+      desc: t("home.hero.slide3.neatDesc"),
+      color: "text-green-500",
+      bg: "bg-green-50",
+    },
+  ];
+
   return (
     <div className="h-full overflow-y-auto bg-gradient-to-b from-white to-green-50 flex flex-col justify-center">
       <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8">
         {/* Header */}
         <div className="text-center mb-6">
           <span className="inline-block bg-green-100 text-green-700 text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-3">
-            Garansi Kepuasan
+            {t("home.hero.slide3.eyebrow")}
           </span>
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-2">
-            Jaminan <span className="text-primary">Bersih, Wangi & Rapi</span>
+            {t("home.hero.slide3.titleLine1")} <span className="text-primary">{t("home.hero.slide3.titleLine2")}</span>
           </h2>
           <p className="text-gray-500 text-sm md:text-base max-w-xl mx-auto">
-            Setiap order diproses dengan standar tinggi. Kami percaya diri dengan hasil kerja kami.
+            {t("home.hero.slide3.description")}
           </p>
         </div>
 
@@ -67,21 +70,21 @@ export function HeroSlide3({ ctaHref }: Props) {
             <RefreshCw className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1">
-            <p className="text-white font-extrabold text-base mb-0.5">Tidak Puas? Uang Kembali!</p>
+            <p className="text-white font-extrabold text-base mb-0.5">{t("home.hero.slide3.refundTitle")}</p>
             <p className="text-white/80 text-xs">
-              Jika hasil laundry tidak sesuai standar kami, kami siap mencuci ulang atau mengembalikan uang Anda sepenuhnya.
+              {t("home.hero.slide3.refundDesc")}
             </p>
           </div>
           <Link
             href={ctaHref}
             className="shrink-0 bg-white text-primary font-bold px-5 py-2.5 rounded-xl text-sm hover:bg-yellow-300 hover:text-gray-900 transition-all active:scale-95 whitespace-nowrap"
           >
-            Coba Sekarang
+            {t("home.hero.slide3.refundCta")}
           </Link>
         </div>
 
         <p className="text-center text-xs text-gray-400">
-          * Syarat dan ketentuan berlaku. Klaim refund diproses setelah verifikasi oleh tim kami.
+          {t("home.hero.slide3.refundNote")}
         </p>
       </div>
     </div>

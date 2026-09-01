@@ -8,6 +8,7 @@ import { axiosInstance } from "@/lib/axios";
 import { useAuthStore } from "@/stores/authStore";
 import type { User as UserType } from "@/types/user.types";
 import { LoginBrandingPanel } from "@/components/customer/LoginBrandingPanel";
+import { useTranslation } from "@/i18n/useTranslation";
 
 interface LoginErrors {
   email?: string;
@@ -41,6 +42,7 @@ const InputField = ({ label, icon: Icon, type, placeholder, id, value, onChange,
 );
 
 function CustomerLoginContent() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -62,9 +64,9 @@ function CustomerLoginContent() {
 
   const validate = (): boolean => {
     const errs: LoginErrors = {};
-    if (!email.trim()) errs.email = "Email wajib diisi.";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = "Format email tidak valid.";
-    if (!password) errs.password = "Password wajib diisi.";
+    if (!email.trim()) errs.email = t("auth.login.emailRequired");
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = t("auth.login.emailInvalid");
+    if (!password) errs.password = t("auth.login.passwordRequired");
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -78,7 +80,7 @@ function CustomerLoginContent() {
       setAuth(data.user);
       router.push(searchParams.get("redirect") ?? "/");
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Login gagal. Periksa kembali email dan password Anda.";
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? t("auth.login.loginFailed");
       setErrors({ server: msg });
     } finally { setLoading(false); }
   };
@@ -94,7 +96,7 @@ function CustomerLoginContent() {
         <div className="w-full max-w-[480px] mx-auto">
           <Link href="/" className="inline-flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-primary transition-colors mb-4">
             <ArrowLeft className="w-4 h-4" />
-            Kembali ke Beranda
+            {t("auth.backHome")}
           </Link>
           <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 md:p-8 shadow-sm">
             <div className="lg:hidden flex flex-col items-center mb-6">
@@ -102,8 +104,8 @@ function CustomerLoginContent() {
               <span className="text-2xl font-bold text-primary">FreshPress Laundry</span>
             </div>
             <div className="text-center lg:text-left mb-6">
-              <h2 className="text-2xl md:text-3xl font-bold text-on-surface mb-1">Selamat Datang Kembali</h2>
-              <p className="text-base text-on-surface-variant">Masuk ke akun customer Anda untuk melanjutkan</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-on-surface mb-1">{t("auth.login.welcomeBack")}</h2>
+              <p className="text-base text-on-surface-variant">{t("auth.login.subtitle")}</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -112,41 +114,41 @@ function CustomerLoginContent() {
                   {errors.server ?? googleError}
                 </div>
               )}
-              <InputField label="Email" icon={Mail} type="email" placeholder="nama@email.com" id="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} />
+              <InputField label={t("auth.login.emailLabel")} icon={Mail} type="email" placeholder={t("auth.login.emailPlaceholder")} id="email" value={email} onChange={(e) => setEmail(e.target.value)} error={errors.email} />
               <div className="space-y-1">
                 <div className="flex justify-between items-center">
-                  <label htmlFor="password" className="text-sm font-medium text-on-surface-variant">Password</label>
-                  <Link href="/forgot-password" className="text-xs font-medium text-primary hover:underline">Lupa Password?</Link>
+                  <label htmlFor="password" className="text-sm font-medium text-on-surface-variant">{t("auth.login.passwordLabel")}</label>
+                  <Link href="/forgot-password" className="text-xs font-medium text-primary hover:underline">{t("auth.login.forgotPassword")}</Link>
                 </div>
                 <InputField label="" icon={Lock} type={showPassword ? "text" : "password"} placeholder="••••••••" id="password" value={password} onChange={(e) => setPassword(e.target.value)} error={errors.password}
                   rightIcon={showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />} onRightIconClick={() => setShowPassword((v) => !v)}
                 />
               </div>
               <button suppressHydrationWarning type="submit" disabled={loading} className="w-full bg-primary text-on-primary font-bold py-3.5 rounded-2xl shadow-sm hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed">
-                {loading ? <span className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white" /> : <><span>Masuk</span><ArrowRight className="w-5 h-5" /></>}
+                {loading ? <span className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-white" /> : <><span>{t("auth.login.submit")}</span><ArrowRight className="w-5 h-5" /></>}
               </button>
             </form>
 
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-outline-variant" /></div>
-              <div className="relative flex justify-center text-xs"><span className="bg-surface-container-lowest px-4 text-on-surface-variant uppercase tracking-wider">Atau</span></div>
+              <div className="relative flex justify-center text-xs"><span className="bg-surface-container-lowest px-4 text-on-surface-variant uppercase tracking-wider">{t("auth.login.or")}</span></div>
             </div>
 
             <button suppressHydrationWarning type="button" onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-outline-variant rounded-xl bg-surface hover:bg-surface-container-low transition-colors active:scale-[0.99]">
               <img alt="Google Logo" className="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEUHcRjMiZMYyWApcSyqelA5YhcZ-9fYsEKP5vvCO6UDSiYPLdbadxZi2j0QhsTUhkRTXmuHVWNhNw75wcbMYBne0uGtSbcFqtsQni7ctuZ_eGv-gHs3ik7nQBRbkZYlPdvHhfozKMyrnrcYVCIlGCJAiesFspfVVpalhyqj_aEZoIsvx7K5NbYKxAlvvA1JcPrkG0Fzt5j6zwLsYTXj4jASJuhBBcqmiAnB37Qtu0SyYOGfhRZSIpSG4RAl0aN6nSCrXS0pBbrm8" />
-              <span className="text-sm font-bold text-on-surface">Lanjutkan dengan Google</span>
+              <span className="text-sm font-bold text-on-surface">{t("auth.login.continueWithGoogle")}</span>
             </button>
 
             <p className="text-center mt-6 text-base text-on-surface-variant">
-              Belum punya akun? <Link href="/customer/register" className="text-primary font-bold hover:underline">Daftar di sini</Link>
+              {t("auth.login.noAccount")} <Link href="/customer/register" className="text-primary font-bold hover:underline">{t("auth.login.registerHere")}</Link>
             </p>
             <p className="text-center text-sm text-on-surface-variant mt-2">
-              Login sebagai karyawan? <Link href="/employee/login" className="text-primary font-bold hover:underline">Klik di sini</Link>
+              {t("auth.login.employeeLogin")} <Link href="/employee/login" className="text-primary font-bold hover:underline">{t("auth.login.clickHere")}</Link>
             </p>
           </div>
           <div className="mt-4 flex justify-center items-center gap-6 text-outline opacity-60">
-            <div className="flex items-center gap-1"><Shirt className="w-4 h-4" /><span className="text-xs">Secure Data</span></div>
-            <div className="flex items-center gap-1"><Shirt className="w-4 h-4" /><span className="text-xs">24/7 Support</span></div>
+            <div className="flex items-center gap-1"><Shirt className="w-4 h-4" /><span className="text-xs">{t("auth.login.secureData")}</span></div>
+            <div className="flex items-center gap-1"><Shirt className="w-4 h-4" /><span className="text-xs">{t("auth.login.support247")}</span></div>
           </div>
         </div>
       </div>

@@ -6,6 +6,8 @@ import { formatRupiah } from "@/utils/formatPrice";
 import { ComplaintReplySection } from "./ComplaintReplySection";
 import { OrderProgressTracker } from "./OrderProgressTracker";
 import { formatDateTime } from "./orderConstants";
+import { useTranslation } from "@/i18n/useTranslation";
+import type { Locale } from "@/stores/localeStore";
 
 function isNotToday(dateStr: string | null | undefined): boolean {
   if (!dateStr) return false;
@@ -18,8 +20,8 @@ function isNotToday(dateStr: string | null | undefined): boolean {
   );
 }
 
-function formatDate(dateStr: string): string {
-  return new Intl.DateTimeFormat("id-ID", {
+function formatDate(dateStr: string, locale: Locale): string {
+  return new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -37,6 +39,7 @@ interface Props {
 }
 
 export function OrderCard({ order, isDropdownOpen, onToggleDropdown, onComplete, isCompleting, onComplaint }: Props) {
+  const { t, locale } = useTranslation();
   const pickupNotToday = isNotToday(order.pickup_date);
 
   return (
@@ -44,7 +47,7 @@ export function OrderCard({ order, isDropdownOpen, onToggleDropdown, onComplete,
       {pickupNotToday && order.pickup_date && (
         <div className="flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-medium text-amber-700">
           <CalendarClock className="w-3.5 h-3.5 shrink-0" />
-          <span>Jadwal pengiriman: {formatDate(order.pickup_date)}</span>
+          <span>{t("orders.card.deliverySchedule", { date: formatDate(order.pickup_date, locale) })}</span>
         </div>
       )}
 
@@ -54,14 +57,14 @@ export function OrderCard({ order, isDropdownOpen, onToggleDropdown, onComplete,
           <p className="text-xs text-on-surface-variant font-medium tracking-wide uppercase">
             {order.invoice_number}
           </p>
-          <p className="text-sm text-on-surface-variant mt-0.5">Outlet: {order.outlet?.name ?? "-"}</p>
-          <p className="text-xs text-on-surface-variant mt-0.5">Dibuat: {formatDateTime(order.created_at)}</p>
+          <p className="text-sm text-on-surface-variant mt-0.5">{t("orders.card.outlet", { name: order.outlet?.name ?? "-" })}</p>
+          <p className="text-xs text-on-surface-variant mt-0.5">{t("orders.card.createdAt", { date: formatDateTime(order.created_at, locale) })}</p>
         </div>
         <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
           <p className="text-sm font-semibold text-on-surface">
             {order.order_items && order.order_items.length > 0
               ? formatRupiah(Number(order.total_price ?? 0))
-              : "Harga menyusul"}
+              : t("orders.card.priceUpcoming")}
           </p>
         </div>
       </div>
@@ -69,7 +72,7 @@ export function OrderCard({ order, isDropdownOpen, onToggleDropdown, onComplete,
       {/* Laundry items */}
       {order.order_items && order.order_items.length > 0 && (
         <div className="rounded-xl border border-outline-variant bg-surface-container-low px-3 py-3 space-y-2">
-          <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">Detail Item Laundry</p>
+          <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">{t("orders.card.itemDetails")}</p>
           <div className="space-y-1">
             {order.order_items.map((item) => (
               <div key={item.id} className="flex items-center justify-between text-sm">
@@ -83,15 +86,15 @@ export function OrderCard({ order, isDropdownOpen, onToggleDropdown, onComplete,
               </div>
             ))}
             <div className="flex items-center justify-between text-sm">
-              <span className="text-on-surface-variant">Ongkos kirim</span>
+              <span className="text-on-surface-variant">{t("orders.card.deliveryFee")}</span>
               <span className="font-medium text-on-surface">
                 {Number(order.delivery_fee ?? 0) > 0
                   ? formatRupiah(Number(order.delivery_fee))
-                  : "Gratis"}
+                  : t("orders.card.free")}
               </span>
             </div>
             <div className="flex items-center justify-between text-sm font-semibold border-t border-outline-variant pt-1 mt-1">
-              <span className="text-on-surface">Total</span>
+              <span className="text-on-surface">{t("orders.card.total")}</span>
               <span className="text-primary">{formatRupiah(Number(order.total_price ?? 0))}</span>
             </div>
           </div>

@@ -6,15 +6,10 @@ import { ChevronLeft, ChevronRight, HeadphonesIcon, MapPin, Truck } from "lucide
 import { useAuthStore } from "@/stores/authStore";
 import { laundryItemService } from "@/services/laundryItem.service";
 import { formatRupiah } from "@/utils/formatPrice";
+import { useTranslation } from "@/i18n/useTranslation";
 import { HeroSlide1 } from "./slides/HeroSlide1";
 import { HeroSlide2 } from "./slides/HeroSlide2";
 import { HeroSlide3 } from "./slides/HeroSlide3";
-
-const USPS = [
-  { icon: Truck, label: "Gratis jemput & antar" },
-  { icon: HeadphonesIcon, label: "Dukungan 24/7" },
-  { icon: MapPin, label: "Lacak pesanan real-time" },
-];
 
 const SLIDE_COUNT = 3;
 const INTERVAL_MS = 5000;
@@ -23,8 +18,15 @@ const INTERVAL_MS = 5000;
 const HERO_HEIGHT = "h-[calc(100vh-3.5rem)] md:h-[calc(100vh-4rem)]";
 
 export const Hero = () => {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const ctaHref = user ? "/customer/pickup" : "/customer/register";
+
+  const USPS = [
+    { icon: Truck, label: t("home.hero.uspFreeDelivery") },
+    { icon: HeadphonesIcon, label: t("home.hero.uspSupport") },
+    { icon: MapPin, label: t("home.hero.uspTracking") },
+  ];
 
   const { data: laundryItems = [] } = useQuery({
     queryKey: ["customer", "laundry-items"],
@@ -88,7 +90,7 @@ export const Hero = () => {
         <button
           onClick={() => handleNav(-1)}
           className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full shadow-md flex items-center justify-center text-gray-700 hover:text-primary transition-colors z-10"
-          aria-label="Slide sebelumnya"
+          aria-label={t("home.hero.prevSlide")}
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
@@ -97,7 +99,7 @@ export const Hero = () => {
         <button
           onClick={() => handleNav(1)}
           className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/90 hover:bg-white rounded-full shadow-md flex items-center justify-center text-gray-700 hover:text-primary transition-colors z-10"
-          aria-label="Slide berikutnya"
+          aria-label={t("home.hero.nextSlide")}
         >
           <ChevronRight className="w-5 h-5" />
         </button>

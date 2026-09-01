@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Shirt, ShieldOff, ArrowLeft, LogIn } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { useTranslation } from "@/i18n/useTranslation";
 
 function getDashboardUrl(
   employeeRole: string | undefined,
@@ -22,6 +23,7 @@ function getDashboardUrl(
 }
 
 export default function AccessDeniedPage() {
+  const { t } = useTranslation();
   const { user: customerUser } = useAuthStore();
   const { user: employeeUser } = useEmployeeAuthStore();
 
@@ -53,11 +55,10 @@ export default function AccessDeniedPage() {
 
             {/* Text */}
             <h1 className="text-2xl font-bold text-on-surface mb-2">
-              Akses Ditolak
+              {t("accessDenied.title")}
             </h1>
             <p className="text-on-surface-variant text-sm leading-relaxed mb-8">
-              Kamu tidak memiliki izin untuk mengakses halaman ini. Silakan kembali ke
-              dashboard yang sesuai dengan peranmu.
+              {t("accessDenied.description")}
             </p>
 
             {/* Actions */}
@@ -67,7 +68,7 @@ export default function AccessDeniedPage() {
                 className="flex items-center justify-center gap-2 bg-primary text-on-primary h-12 rounded-xl font-medium text-sm hover:opacity-90 transition-opacity active:scale-[0.98]"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Kembali ke Dashboard
+                {t("accessDenied.backToDashboard")}
               </Link>
 
               {isAuthenticated && (
@@ -76,7 +77,7 @@ export default function AccessDeniedPage() {
                   className="flex items-center justify-center gap-2 border border-outline text-on-surface-variant h-12 rounded-xl font-medium text-sm hover:bg-surface-container-high transition-colors active:scale-[0.98]"
                 >
                   <LogIn className="w-4 h-4" />
-                  Login dengan akun lain
+                  {t("accessDenied.loginOtherAccount")}
                 </Link>
               )}
 
@@ -86,7 +87,7 @@ export default function AccessDeniedPage() {
                   className="flex items-center justify-center gap-2 border border-outline text-on-surface-variant h-12 rounded-xl font-medium text-sm hover:bg-surface-container-high transition-colors active:scale-[0.98]"
                 >
                   <LogIn className="w-4 h-4" />
-                  Login
+                  {t("accessDenied.login")}
                 </Link>
               )}
             </div>

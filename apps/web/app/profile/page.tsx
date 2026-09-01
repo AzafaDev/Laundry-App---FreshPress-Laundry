@@ -24,36 +24,40 @@ import { axiosInstance } from "@/lib/axios";
 import { useAuthStore } from "@/stores/authStore";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { Navbar } from "@/components/layout/Navbar";
+import { useTranslation } from "@/i18n/useTranslation";
 
-const profileSchema = z.object({
-  full_name: z.string().min(2, "Nama lengkap minimal 2 karakter."),
-  phone: z
-    .string()
-    .regex(/^[0-9+\-\s]{8,15}$/, "Nomor telepon tidak valid (8-15 digit).")
-    .optional()
-    .or(z.literal("")),
-  email: z.string().email("Format email tidak valid."),
-});
-
-const passwordSchema = z
-  .object({
-    currentPassword: z.string().min(1, "Password lama wajib diisi."),
-    newPassword: z
+const buildProfileSchema = (t: (key: string) => string) =>
+  z.object({
+    full_name: z.string().min(2, t("profile.fullNameMin")),
+    phone: z
       .string()
-      .min(8, "Password baru minimal 8 karakter.")
-      .regex(/[a-zA-Z]/, "Password harus mengandung huruf.")
-      .regex(/\d/, "Password harus mengandung angka."),
-    confirm: z.string(),
-  })
-  .refine((d) => d.newPassword === d.confirm, {
-    message: "Konfirmasi password tidak cocok.",
-    path: ["confirm"],
+      .regex(/^[0-9+\-\s]{8,15}$/, t("profile.phoneInvalid"))
+      .optional()
+      .or(z.literal("")),
+    email: z.string().email(t("profile.emailInvalid")),
   });
+
+const buildPasswordSchema = (t: (key: string) => string) =>
+  z
+    .object({
+      currentPassword: z.string().min(1, t("profile.currentPasswordRequired")),
+      newPassword: z
+        .string()
+        .min(8, t("profile.newPasswordMin"))
+        .regex(/[a-zA-Z]/, t("profile.passwordNeedsLetter"))
+        .regex(/\d/, t("profile.passwordNeedsNumber")),
+      confirm: z.string(),
+    })
+    .refine((d) => d.newPassword === d.confirm, {
+      message: t("profile.passwordMismatch"),
+      path: ["confirm"],
+    });
 
 const MAX_SIZE = 1 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
 
 export default function ProfilePage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { user, updateUser, clearAuth } = useAuthStore();
 
@@ -127,7 +131,7 @@ export default function ProfilePage() {
     e.preventDefault();
     setProfileError(""); setProfileSuccess("");
 
-    const result = profileSchema.safeParse({
+    const result = buildProfileSchema(t).safeParse({
       full_name: profileForm.full_name,
       phone: profileForm.phone || undefined,
       email: profileForm.email,
@@ -155,10 +159,10 @@ export default function ProfilePage() {
         setPendingEmail(payload.new_email as string);
         setResendEmailChangeSent(false);
       } else {
-        setProfileSuccess(data.message ?? "Profil berhasil diperbarui.");
+        setProfileSuccess(data.message ?? t("profile.profileUpdated"));
       }
     } catch (err: unknown) {
-      setProfileError((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Gagal memperbarui profil.");
+      setProfileError((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? t("profile.profileUpdateFailed"));
     } finally { setProfileLoading(false); }
   };
 
@@ -166,7 +170,7 @@ export default function ProfilePage() {
     e.preventDefault();
     setPwdError(""); setPwdSuccess("");
 
-    const result = passwordSchema.safeParse(pwdForm);
+    const result = buildPasswordSchema(t).safeParse(pwdForm);
     if (!result.success) {
       setPwdError(result.error.issues[0].message);
       return;
@@ -175,10 +179,10 @@ export default function ProfilePage() {
     setPwdLoading(true);
     try {
       await axiosInstance.patch("/v1/customer/profile/password", { current_password: pwdForm.currentPassword, new_password: pwdForm.newPassword });
-      setPwdSuccess("Password berhasil diubah.");
+      setPwdSuccess(t("profile.passwordChanged"));
       setPwdForm({ currentPassword: "", newPassword: "", confirm: "" });
     } catch (err: unknown) {
-      setPwdError((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Gagal mengubah password.");
+      setPwdError((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? t("profile.passwordChangeFailed"));
     } finally { setPwdLoading(false); }
   };
 
@@ -186,8 +190,8 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
     setAvatarError("");
-    if (!ALLOWED_TYPES.includes(file.type)) { setAvatarError("Format file harus JPG, JPEG, PNG, atau GIF."); return; }
-    if (file.size > MAX_SIZE) { setAvatarError("Ukuran file maksimal 1 MB."); return; }
+    if (!ALLOWED_TYPES.includes(file.type)) { setAvatarError(t("profile.avatarFormatError")); return; }
+    if (file.size > MAX_SIZE) { setAvatarError(t("profile.avatarSizeError")); return; }
     setAvatarLoading(true);
     const formData = new FormData();
     formData.append("avatar", file);
@@ -198,7 +202,7 @@ export default function ProfilePage() {
         updateUser({ avatar_url: avatarUrl });
       }
     } catch (err: unknown) {
-      setAvatarError((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Gagal mengunggah foto.");
+      setAvatarError((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? t("profile.avatarUploadFailed"));
     } finally { setAvatarLoading(false); e.target.value = ""; }
   };
 
@@ -230,20 +234,20 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-background pb-24 lg:pb-0">
       <Navbar />
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-        <h1 className="text-2xl font-bold text-on-surface">Profil Saya</h1>
+        <h1 className="text-2xl font-bold text-on-surface">{t("profile.title")}</h1>
 
         {!user.is_verified && (
           <div className="flex items-start gap-3 bg-yellow-50 border border-yellow-200 rounded-2xl p-4">
             <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
             <div className="flex-1 text-sm">
-              <p className="font-semibold text-on-surface">Email belum diverifikasi</p>
-              <p className="text-on-surface-variant">Beberapa fitur dibatasi hingga akun Anda terverifikasi.</p>
+              <p className="font-semibold text-on-surface">{t("profile.unverifiedTitle")}</p>
+              <p className="text-on-surface-variant">{t("profile.unverifiedDesc")}</p>
             </div>
             {resendSuccess ? (
-              <span className="text-xs text-primary font-medium flex items-center gap-1"><CheckCircle className="w-4 h-4" /> Terkirim</span>
+              <span className="text-xs text-primary font-medium flex items-center gap-1"><CheckCircle className="w-4 h-4" /> {t("profile.sent")}</span>
             ) : (
               <button onClick={handleResend} disabled={resendLoading} className="text-xs text-primary font-semibold hover:underline flex items-center gap-1 disabled:opacity-60">
-                {resendLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Kirim ulang
+                {resendLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} {t("profile.resend")}
               </button>
             )}
           </div>
@@ -265,20 +269,20 @@ export default function ProfilePage() {
               <div className="flex items-start gap-3 bg-primary-container/20 border border-primary/30 rounded-2xl p-4">
                 <Mail className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                 <div className="flex-1 text-sm">
-                  <p className="font-semibold text-on-surface">Konfirmasi perubahan email</p>
+                  <p className="font-semibold text-on-surface">{t("profile.confirmEmailChangeTitle")}</p>
                   <p className="text-on-surface-variant">
-                    Link konfirmasi telah dikirim ke <span className="font-medium text-on-surface">{pendingEmail}</span>. Cek inbox atau folder spam.
+                    {t("profile.confirmEmailChangeDesc", { email: pendingEmail ?? "" })}
                   </p>
                 </div>
                 {resendEmailChangeSent ? (
-                  <span className="text-xs text-primary font-medium flex items-center gap-1 shrink-0"><CheckCircle className="w-4 h-4" /> Terkirim</span>
+                  <span className="text-xs text-primary font-medium flex items-center gap-1 shrink-0"><CheckCircle className="w-4 h-4" /> {t("profile.sent")}</span>
                 ) : (
                   <button
                     onClick={handleResendEmailChange}
                     disabled={resendEmailChangeLoading}
                     className="text-xs text-primary font-semibold hover:underline flex items-center gap-1 disabled:opacity-60 shrink-0"
                   >
-                    {resendEmailChangeLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Kirim ulang
+                    {resendEmailChangeLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} {t("profile.resend")}
                   </button>
                 )}
               </div>
@@ -299,7 +303,7 @@ export default function ProfilePage() {
                 )}
               </div>
               {avatarLoading && <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center"><Loader2 className="w-6 h-6 text-white animate-spin" /></div>}
-              <button onClick={() => fileRef.current?.click()} className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary text-on-primary rounded-full flex items-center justify-center hover:opacity-90 shadow-md" aria-label="Ganti foto">
+              <button onClick={() => fileRef.current?.click()} className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary text-on-primary rounded-full flex items-center justify-center hover:opacity-90 shadow-md" aria-label={t("profile.changePhoto")}>
                 <Camera className="w-4 h-4" />
               </button>
               <input ref={fileRef} type="file" accept="image/jpeg,image/jpg,image/png,image/gif" className="hidden" onChange={handleAvatarChange} />
@@ -308,28 +312,28 @@ export default function ProfilePage() {
               <p className="font-bold text-lg text-on-surface">{user.full_name}</p>
               <p className="text-sm text-on-surface-variant">{user.email}</p>
               {user.is_verified
-                ? <span className="inline-flex items-center gap-1 text-xs text-primary font-semibold mt-1"><CheckCircle className="w-3.5 h-3.5" /> Terverifikasi</span>
-                : <span className="inline-flex items-center gap-1 text-xs text-error font-semibold mt-1"><AlertCircle className="w-3.5 h-3.5" /> Belum Terverifikasi</span>}
+                ? <span className="inline-flex items-center gap-1 text-xs text-primary font-semibold mt-1"><CheckCircle className="w-3.5 h-3.5" /> {t("profile.verified")}</span>
+                : <span className="inline-flex items-center gap-1 text-xs text-error font-semibold mt-1"><AlertCircle className="w-3.5 h-3.5" /> {t("profile.notVerified")}</span>}
             </div>
           </div>
           {avatarError && <p className="mt-3 text-xs text-error">{avatarError}</p>}
-          <p className="mt-3 text-xs text-on-surface-variant">Format: JPG, JPEG, PNG, GIF. Maks: 1 MB.</p>
+          <p className="mt-3 text-xs text-on-surface-variant">{t("profile.avatarFormatHint")}</p>
         </div>
 
         {/* Edit Profile */}
         <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6">
-          <h2 className="text-base font-bold text-on-surface mb-4">Informasi Akun</h2>
+          <h2 className="text-base font-bold text-on-surface mb-4">{t("profile.accountInfo")}</h2>
           <form onSubmit={handleProfileSubmit} className="space-y-4">
             <div className="space-y-1">
-              <label htmlFor="full_name" className="text-sm font-medium text-on-surface-variant block">Nama Lengkap</label>
+              <label htmlFor="full_name" className="text-sm font-medium text-on-surface-variant block">{t("profile.fullName")}</label>
               <div className="relative"><User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" /><input id="full_name" type="text" value={profileForm.full_name} onChange={(e) => setProfileForm((p) => ({ ...p, full_name: e.target.value }))} className="w-full pl-10 pr-4 py-3 border-2 border-outline-variant rounded-xl bg-surface outline-none text-sm focus:border-primary transition-colors" /></div>
             </div>
             <div className="space-y-1">
-              <label htmlFor="phone" className="text-sm font-medium text-on-surface-variant block">Nomor Telepon</label>
-              <div className="relative"><Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" /><input id="phone" type="tel" value={profileForm.phone} onChange={(e) => setProfileForm((p) => ({ ...p, phone: e.target.value }))} placeholder="08xxxxxxxxxx" className="w-full pl-10 pr-4 py-3 border-2 border-outline-variant rounded-xl bg-surface outline-none text-sm focus:border-primary transition-colors" /></div>
+              <label htmlFor="phone" className="text-sm font-medium text-on-surface-variant block">{t("profile.phone")}</label>
+              <div className="relative"><Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" /><input id="phone" type="tel" value={profileForm.phone} onChange={(e) => setProfileForm((p) => ({ ...p, phone: e.target.value }))} placeholder={t("profile.phonePlaceholder")} className="w-full pl-10 pr-4 py-3 border-2 border-outline-variant rounded-xl bg-surface outline-none text-sm focus:border-primary transition-colors" /></div>
             </div>
             <div className="space-y-1">
-              <label htmlFor="email" className="text-sm font-medium text-on-surface-variant block">Email</label>
+              <label htmlFor="email" className="text-sm font-medium text-on-surface-variant block">{t("profile.email")}</label>
               {user.has_google_login ? (
                 <div className="flex items-center gap-2 pl-3 pr-4 py-3 border-2 border-outline-variant rounded-xl bg-surface-container-low text-sm text-on-surface-variant">
                   <Mail className="w-4 h-4 text-outline shrink-0" />
@@ -339,23 +343,23 @@ export default function ProfilePage() {
               ) : (
                 <>
                   <div className="relative"><Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" /><input id="email" type="email" value={profileForm.email} onChange={(e) => setProfileForm((p) => ({ ...p, email: e.target.value }))} className="w-full pl-10 pr-4 py-3 border-2 border-outline-variant rounded-xl bg-surface outline-none text-sm focus:border-primary transition-colors" /></div>
-                  {profileForm.email !== user.email && <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Mengubah email membutuhkan verifikasi ulang.</p>}
+                  {profileForm.email !== user.email && <p className="text-xs text-yellow-600 mt-1 flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> {t("profile.emailChangeNote")}</p>}
                 </>
               )}
             </div>
             {user.has_google_login && (
               <p className="text-xs text-on-surface-variant flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2">
                 <AlertCircle className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                Akun ini terhubung dengan Google. Email dan password dikelola oleh Google.
+                {t("profile.googleManaged")}
               </p>
             )}
             <div className="flex items-center gap-3 flex-wrap">
               <button type="submit" disabled={profileLoading} className="flex items-center gap-2 bg-primary text-on-primary px-6 py-2.5 rounded-xl font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-60">
-                {profileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Simpan Perubahan
+                {profileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {t("profile.saveChanges")}
               </button>
               {!user.has_google_login && (
                 <button type="button" onClick={openPwdModal} className="flex items-center gap-2 border-2 border-outline-variant text-on-surface-variant px-6 py-2.5 rounded-xl font-semibold text-sm hover:border-primary hover:text-primary transition-all">
-                  <KeyRound className="w-4 h-4" /> Ubah Password
+                  <KeyRound className="w-4 h-4" /> {t("profile.changePassword")}
                 </button>
               )}
             </div>
@@ -365,7 +369,7 @@ export default function ProfilePage() {
         {/* Logout */}
         <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4">
           <button onClick={handleLogout} className="flex items-center gap-3 w-full text-left text-error font-semibold py-2 px-2 rounded-xl hover:bg-error-container/20 transition-colors">
-            <LogOut className="w-5 h-5" /> Keluar
+            <LogOut className="w-5 h-5" /> {t("profile.logout")}
           </button>
         </div>
       </main>
@@ -393,13 +397,13 @@ export default function ProfilePage() {
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                   <KeyRound className="w-4 h-4 text-primary" />
                 </div>
-                <h2 id="pwd-modal-title" className="text-base font-bold text-on-surface">Ubah Password</h2>
+                <h2 id="pwd-modal-title" className="text-base font-bold text-on-surface">{t("profile.changePassword")}</h2>
               </div>
               <button
                 onClick={closePwdModal}
                 disabled={pwdLoading}
                 className="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low transition-colors disabled:opacity-40"
-                aria-label="Tutup"
+                aria-label={t("profile.close")}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -419,10 +423,10 @@ export default function ProfilePage() {
               )}
 
               {([
-                { id: "currentPassword", label: "Password Saat Ini", key: "current" as const, field: "currentPassword" as const },
-                { id: "newPassword", label: "Password Baru", key: "new" as const, field: "newPassword" as const },
-                { id: "confirmPassword", label: "Konfirmasi Password Baru", key: "confirm" as const, field: "confirm" as const },
-              ] as const).map(({ id, label, key, field }) => (
+                { id: "currentPassword", label: t("profile.currentPassword"), key: "current" as const, field: "currentPassword" as const },
+                { id: "newPassword", label: t("profile.newPassword"), key: "new" as const, field: "newPassword" as const },
+                { id: "confirmPassword", label: t("profile.confirmPassword"), key: "confirm" as const, field: "confirm" as const },
+              ]).map(({ id, label, key, field }) => (
                 <div key={id} className="space-y-1">
                   <label htmlFor={`modal-${id}`} className="text-sm font-medium text-on-surface-variant block">{label}</label>
                   <div className="relative">
@@ -449,14 +453,14 @@ export default function ProfilePage() {
                   disabled={pwdLoading}
                   className="flex-1 border-2 border-outline-variant text-on-surface-variant py-2.5 rounded-xl font-semibold text-sm hover:border-outline transition-all disabled:opacity-60"
                 >
-                  Batal
+                  {t("profile.cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={pwdLoading}
                   className="flex-1 flex items-center justify-center gap-2 bg-primary text-on-primary py-2.5 rounded-xl font-semibold text-sm hover:opacity-90 transition-all disabled:opacity-60"
                 >
-                  {pwdLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />} Simpan
+                  {pwdLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />} {t("profile.save")}
                 </button>
               </div>
             </form>

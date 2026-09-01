@@ -1,30 +1,36 @@
+"use client";
+
 import Image from "next/image";
 import { ShieldCheck, Clock, RefreshCw, Leaf } from "lucide-react";
+import { useTranslation } from "@/i18n/useTranslation";
 
-const benefits = [
-  {
-    icon: ShieldCheck,
-    title: "Penanganan Aman & Terpercaya",
-    desc: "Setiap pakaian ditangani dengan teliti oleh tim profesional bersertifikat kami.",
-  },
-  {
-    icon: Clock,
-    title: "Pengalaman 10 Tahun",
-    desc: "Kami telah melayani ribuan pelanggan dengan reputasi keandalan dan konsistensi.",
-  },
-  {
-    icon: RefreshCw,
-    title: "Perawatan Premium Setiap Saat",
-    desc: "Setiap pakaian mendapat perlakuan terbaik sesuai jenis kain dan kebutuhannya.",
-  },
-  {
-    icon: Leaf,
-    title: "Ramah Lingkungan",
-    desc: "Penggunaan deterjen eco-friendly dan efisiensi air untuk masa depan yang lebih hijau.",
-  },
-];
+export const BenefitsSection = () => {
+  const { t } = useTranslation();
 
-export const BenefitsSection = () => (
+  const benefits = [
+    {
+      icon: ShieldCheck,
+      title: t("home.benefits.safeTitle"),
+      desc: t("home.benefits.safeDesc"),
+    },
+    {
+      icon: Clock,
+      title: t("home.benefits.experienceTitle"),
+      desc: t("home.benefits.experienceDesc"),
+    },
+    {
+      icon: RefreshCw,
+      title: t("home.benefits.premiumTitle"),
+      desc: t("home.benefits.premiumDesc"),
+    },
+    {
+      icon: Leaf,
+      title: t("home.benefits.ecoTitle"),
+      desc: t("home.benefits.ecoDesc"),
+    },
+  ];
+
+  return (
   <section className="bg-white py-20 px-4 md:px-8">
     <div className="max-w-7xl mx-auto">
       <div className="flex flex-col lg:flex-row items-center gap-14">
@@ -33,7 +39,7 @@ export const BenefitsSection = () => (
           <div className="relative h-80 lg:h-[460px] w-full">
             <Image
               src="/images/laundry-process.jpg"
-              alt="Tim FreshPress bekerja"
+              alt={t("home.benefits.imageAlt")}
               fill
               sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover rounded-3xl shadow-xl"
@@ -44,10 +50,10 @@ export const BenefitsSection = () => (
         {/* Right: benefits list */}
         <div className="flex-1">
           <span className="text-primary font-bold uppercase tracking-widest text-xs">
-            Mengapa FreshPress?
+            {t("home.benefits.eyebrow")}
           </span>
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mt-2 mb-8">
-            Kepercayaan Anda adalah prioritas utama kami.
+            {t("home.benefits.title")}
           </h2>
           <div className="space-y-6">
             {benefits.map(({ icon: Icon, title, desc }) => (
@@ -66,4 +72,5 @@ export const BenefitsSection = () => (
       </div>
     </div>
   </section>
-);
+  );
+};

@@ -8,10 +8,12 @@ import { addressService, type CustomerAddress } from "@/services/address.service
 import { useAuthStore } from "@/stores/authStore";
 import { useRouter } from "next/navigation";
 import { AddressCard } from "@/components/customer/AddressCard";
+import { useTranslation } from "@/i18n/useTranslation";
 
 const LIMIT = 5;
 
 export default function LocationsPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, _hasHydrated } = useAuthStore();
@@ -39,7 +41,7 @@ export default function LocationsPage() {
       setActionError(null);
       queryClient.invalidateQueries({ queryKey: ["customer", "addresses"] });
     },
-    onError: () => setActionError("Gagal mengatur alamat utama."),
+    onError: () => setActionError(t("locations.setPrimaryError")),
   });
 
   const deleteMutation = useMutation({
@@ -50,11 +52,11 @@ export default function LocationsPage() {
       if (addresses.length === 1 && page > 1) setPage((p) => p - 1);
       else queryClient.invalidateQueries({ queryKey: ["customer", "addresses"] });
     },
-    onError: () => setActionError("Gagal menghapus alamat."),
+    onError: () => setActionError(t("locations.deleteError")),
   });
 
   const handleDelete = (id: string) => {
-    if (!confirm("Hapus alamat ini?")) return;
+    if (!confirm(t("locations.confirmDelete"))) return;
     deleteMutation.mutate(id);
   };
 
@@ -71,10 +73,10 @@ export default function LocationsPage() {
           <Link href="/" className="p-base hover:bg-surface-container-high rounded-full transition-colors">
             <ArrowLeft className="text-primary w-6 h-6" />
           </Link>
-          <h1 className="text-headline-md font-headline-md font-bold text-primary">Alamat Saya</h1>
+          <h1 className="text-headline-md font-headline-md font-bold text-primary">{t("locations.title")}</h1>
         </div>
         <Link href="/customer/locations/add-address" className="flex items-center gap-xs px-md py-sm bg-primary text-on-primary rounded-lg text-label-md hover:bg-primary/90 transition-all">
-          <Plus className="w-4 h-4" /><span className="hidden sm:inline">Tambah Alamat</span>
+          <Plus className="w-4 h-4" /><span className="hidden sm:inline">{t("locations.addAddress")}</span>
         </Link>
       </header>
 
@@ -88,25 +90,25 @@ export default function LocationsPage() {
         {isLoading && (
           <div className="flex flex-col items-center py-2xl gap-md text-on-surface-variant">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <p className="text-body-md">Memuat alamat...</p>
+            <p className="text-body-md">{t("locations.loading")}</p>
           </div>
         )}
 
         {!isLoading && isError && (
           <div className="flex flex-col items-center py-2xl gap-md text-on-surface-variant">
             <AlertCircle className="w-10 h-10 text-error" />
-            <p className="text-body-md">Gagal memuat daftar alamat.</p>
-            <button onClick={() => void refetch()} className="px-md py-sm bg-primary text-on-primary rounded-lg text-label-md">Coba Lagi</button>
+            <p className="text-body-md">{t("locations.loadError")}</p>
+            <button onClick={() => void refetch()} className="px-md py-sm bg-primary text-on-primary rounded-lg text-label-md">{t("locations.retry")}</button>
           </div>
         )}
 
         {!isLoading && !isError && addresses.length === 0 && page === 1 && (
           <div className="flex flex-col items-center py-2xl gap-md text-on-surface-variant">
             <MapPin className="w-14 h-14 text-outline" />
-            <p className="text-body-lg font-medium">Belum ada alamat tersimpan</p>
-            <p className="text-body-sm text-center">Tambahkan alamat pickup agar kami bisa menjemput laundry Anda.</p>
+            <p className="text-body-lg font-medium">{t("locations.emptyTitle")}</p>
+            <p className="text-body-sm text-center">{t("locations.emptyDesc")}</p>
             <Link href="/customer/locations/add-address" className="flex items-center gap-xs px-lg py-sm bg-primary text-on-primary rounded-xl text-label-md font-bold hover:bg-primary/90 transition-all">
-              <Plus className="w-5 h-5" />Tambah Alamat Pertama
+              <Plus className="w-5 h-5" />{t("locations.addFirstAddress")}
             </Link>
           </div>
         )}
@@ -116,7 +118,7 @@ export default function LocationsPage() {
             {/* Info total */}
             {total > 0 && (
               <p className="text-xs text-on-surface-variant">
-                Menampilkan {addresses.length} dari {total} alamat
+                {t("locations.showing", { shown: addresses.length, total })}
               </p>
             )}
 
@@ -138,7 +140,7 @@ export default function LocationsPage() {
                   disabled={page === 1}
                   className="inline-flex items-center gap-1 rounded-xl border border-outline-variant px-3 py-2 text-sm font-medium text-on-surface disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"
                 >
-                  <ChevronLeft className="w-4 h-4" />Sebelumnya
+                  <ChevronLeft className="w-4 h-4" />{t("locations.previous")}
                 </button>
                 <span className="text-sm text-on-surface-variant px-2">{page} / {totalPages}</span>
                 <button
@@ -146,13 +148,13 @@ export default function LocationsPage() {
                   disabled={page === totalPages}
                   className="inline-flex items-center gap-1 rounded-xl border border-outline-variant px-3 py-2 text-sm font-medium text-on-surface disabled:opacity-40 hover:border-primary hover:text-primary transition-colors"
                 >
-                  Berikutnya<ChevronRight className="w-4 h-4" />
+                  {t("locations.next")}<ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             )}
 
             <Link href="/customer/locations/add-address" className="flex items-center justify-center gap-sm h-14 border-2 border-dashed border-outline-variant rounded-2xl text-on-surface-variant hover:border-primary hover:text-primary transition-colors">
-              <Plus className="w-5 h-5" /><span className="text-label-md font-medium">Tambah Alamat Baru</span>
+              <Plus className="w-5 h-5" /><span className="text-label-md font-medium">{t("locations.addNewAddress")}</span>
             </Link>
           </div>
         )}

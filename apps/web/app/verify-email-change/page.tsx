@@ -13,8 +13,10 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { axiosInstance } from "@/lib/axios";
+import { useTranslation } from "@/i18n/useTranslation";
 
 function VerifyEmailChangeContent() {
+  const { t } = useTranslation();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
@@ -24,7 +26,7 @@ function VerifyEmailChangeContent() {
   useEffect(() => {
     if (!token) {
       setStatus("error");
-      setErrorMsg("Token tidak ditemukan. Pastikan Anda membuka link dari email.");
+      setErrorMsg(t("verifyEmailChange.tokenNotFound"));
       return;
     }
 
@@ -34,10 +36,11 @@ function VerifyEmailChangeContent() {
       .catch((err: unknown) => {
         const msg =
           (err as { response?: { data?: { message?: string } } })?.response?.data
-            ?.message ?? "Token tidak valid atau sudah kadaluarsa.";
+            ?.message ?? t("verifyEmailChange.invalidToken");
         setErrorMsg(msg);
         setStatus("error");
       });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   return (
@@ -60,7 +63,7 @@ function VerifyEmailChangeContent() {
             {status === "loading" && (
               <div className="text-center py-10 space-y-4">
                 <Loader2 className="w-14 h-14 text-primary mx-auto animate-spin" />
-                <p className="text-on-surface-variant font-medium">Memverifikasi perubahan email…</p>
+                <p className="text-on-surface-variant font-medium">{t("verifyEmailChange.verifying")}</p>
               </div>
             )}
 
@@ -68,15 +71,15 @@ function VerifyEmailChangeContent() {
             {status === "success" && (
               <div className="text-center py-6 space-y-4">
                 <CheckCircle className="w-16 h-16 text-primary mx-auto" />
-                <h2 className="text-2xl font-bold text-on-surface">Email Berhasil Diubah!</h2>
+                <h2 className="text-2xl font-bold text-on-surface">{t("verifyEmailChange.successTitle")}</h2>
                 <p className="text-on-surface-variant text-sm">
-                  Alamat email akun Anda telah berhasil diperbarui. Silakan masuk menggunakan email baru Anda.
+                  {t("verifyEmailChange.successDesc")}
                 </p>
                 <Link
                   href="/login"
                   className="inline-flex items-center gap-2 mt-4 bg-primary text-on-primary py-3 px-8 rounded-2xl font-bold hover:opacity-90 transition-all"
                 >
-                  Masuk Sekarang <ArrowRight className="w-4 h-4" />
+                  {t("verifyEmailChange.loginNow")} <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
             )}
@@ -88,24 +91,24 @@ function VerifyEmailChangeContent() {
                   <div className="w-14 h-14 mx-auto mb-4 bg-error-container rounded-full flex items-center justify-center">
                     <AlertCircle className="w-7 h-7 text-error" />
                   </div>
-                  <h2 className="text-2xl font-bold text-on-surface mb-2">Verifikasi Gagal</h2>
+                  <h2 className="text-2xl font-bold text-on-surface mb-2">{t("verifyEmailChange.failedTitle")}</h2>
                   <p className="text-sm text-on-surface-variant">{errorMsg}</p>
                 </div>
 
                 <div className="bg-surface-container rounded-2xl p-4 text-sm text-on-surface-variant space-y-2">
                   <p className="font-semibold text-on-surface flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-primary" /> Apa yang bisa dilakukan?
+                    <Mail className="w-4 h-4 text-primary" /> {t("verifyEmailChange.whatToDo")}
                   </p>
                   <ul className="list-disc list-inside space-y-1 ml-1">
                     <li>
-                      Kembali ke{" "}
+                      {t("verifyEmailChange.backTo")}{" "}
                       <Link href="/profile" className="text-primary font-medium underline">
-                        halaman profil
+                        {t("verifyEmailChange.goToProfile")}
                       </Link>{" "}
-                      dan ulangi permintaan ganti email.
+                      {t("verifyEmailChange.goToProfileSuffix")}
                     </li>
-                    <li>Link perubahan email berlaku <strong>1 jam</strong> sejak dikirim.</li>
-                    <li>Pastikan Anda membuka link terbaru dari inbox email baru Anda.</li>
+                    <li>{t("verifyEmailChange.linkValidNote")}</li>
+                    <li>{t("verifyEmailChange.openLatestLinkNote")}</li>
                   </ul>
                 </div>
 
@@ -113,16 +116,16 @@ function VerifyEmailChangeContent() {
                   href="/profile"
                   className="flex items-center justify-center gap-2 w-full py-3.5 bg-primary text-on-primary rounded-2xl font-bold hover:opacity-90 transition-all"
                 >
-                  Kembali ke Profil <ArrowRight className="w-4 h-4" />
+                  {t("verifyEmailChange.backToProfile")} <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
             )}
           </div>
 
           <p className="text-center mt-6 text-sm text-on-surface-variant">
-            Butuh bantuan?{" "}
+            {t("verifyEmailChange.needHelp")}{" "}
             <Link href="/login" className="text-primary font-semibold hover:underline">
-              Hubungi kami
+              {t("verifyEmailChange.contactUs")}
             </Link>
           </p>
         </div>
@@ -132,9 +135,9 @@ function VerifyEmailChangeContent() {
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-3 text-sm">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-primary" />
-            <span className="font-medium text-on-surface-variant">FreshPress Security Guaranteed</span>
+            <span className="font-medium text-on-surface-variant">{t("verify.securityBadge")}</span>
           </div>
-          <Link href="#" className="font-medium text-on-surface-variant hover:text-primary transition-colors">Butuh Bantuan?</Link>
+          <Link href="#" className="font-medium text-on-surface-variant hover:text-primary transition-colors">{t("verify.needHelp")}</Link>
         </div>
       </footer>
     </main>

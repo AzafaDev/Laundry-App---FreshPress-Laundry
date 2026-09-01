@@ -2,7 +2,8 @@
 
 import { Search, X } from "lucide-react";
 import type { CustomerOrderStatus } from "@/services/order.service";
-import { STATUS_FILTER_OPTIONS } from "./orderConstants";
+import { ORDER_PROGRESS_STATUS_KEYS } from "./orderConstants";
+import { useTranslation } from "@/i18n/useTranslation";
 
 interface Props {
   searchInput: string;
@@ -29,6 +30,7 @@ export function OrderFilters({
   onDateToChange,
   onClear,
 }: Props) {
+  const { t } = useTranslation();
   return (
     <div className="rounded-2xl border border-outline-variant bg-surface p-4 space-y-3">
       <div className="flex flex-col sm:flex-row gap-3">
@@ -36,7 +38,7 @@ export function OrderFilters({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant pointer-events-none" />
           <input
             type="text"
-            placeholder="Cari nomor invoice..."
+            placeholder={t("orders.filters.searchPlaceholder")}
             value={searchInput}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-outline-variant bg-white text-sm focus:outline-none focus:border-primary"
@@ -47,22 +49,23 @@ export function OrderFilters({
           onChange={(e) => onStatusChange(e.target.value as CustomerOrderStatus | "")}
           className="sm:w-52 py-2.5 px-3 rounded-xl border border-outline-variant bg-white text-sm focus:outline-none focus:border-primary"
         >
-          {STATUS_FILTER_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          <option value="">{t("orders.filterStatus.all")}</option>
+          {ORDER_PROGRESS_STATUS_KEYS.map((key) => (
+            <option key={key} value={key}>{t(`orders.filterStatus.${key}`)}</option>
           ))}
         </select>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
         <div className="flex items-center gap-2 flex-1 flex-wrap">
-          <label className="text-xs text-on-surface-variant shrink-0">Dari</label>
+          <label className="text-xs text-on-surface-variant shrink-0">{t("orders.filters.from")}</label>
           <input
             type="date"
             value={dateFrom}
             onChange={(e) => onDateFromChange(e.target.value)}
             className="flex-1 min-w-0 py-2 px-3 rounded-xl border border-outline-variant bg-white text-sm focus:outline-none focus:border-primary"
           />
-          <label className="text-xs text-on-surface-variant shrink-0">s.d.</label>
+          <label className="text-xs text-on-surface-variant shrink-0">{t("orders.filters.to")}</label>
           <input
             type="date"
             value={dateTo}
@@ -77,7 +80,7 @@ export function OrderFilters({
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-error hover:underline shrink-0"
           >
             <X className="w-3.5 h-3.5" />
-            Hapus filter
+            {t("orders.filters.clear")}
           </button>
         )}
       </div>

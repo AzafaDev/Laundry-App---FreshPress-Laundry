@@ -5,9 +5,9 @@ import { CheckCircle2, ChevronDown, Circle, BadgeCheck } from "lucide-react";
 import type { CustomerOrder, CustomerOrderStatus } from "@/services/order.service";
 import {
   formatDateTime,
-  ORDER_PROGRESS_STEPS,
-  ORDER_STATUS_LABEL,
+  ORDER_PROGRESS_STATUS_KEYS,
 } from "./orderConstants";
+import { useTranslation } from "@/i18n/useTranslation";
 
 interface Props {
   order: CustomerOrder;
@@ -21,15 +21,17 @@ interface Props {
 const PAYABLE_STATUSES: CustomerOrderStatus[] = ["washing", "ironing", "packing", "waiting_payment"];
 
 export function OrderProgressTracker({ order, isOpen, onToggle, onComplete, isCompleting, onComplaint }: Props) {
+  const { t, locale } = useTranslation();
   const paidEarly = order.payment?.status === "paid" && ["washing", "ironing", "packing"].includes(order.status);
-  const visibleSteps = paidEarly
-    ? ORDER_PROGRESS_STEPS.filter((s) => s.key !== "waiting_payment")
-    : ORDER_PROGRESS_STEPS;
+  const visibleSteps = (paidEarly
+    ? ORDER_PROGRESS_STATUS_KEYS.filter((key) => key !== "waiting_payment")
+    : ORDER_PROGRESS_STATUS_KEYS
+  ).map((key) => ({ key, label: t(`orders.progressStatus.${key}`) }));
   const activeIndex = Math.max(0, visibleSteps.findIndex((s) => s.key === order.status));
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">Status Order</p>
+      <p className="text-xs font-medium text-on-surface-variant uppercase tracking-wide">{t("orders.card.status")}</p>
 
       <button
         type="button"
@@ -37,10 +39,10 @@ export function OrderProgressTracker({ order, isOpen, onToggle, onComplete, isCo
         className="w-full flex items-center justify-between rounded-xl border border-primary bg-primary/10 px-4 py-3 text-sm text-primary font-semibold hover:bg-primary/20 transition-colors"
       >
         <span className="flex flex-col items-start text-left">
-          <span>{visibleSteps[activeIndex]?.label ?? ORDER_STATUS_LABEL[order.status]}</span>
+          <span>{visibleSteps[activeIndex]?.label ?? t(`orders.progressStatus.${order.status}`)}</span>
           {order.status_histories && order.status_histories.length > 0 && (
             <span className="text-xs font-normal text-primary/70">
-              {formatDateTime(order.status_histories[0].created_at)}
+              {formatDateTime(order.status_histories[0].created_at, locale)}
             </span>
           )}
         </span>
@@ -60,7 +62,7 @@ export function OrderProgressTracker({ order, isOpen, onToggle, onComplete, isCo
               >
                 {isDone || isCurrent ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <Circle className="w-3.5 h-3.5 shrink-0" />}
                 <span className="flex-1">{step.label}</span>
-                {history && <span className="text-on-surface-variant font-normal">{formatDateTime(history.created_at)}</span>}
+                {history && <span className="text-on-surface-variant font-normal">{formatDateTime(history.created_at, locale)}</span>}
               </div>
             );
           })}
@@ -72,10 +74,10 @@ export function OrderProgressTracker({ order, isOpen, onToggle, onComplete, isCo
           <div className="flex items-center justify-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">
             <BadgeCheck className="w-4 h-4 shrink-0" />
             <span>
-              Pesanan ini sudah dibayar
+              {t("orders.card.paid")}
               {order.payment?.paid_at && (
                 <span className="block text-xs font-normal text-green-600">
-                  {formatDateTime(order.payment.paid_at)}
+                  {formatDateTime(order.payment.paid_at, locale)}
                 </span>
               )}
             </span>
@@ -85,7 +87,7 @@ export function OrderProgressTracker({ order, isOpen, onToggle, onComplete, isCo
             href={`/customer/payment/${order.id}`}
             className="block w-full text-center rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white hover:bg-primary-container hover:text-on-primary-container transition-colors"
           >
-            Bayar Sekarang
+            {t("orders.card.payNow")}
           </Link>
         )
       )}
@@ -98,11 +100,11 @@ export function OrderProgressTracker({ order, isOpen, onToggle, onComplete, isCo
             disabled={isCompleting}
             className="flex-1 text-center rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white hover:bg-primary-container hover:text-on-primary-container transition-colors disabled:opacity-50"
           >
-            {isCompleting ? "Memproses..." : "Pesanan Selesai"}
+            {isCompleting ? t("orders.card.processing") : t("orders.card.orderComplete")}
           </button>
           {order.complaints && order.complaints.length > 0 ? (
             <p className="flex-1 text-center rounded-xl border border-outline-variant px-4 py-3 text-sm font-semibold text-on-surface-variant">
-              Komplain sudah diajukan
+              {t("orders.card.complaintFiled")}
             </p>
           ) : (
             <button
@@ -110,7 +112,7 @@ export function OrderProgressTracker({ order, isOpen, onToggle, onComplete, isCo
               onClick={onComplaint}
               className="flex-1 text-center rounded-xl border border-error px-4 py-3 text-sm font-bold text-error hover:bg-error/10 transition-colors"
             >
-              Komplain
+              {t("orders.card.complaint")}
             </button>
           )}
         </div>

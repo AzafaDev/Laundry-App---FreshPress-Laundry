@@ -2,6 +2,7 @@
 
 import { Bell, CreditCard, ClipboardList, PackageCheck, Truck } from "lucide-react";
 import type { CustomerNotification, NotificationType } from "@/services/notification.service";
+import { useTranslation } from "@/i18n/useTranslation";
 
 const NOTIFICATION_ICONS: Record<NotificationType, typeof Bell> = {
   driver_pickup_started: Truck,
@@ -13,8 +14,8 @@ const NOTIFICATION_ICONS: Record<NotificationType, typeof Bell> = {
   order_completed: PackageCheck,
 };
 
-const formatDateTime = (value: string) =>
-  new Intl.DateTimeFormat("id-ID", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+const formatDateTime = (value: string, locale: "id" | "en") =>
+  new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 
 interface Props {
   notification: CustomerNotification;
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export function NotificationItem({ notification, onMarkRead }: Props) {
+  const { locale } = useTranslation();
   const Icon = notification.type ? (NOTIFICATION_ICONS[notification.type] ?? Bell) : Bell;
 
   return (
@@ -41,7 +43,7 @@ export function NotificationItem({ notification, onMarkRead }: Props) {
           {!notification.is_read && <span className="shrink-0 w-2 h-2 rounded-full bg-primary" />}
         </div>
         <p className="text-sm text-on-surface-variant mt-0.5">{notification.body}</p>
-        <p className="text-xs text-on-surface-variant/70 mt-1.5">{formatDateTime(notification.created_at)}</p>
+        <p className="text-xs text-on-surface-variant/70 mt-1.5">{formatDateTime(notification.created_at, locale)}</p>
       </div>
     </button>
   );

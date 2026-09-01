@@ -9,9 +9,10 @@ import { Navbar } from "@/components/layout/Navbar";
 import { orderService, type CustomerOrder } from "@/services/order.service";
 import { useAuthStore } from "@/stores/authStore";
 import { formatRupiah } from "@/utils/formatPrice";
+import { useTranslation } from "@/i18n/useTranslation";
 
-const formatDateTime = (value: string | Date) =>
-  new Intl.DateTimeFormat("id-ID", {
+const formatDateTime = (value: string | Date, locale: "id" | "en") =>
+  new Intl.DateTimeFormat(locale === "id" ? "id-ID" : "en-US", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -20,6 +21,7 @@ const formatDateTime = (value: string | Date) =>
   }).format(new Date(value));
 
 export default function CustomerPaymentLandingPage() {
+  const { t, locale } = useTranslation();
   const router = useRouter();
   const { user, _hasHydrated } = useAuthStore();
 
@@ -51,7 +53,7 @@ export default function CustomerPaymentLandingPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex items-center gap-3 text-on-surface-variant">
           <Loader2 className="w-5 h-5 animate-spin text-primary" />
-          <span className="text-sm font-medium">Menyiapkan halaman...</span>
+          <span className="text-sm font-medium">{t("payment.preparingPage")}</span>
         </div>
       </div>
     );
@@ -64,11 +66,11 @@ export default function CustomerPaymentLandingPage() {
       <main className="max-w-2xl mx-auto px-4 md:px-8 py-8 space-y-6">
         <div>
           <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary mb-2">
-            Pembayaran
+            {t("payment.badge")}
           </span>
-          <h1 className="text-3xl font-bold text-on-surface">Tagihan kamu.</h1>
+          <h1 className="text-3xl font-bold text-on-surface">{t("payment.listTitle")}</h1>
           <p className="text-sm text-on-surface-variant mt-1">
-            Pilih pesanan yang ingin kamu bayar.
+            {t("payment.listSubtitle")}
           </p>
         </div>
 
@@ -76,14 +78,14 @@ export default function CustomerPaymentLandingPage() {
         {isLoading && (
           <div className="rounded-2xl border border-outline-variant bg-surface px-4 py-8 flex items-center justify-center gap-3 text-sm text-on-surface-variant">
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
-            Memuat tagihan...
+            {t("payment.loadingBills")}
           </div>
         )}
 
         {/* Error */}
         {!isLoading && isError && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-5 text-sm text-red-700">
-            Gagal memuat data tagihan.
+            {t("payment.loadError")}
           </div>
         )}
 
@@ -93,16 +95,16 @@ export default function CustomerPaymentLandingPage() {
             <div className="w-14 h-14 rounded-full bg-surface-container mx-auto flex items-center justify-center mb-4">
               <Wallet className="w-6 h-6 text-outline" />
             </div>
-            <p className="font-semibold text-on-surface mb-1">Tidak ada tagihan</p>
+            <p className="font-semibold text-on-surface mb-1">{t("payment.noBillsTitle")}</p>
             <p className="text-sm text-on-surface-variant mb-5">
-              Saat ini kamu tidak memiliki pesanan yang menunggu pembayaran.
+              {t("payment.noBillsDesc")}
             </p>
             <Link
               href="/customer/orders"
               className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white hover:bg-primary-container transition-colors"
             >
               <ClipboardList className="w-4 h-4" />
-              Lihat Pesanan Saya
+              {t("payment.viewMyOrders")}
             </Link>
           </div>
         )}
@@ -122,21 +124,21 @@ export default function CustomerPaymentLandingPage() {
                       {order.invoice_number}
                     </p>
                     <h3 className="text-base font-bold text-on-surface mt-1">
-                      Outlet: {order.outlet?.name ?? "-"}
+                      {t("payment.outlet", { name: order.outlet?.name ?? "-" })}
                     </h3>
                     <p className="text-sm text-on-surface-variant mt-0.5">
-                      Pickup: {order.pickup_schedule ? formatDateTime(order.pickup_schedule) : "-"}
+                      {t("payment.pickup", { date: order.pickup_schedule ? formatDateTime(order.pickup_schedule, locale) : "-" })}
                     </p>
                   </div>
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-100 px-3 py-1 text-xs font-semibold text-yellow-700 shrink-0">
-                    Menunggu Pembayaran
+                    {t("payment.waitingPayment")}
                   </span>
                 </div>
 
                 <div className="border-t border-dashed border-outline-variant my-3" />
 
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-on-surface">Total Tagihan</span>
+                  <span className="text-sm font-semibold text-on-surface">{t("payment.totalBill")}</span>
                   <span className="text-xl font-extrabold text-primary">
                     {order.total_price !== null && order.total_price !== undefined
                       ? formatRupiah(Number(order.total_price))
@@ -146,7 +148,7 @@ export default function CustomerPaymentLandingPage() {
 
                 <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-white">
                   <CreditCard className="w-4 h-4" />
-                  Bayar Sekarang
+                  {t("payment.payNow")}
                   <ArrowRight className="w-4 h-4" />
                 </div>
               </Link>

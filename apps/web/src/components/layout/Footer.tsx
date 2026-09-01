@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { Shirt } from "lucide-react";
+import { useTranslation } from "@/i18n/useTranslation";
 
 const FacebookIcon = () => (
   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -21,7 +24,10 @@ const TwitterIcon = () => (
   </svg>
 );
 
-export const Footer = () => (
+export const Footer = () => {
+  const { t } = useTranslation();
+
+  return (
   <footer className="bg-gray-50 border-t border-gray-200 py-14 px-4 md:px-8">
     <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
       {/* Brand */}
@@ -31,8 +37,7 @@ export const Footer = () => (
           <span className="text-lg font-bold text-primary">FreshPress</span>
         </Link>
         <p className="text-sm text-gray-500 leading-relaxed">
-          Layanan laundry premium terbaik di kota Anda. Bersih, cepat, dan
-          terpercaya.
+          {t("home.footer.tagline")}
         </p>
         <div className="flex gap-3 pt-1">
           {[
@@ -54,13 +59,13 @@ export const Footer = () => (
 
       {/* Jelajahi */}
       <div>
-        <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-widest">Jelajahi</h4>
+        <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-widest">{t("home.footer.exploreHeading")}</h4>
         <ul className="space-y-2.5">
           {[
-            { label: "Cara Kerja", href: "/#how-it-works" },
-            { label: "Harga & Layanan", href: "/#services" },
-            { label: "Ulasan Pelanggan", href: "/#testimonials" },
-            { label: "FAQ", href: "/#faq" },
+            { label: t("home.footer.howItWorks"), href: "/#how-it-works" },
+            { label: t("home.footer.pricingServices"), href: "/#services" },
+            { label: t("home.footer.customerReviews"), href: "/#testimonials" },
+            { label: t("home.footer.faq"), href: "/#faq" },
           ].map(({ label, href }) => (
             <li key={label}>
               <Link href={href} className="text-sm text-gray-500 hover:text-primary transition-colors">
@@ -73,9 +78,9 @@ export const Footer = () => (
 
       {/* Layanan */}
       <div>
-        <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-widest">Layanan</h4>
+        <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-widest">{t("home.footer.servicesHeading")}</h4>
         <ul className="space-y-2.5">
-          {["Laundry Kiloan", "Laundry Satuan"].map((item) => (
+          {[t("home.footer.serviceKiloan"), t("home.footer.serviceSatuan")].map((item) => (
             <li key={item}>
               <a href="#" className="text-sm text-gray-500 hover:text-primary transition-colors">
                 {item}
@@ -87,9 +92,9 @@ export const Footer = () => (
 
       {/* Perusahaan */}
       <div>
-        <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-widest">Perusahaan</h4>
+        <h4 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-widest">{t("home.footer.companyHeading")}</h4>
         <ul className="space-y-2.5">
-          {["Tentang Kami", "Karir", "Blog", "Kontak"].map((item) => (
+          {[t("home.footer.aboutUs"), t("home.footer.careers"), t("home.footer.blog"), t("home.footer.contact")].map((item) => (
             <li key={item}>
               <a href="#" className="text-sm text-gray-500 hover:text-primary transition-colors">
                 {item}
@@ -101,13 +106,14 @@ export const Footer = () => (
     </div>
 
     <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-gray-200 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-gray-400">
-      <p>© 2024 FreshPress Laundry. Seluruh hak cipta dilindungi.</p>
+      <p>{t("home.footer.copyright")}</p>
       <div className="flex gap-4">
-        <a href="#" className="hover:text-primary transition-colors">Privasi</a>
-        <a href="#" className="hover:text-primary transition-colors">Ketentuan</a>
-        <a href="#" className="hover:text-primary transition-colors">Cookie</a>
+        <a href="#" className="hover:text-primary transition-colors">{t("home.footer.privacy")}</a>
+        <a href="#" className="hover:text-primary transition-colors">{t("home.footer.terms")}</a>
+        <a href="#" className="hover:text-primary transition-colors">{t("home.footer.cookies")}</a>
       </div>
     </div>
   </footer>
-);
+  );
+};
 

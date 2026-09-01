@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { laundryItemService, type LaundryItem } from "@/services/laundryItem.service";
 import { useAuthStore } from "@/stores/authStore";
+import { useTranslation } from "@/i18n/useTranslation";
 
 function formatRp(amount: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -44,6 +45,7 @@ interface UnitCardProps {
 }
 
 function UnitCard({ title, subtitle, unit, icon: Icon, items, qtys, onSetQty }: UnitCardProps) {
+  const { t } = useTranslation();
   const step = unit === "kg" ? 0.5 : 1;
   const max = unit === "kg" ? 50 : 30;
 
@@ -75,7 +77,7 @@ function UnitCard({ title, subtitle, unit, icon: Icon, items, qtys, onSetQty }: 
           <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
         </div>
         <span className="ml-auto shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold bg-surface-container-high text-on-surface-variant">
-          per {unit}
+          {t("home.calculator.perUnit", { unit })}
         </span>
       </div>
 
@@ -135,7 +137,7 @@ function UnitCard({ title, subtitle, unit, icon: Icon, items, qtys, onSetQty }: 
             className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-white hover:bg-primary/90 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
-            Tambah
+            {t("home.calculator.addButton")}
           </button>
         </div>
       </div>
@@ -173,6 +175,7 @@ function UnitCard({ title, subtitle, unit, icon: Icon, items, qtys, onSetQty }: 
 // ── Main component ───────────────────────────────────────────────────────────
 
 export const PriceCalculator = ({ id }: { id?: string }) => {
+  const { t } = useTranslation();
   const [qtys, setQtys] = useState<Record<string, number>>({});
 
   // ✅ listForCustomer: hits /v1/customer/laundry-items, returns LaundryItem[] directly
@@ -211,13 +214,13 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
         {/* Header */}
         <div className="mb-12">
           <span className="text-primary font-bold uppercase tracking-widest text-xs">
-            Kalkulator Harga
+            {t("home.calculator.eyebrow")}
           </span>
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mt-2">
-            Hitung estimasi biaya laundry kamu.
+            {t("home.calculator.title")}
           </h2>
           <p className="text-gray-500 mt-3">
-            Pilih layanan dan masukkan jumlah — estimasi langsung tampil di sini.
+            {t("home.calculator.description")}
           </p>
         </div>
 
@@ -227,13 +230,13 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
             {isLoading && (
               <div className="flex items-center gap-3 text-gray-500 py-12 justify-center">
                 <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                <span className="text-sm">Memuat daftar layanan...</span>
+                <span className="text-sm">{t("home.calculator.loading")}</span>
               </div>
             )}
 
             {isError && (
               <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
-                Gagal memuat daftar layanan. Coba refresh halaman.
+                {t("home.calculator.loadError")}
               </div>
             )}
 
@@ -241,8 +244,8 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
               <>
                 {kgItems.length > 0 && (
                   <UnitCard
-                    title="Layanan Berbasis Berat"
-                    subtitle="Masukkan estimasi berat pakaian kering."
+                    title={t("home.calculator.weightCardTitle")}
+                    subtitle={t("home.calculator.weightCardSubtitle")}
                     unit="kg"
                     icon={Shirt}
                     items={kgItems}
@@ -252,8 +255,8 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
                 )}
                 {pcsItems.length > 0 && (
                   <UnitCard
-                    title="Layanan Per Item"
-                    subtitle="Hitung jumlah item untuk perawatan khusus."
+                    title={t("home.calculator.itemCardTitle")}
+                    subtitle={t("home.calculator.itemCardSubtitle")}
                     unit="pcs"
                     icon={Package}
                     items={pcsItems}
@@ -271,7 +274,7 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
               <div className="bg-primary px-5 py-4">
                 <h2 className="text-white font-bold flex items-center gap-2 text-sm">
                   <Calculator className="w-4 h-4" />
-                  Ringkasan Estimasi
+                  {t("home.calculator.summaryTitle")}
                 </h2>
               </div>
 
@@ -282,7 +285,7 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
                       <Package className="w-6 h-6 text-outline" />
                     </div>
                     <p className="text-sm text-gray-500">
-                      Pilih layanan di sebelah kiri untuk mulai menghitung.
+                      {t("home.calculator.emptyState")}
                     </p>
                   </div>
                 ) : (
@@ -306,16 +309,16 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
                     <div className="border-t border-gray-100 pt-4 mb-4">
                       <div className="flex items-center gap-2 text-xs text-primary bg-primary/5 rounded-lg px-3 py-2 mb-3">
                         <Truck className="w-3.5 h-3.5 shrink-0" />
-                        Jemput &amp; antar gratis dalam jarak kurang dari 5 km.
+                        {t("home.calculator.freeDeliveryNote")}
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-500">Total Estimasi</span>
+                        <span className="text-sm text-gray-500">{t("home.calculator.totalEstimate")}</span>
                         <span className="text-2xl font-extrabold text-primary">
                           {formatRp(total)}
                         </span>
                       </div>
                       <p className="text-xs text-gray-400 mt-1">
-                        *Harga dapat berbeda tergantung kondisi aktual pakaian.
+                        {t("home.calculator.priceDisclaimer")}
                       </p>
                     </div>
                   </>
@@ -326,7 +329,7 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
                     href={ctaHref}
                     className="flex items-center justify-center gap-2 w-full bg-primary text-white py-3 rounded-xl font-bold text-sm hover:bg-primary-container transition-colors shadow-sm"
                   >
-                    Pesan Sekarang
+                    {t("home.calculator.orderNow")}
                     <ChevronRight className="w-4 h-4" />
                   </Link>
                   {hasItems && (
@@ -335,7 +338,7 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
                       className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
-                      Reset
+                      {t("home.calculator.reset")}
                     </button>
                   )}
                 </div>
@@ -343,10 +346,10 @@ export const PriceCalculator = ({ id }: { id?: string }) => {
             </div>
 
             <div className="mt-4 rounded-xl bg-surface-container-low border border-surface-container-high px-4 py-4 text-xs text-gray-500 space-y-1.5">
-              <p className="font-semibold text-gray-700 text-sm mb-2">Cara menghitung</p>
-              <p>• <span className="font-medium">Kg-based</span> — timbang pakaian kering sebelum dicuci.</p>
-              <p>• <span className="font-medium">Per pcs</span> — hitung item individual.</p>
-              <p>• Minimal order <span className="font-medium">1 kg</span> per layanan berbasis berat.</p>
+              <p className="font-semibold text-gray-700 text-sm mb-2">{t("home.calculator.howToCalculate")}</p>
+              <p>• {t("home.calculator.howToCalculateKg")}</p>
+              <p>• {t("home.calculator.howToCalculatePcs")}</p>
+              <p>• {t("home.calculator.howToCalculateMin")}</p>
             </div>
           </div>
         </div>
