@@ -10,7 +10,7 @@ import type { User as UserType } from "@/types/user.types";
 import { LoginBrandingPanel } from "@/components/customer/LoginBrandingPanel";
 import { useTranslation } from "@/i18n/useTranslation";
 import { DemoAccountPicker } from "@/components/ui/DemoAccountPicker";
-import { CUSTOMER_ACCOUNT_GROUPS } from "@/lib/demoAccounts";
+import { getCustomerAccountGroups } from "@/lib/demoAccounts";
 
 interface LoginErrors {
   email?: string;
@@ -111,7 +111,7 @@ function CustomerLoginContent() {
             </div>
 
             <DemoAccountPicker
-              groups={CUSTOMER_ACCOUNT_GROUPS}
+              groups={getCustomerAccountGroups(t)}
               onPick={(demoEmail, demoPassword) => {
                 setEmail(demoEmail);
                 setPassword(demoPassword);

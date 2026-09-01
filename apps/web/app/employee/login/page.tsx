@@ -17,7 +17,8 @@ import { AuthFormField } from "@/components/employee/AuthFormField";
 import { AuthInput } from "@/components/employee/AuthInput";
 import { AuthSubmitButton } from "@/components/employee/AuthSubmitButton";
 import { DemoAccountPicker } from "@/components/ui/DemoAccountPicker";
-import { EMPLOYEE_ACCOUNT_GROUPS } from "@/lib/demoAccounts";
+import { getEmployeeAccountGroups } from "@/lib/demoAccounts";
+import { useTranslation } from "@/i18n/useTranslation";
 
 const loginSchema = z.object({
   email: z.string().email("Format email tidak valid"),
@@ -27,6 +28,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function EmployeeLoginPage() {
+  const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoggingIn, loginError } = useEmployeeAuth();
   const { user, _hasHydrated } = useEmployeeAuthStore();
@@ -55,7 +57,7 @@ export default function EmployeeLoginPage() {
         <p className="text-sm text-gray-500 mb-4">Masuk untuk melanjutkan ke dashboard.</p>
 
         <DemoAccountPicker
-          groups={EMPLOYEE_ACCOUNT_GROUPS}
+          groups={getEmployeeAccountGroups(t)}
           onPick={(email, password) => {
             setValue("email", email, { shouldValidate: true });
             setValue("password", password, { shouldValidate: true });

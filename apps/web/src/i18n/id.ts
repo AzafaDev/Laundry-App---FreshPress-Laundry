@@ -701,4 +701,79 @@ export const id = {
     loginOtherAccount: "Login dengan akun lain",
     login: "Login",
   },
+  demoAccounts: {
+    shift: {
+      morning: "Pagi",
+      afternoon: "Siang",
+    },
+    customer: {
+      label: "Customer",
+      desc: "Punya 6 alamat tersimpan untuk menguji ongkir & radius layanan.",
+    },
+    superAdmin: {
+      label: "Super Admin",
+      desc: "Akses seluruh outlet, pegawai, dan laporan global.",
+    },
+    outletAdmin: {
+      label: "Outlet Admin — {{outlet}}",
+      desc: "Terbatas pada satu outlet saja.",
+    },
+    workerRoles: {
+      driver: {
+        label: "Driver",
+        desc: "Jemput & antar order, lihat rute pelanggan.",
+      },
+      washing_worker: {
+        label: "Washing Worker",
+        desc: "Proses cuci, input berat & item.",
+      },
+      ironing_worker: {
+        label: "Ironing Worker",
+        desc: "Tahap setrika setelah cuci selesai.",
+      },
+      packing_worker: {
+        label: "Packing Worker",
+        desc: "Packing akhir sebelum diantar.",
+      },
+    },
+    groups: {
+      adminTitle: "Admin",
+      customerTitle: "Customer",
+      noShiftHint: "Tidak terikat shift — bisa dipakai kapan saja.",
+      outletLabel: "Outlet {{number}} — {{name}}",
+      shiftDesc: "Shift {{shift}} {{range}}",
+    },
+    picker: {
+      autofill: "Isi otomatis dengan akun demo",
+      canCheckInNow: "Bisa absen sekarang",
+      outsideShiftHours: "Di luar jam shift",
+      outsideHoursWarning: "Sekarang pukul {{time}} WIB — di luar jam operasional ({{morning}} dan {{afternoon}}). Login tetap bisa, tapi check-in absensi akan ditolak. Itu memang aturannya, bukan error.",
+      filledAs: "Terisi sebagai {{email}} — tinggal tekan masuk.",
+    },
+    section: {
+      eyebrow: "Akun Demo",
+      title: "Coba setiap peran tanpa perlu daftar.",
+      description: "Aplikasi ini punya tujuh peran dengan hak akses dan tampilan yang berbeda-beda. Pilih salah satu di bawah — daftar akunnya sudah menunggu di halaman login, tinggal tekan “Isi otomatis dengan akun demo”.",
+      passwordLabel: "Password seluruh akun:",
+      loginAs: "Masuk sebagai {{role}} →",
+      oneAccountNoShift: "1 akun · tanpa shift",
+      outletAdminMeta: "{{count}} akun · tanpa shift",
+      workerMeta: "{{count}} akun · shift Pagi & Siang",
+      roles: {
+        customer: {
+          title: "Customer",
+          desc: "Buat order, pilih alamat, bayar, lalu lacak statusnya sampai diantar kembali.",
+        },
+        superAdmin: {
+          title: "Super Admin",
+          desc: "Akses seluruh outlet: pegawai, item laundry, laporan penjualan, dan bypass request.",
+        },
+        outletAdmin: {
+          title: "Outlet Admin",
+          desc: "Kelola satu outlet saja — pegawai, jadwal shift, dan order yang masuk ke outlet itu.",
+        },
+      },
+      shiftNote: "Soal absensi driver & worker: setiap peran punya akun shift Pagi ({{morning}}) dan Siang ({{afternoon}}). Check-in hanya bisa dilakukan di dalam jam shift akun tersebut — di luar itu sistem menolak, dan itu memang aturannya. Halaman login menandai akun mana yang sedang bisa absen saat ini.",
+    },
+  },
 };

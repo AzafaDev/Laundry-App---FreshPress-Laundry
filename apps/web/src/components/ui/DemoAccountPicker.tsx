@@ -12,6 +12,7 @@ import {
   type DemoAccount,
   type DemoAccountGroup,
 } from "@/lib/demoAccounts";
+import { useTranslation } from "@/i18n/useTranslation";
 
 type Props = {
   groups: DemoAccountGroup[];
@@ -38,6 +39,7 @@ const useWibMinutes = () => {
 };
 
 export const DemoAccountPicker = ({ groups, onPick, tone = "light", className = "" }: Props) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<DemoAccount | null>(null);
   const wibMinutes = useWibMinutes();
@@ -65,7 +67,7 @@ export const DemoAccountPicker = ({ groups, onPick, tone = "light", className = 
               : "bg-gray-200 text-gray-500"
         }`}
       >
-        {openNow ? "Bisa absen sekarang" : "Di luar jam shift"}
+        {openNow ? t("demoAccounts.picker.canCheckInNow") : t("demoAccounts.picker.outsideShiftHours")}
       </span>
     );
   };
@@ -85,7 +87,7 @@ export const DemoAccountPicker = ({ groups, onPick, tone = "light", className = 
         }`}
       >
         <Sparkles className={`h-4 w-4 flex-shrink-0 ${isDark ? "text-white/70" : "text-primary"}`} />
-        <span className="flex-1">Isi otomatis dengan akun demo</span>
+        <span className="flex-1">{t("demoAccounts.picker.autofill")}</span>
         <ChevronDown
           className={`h-4 w-4 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
         />
@@ -101,9 +103,11 @@ export const DemoAccountPicker = ({ groups, onPick, tone = "light", className = 
         >
           <Clock className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
           <span>
-            Sekarang pukul {formatWibClock(wibMinutes)} WIB — di luar jam operasional
-            ({SHIFT_WINDOWS.morning.range} dan {SHIFT_WINDOWS.afternoon.range}). Login tetap bisa,
-            tapi <strong>check-in absensi akan ditolak</strong>. Itu memang aturannya, bukan error.
+            {t("demoAccounts.picker.outsideHoursWarning", {
+              time: formatWibClock(wibMinutes),
+              morning: SHIFT_WINDOWS.morning.range,
+              afternoon: SHIFT_WINDOWS.afternoon.range,
+            })}
           </span>
         </div>
       )}
@@ -166,7 +170,7 @@ export const DemoAccountPicker = ({ groups, onPick, tone = "light", className = 
           className={`px-4 pb-3 text-xs ${isDark ? "text-white/60" : "text-gray-500"}`}
           role="status"
         >
-          Terisi sebagai <span className="font-semibold">{picked.email}</span> — tinggal tekan masuk.
+          {t("demoAccounts.picker.filledAs", { email: picked.email })}
         </p>
       )}
     </div>
