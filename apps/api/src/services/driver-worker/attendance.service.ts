@@ -2,6 +2,7 @@ import { prisma } from "../../lib/prisma.js";
 import { emitToRoom, emitToRole } from "../../lib/socket.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { getNow, getTodayLocalStart } from "../../utils/time.util.js";
+import { isWithinRadius } from "../../utils/distance.util.js";
 import { formatLocalTime } from "../../utils/format.util.js";
 import {
   canCheckIn,
@@ -54,8 +55,12 @@ export const attendanceService = {
     if (!canCheckIn(now, shift.startTime, shift.endTime, 15)) {
       throw new AppError("Check-in hanya dapat dilakukan maksimal 15 menit sebelum shift dimulai", 403);
     }
+    if (!body?.lat || !body?.lng) throw new AppError("Lokasi tidak tersedia. Aktifkan GPS untuk check-in.", 400);
+    const withinRadius = await isWithinRadius(employee.outlet_id, body.lat, body.lng);
+    if (!withinRadius) throw new AppError("Anda harus berada di sekitar outlet untuk check-in.", 403);
 
     const outletId = employee.outlet_id;
+
     const checkInData: CheckInData = {
       check_in_time: now,
       outlet_id: outletId,
@@ -103,7 +108,6 @@ export const attendanceService = {
     if (!attendance) throw new AppError("Record absensi tidak ditemukan", 404);
     if (attendance.employee_id !== employeeId) throw new AppError("Anda tidak memiliki akses ke absensi ini", 403);
     if (attendance.check_out_time) throw new AppError("Anda sudah check-out hari ini", 403);
-
     const shift = await getEmployeeShiftForDate(employeeId, attendance.date);
     if (!shift) throw new AppError("Data shift tidak ditemukan untuk absensi ini", 400);
 
@@ -117,11 +121,11 @@ export const attendanceService = {
       if (hasActive) throw new AppError("Selesaikan task aktif sebelum check-out", 403);
     }
 
-    const updated = await prisma.attendance.update({
-      where: { id: attendanceId },
-      data: { check_out_time: now },
+    const updated = await prisma.$transaction(async (tx) => {
+      const current = await tx.attendance.findUnique({ where: { id: attendanceId }, select: { check_out_time: true } });
+      if (current?.check_out_time) throw new AppError("Anda sudah check-out hari ini", 403);
+      return tx.attendance.update({ where: { id: attendanceId }, data: { check_out_time: now } });
     });
-
     if (employee?.outlet_id) {
       emitToRoom(`outlet:${employee.outlet_id}`, "attendance:checkout", {
         employeeId,
@@ -136,21 +140,29 @@ export const attendanceService = {
     return updated;
   },
 
-  async getMyAttendanceLogs(employeeId: string, page: number, limit: number, startDate?: Date, endDate?: Date) {
+  async getMyAttendanceLogs(employeeId: string, page: number, limit: number, startDate?: Date, endDate?: Date, status?: "on_time" | "late" | "absent") {
     const where = {
       employee_id: employeeId,
-      ...(startDate || endDate ? { date: { ...(startDate && { gte: startDate }), ...(endDate && { lte: endDate }) } } : {}),
+      ...(status ? { status } : {}),
+      ...(startDate || endDate ? { date: {
+        ...(startDate && { gte: startDate }),
+        ...(endDate && { lte: endDate }) } } : {}),
     };
 
     const skip = (page - 1) * limit;
-    const [logs, total] = await Promise.all([
+
+    const [logs, total, on_time, late, absent] = await Promise.all([
       prisma.attendance.findMany({ where, orderBy: { date: "desc" }, skip, take: limit }),
       prisma.attendance.count({ where }),
+      prisma.attendance.count({ where: { ...where, status: "on_time" } }),
+      prisma.attendance.count({ where: { ...where, status: "late" } }),
+      prisma.attendance.count({ where: { ...where, status: "absent" } }),
     ]);
 
     return {
       data: logs.map(formatAttendanceRecord),
       pagination: { page, limit, total, total_pages: Math.ceil(total / limit) },
+      summary: { on_time, late, absent },
     };
   },
 
@@ -189,13 +201,7 @@ export const attendanceService = {
     return {
       data: logs.map((log) => {
         const formatted = formatAttendanceRecord(log);
-        return {
-          ...formatted,
-          user: log.employee,
-          user_id: log.employee_id,
-          attendance_date: formatted.date,
-          outlet: log.outlet,
-        };
+        return { ...formatted, user: log.employee, employee_id: log.employee_id, attendance_date: formatted.date };
       }),
       pagination: { page, limit, total, total_pages: Math.ceil(total / limit) },
     };
@@ -225,6 +231,7 @@ export const attendanceService = {
       }),
     ]);
     if (!shiftInfo) return null;
+
     return buildShiftPayload(
       shiftInfo,
       now,

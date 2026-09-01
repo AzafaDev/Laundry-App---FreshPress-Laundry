@@ -40,7 +40,6 @@ export function TaskDetailModal({
   useEffect(() => {
     if (!isOpen) setShowConfirm(false);
   }, [isOpen]);
-
   const displayTask = task ?? activeTask;
   const isActiveMode = !task && !!activeTask;
 
@@ -69,7 +68,6 @@ export function TaskDetailModal({
       onClose();
     }
   };
-
   return (
     <AnimatePresence>
       {isOpen && (

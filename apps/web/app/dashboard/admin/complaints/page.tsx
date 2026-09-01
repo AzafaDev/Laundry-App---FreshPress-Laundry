@@ -27,11 +27,13 @@ interface ComplaintStats {
 
 interface ListResponse {
   data: {
-    complaints: Complaint[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
+    items: Complaint[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
   };
 }
 
@@ -109,8 +111,8 @@ export default function ComplaintsPage() {
     staleTime: 20_000,
   });
 
-  const complaints = data?.data?.complaints ?? [];
-  const totalPages = data?.data?.totalPages ?? 1;
+  const complaints = data?.data?.items ?? [];
+  const totalPages = data?.data?.pagination?.totalPages ?? 1;
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -318,7 +320,7 @@ export default function ComplaintsPage() {
         {totalPages > 1 && (
           <div className="px-4 py-3 border-t border-outline-variant flex items-center justify-between">
             <p className="text-xs text-on-surface-variant">
-              Halaman {page} dari {totalPages} ({data?.data?.total ?? 0} total)
+              Halaman {page} dari {totalPages} ({data?.data?.pagination?.total ?? 0} total)
             </p>
             <div className="flex gap-2">
               <button

@@ -13,8 +13,8 @@ const dateEnd = z.preprocess(
 );
 
 export const checkInSchema = z.object({
-  lat: z.coerce.number().min(-90).max(90).optional(),
-  lng: z.coerce.number().min(-180).max(180).optional(),
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
 });
 
 export const checkOutSchema = z.object({
@@ -26,6 +26,7 @@ export const getMyLogsQuerySchema = z.object({
   endDate: dateEnd,
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
+  status: z.enum(["on_time", "late", "absent"]).optional(),
 });
 
 export const attendanceReportQuerySchema = z.object({
@@ -36,5 +37,5 @@ export const attendanceReportQuerySchema = z.object({
   startDate: dateStart,
   endDate: dateEnd,
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(20),
+  limit: z.coerce.number().int().positive().max(100).default(20), 
 });

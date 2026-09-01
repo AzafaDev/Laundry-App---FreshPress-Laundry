@@ -3,8 +3,6 @@ import { prisma } from "../../lib/prisma.js";
 import { signEmailToken, verifyEmailToken } from "../../utils/jwt.util.js";
 import { sendEmailChangeVerification } from "../../lib/email.js";
 import { AppError } from "../../middlewares/error.middleware.js";
-
-// Re-export so controllers' namespace import still works
 export { changePassword } from "./profile.password.service.js";
 
 const PROFILE_SELECT = { id: true, full_name: true, email: true, phone: true, avatar_url: true, is_verified: true } as const;

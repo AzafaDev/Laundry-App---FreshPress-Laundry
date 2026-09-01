@@ -10,10 +10,14 @@ import type {
 // ── WorkShift CRUD ────────────────────────────────────────────────────────────
 
 export const listWorkShifts = async (query: ListWorkShiftQuery) => {
-  const { page, limit, is_active } = query;
+  const { page, limit, is_active, include_deleted } = query;
   const skip = (page - 1) * limit;
 
-  const where = is_active !== undefined ? { is_active } : {};
+  const where = {
+    // Exclude soft-deleted unless explicitly requested
+    ...(include_deleted ? {} : { deleted_at: null }),
+    ...(is_active !== undefined && { is_active }),
+  };
 
   const [items, total] = await Promise.all([
     prisma.workShift.findMany({
@@ -37,7 +41,7 @@ export const listWorkShifts = async (query: ListWorkShiftQuery) => {
 };
 
 export const getWorkShiftById = async (id: string) => {
-  const shift = await prisma.workShift.findUnique({ where: { id } });
+  const shift = await prisma.workShift.findFirst({ where: { id, deleted_at: null } });
   if (!shift) throw new AppError("Shift tidak ditemukan.", 404);
   return shift;
 };
@@ -89,14 +93,41 @@ export const updateWorkShift = async (
   });
 };
 
+/** Soft-delete: set deleted_at + deactivate. Blocks if shift has active employee assignments. */
 export const deleteWorkShift = async (id: string) => {
-  const existing = await prisma.workShift.findUnique({ where: { id } });
+  const existing = await prisma.workShift.findFirst({ where: { id, deleted_at: null } });
   if (!existing) throw new AppError("Shift tidak ditemukan.", 404);
+
+  const activeAssignments = await prisma.employeeShift.count({
+    where: { shift_id: id, is_active: true },
+  });
+  if (activeAssignments > 0) {
+    throw new AppError(
+      `Shift masih digunakan oleh ${activeAssignments} karyawan. Hapus penugasan terlebih dahulu.`,
+      409,
+    );
+  }
 
   return prisma.workShift.update({
     where: { id },
-    data: { is_active: false },
+    data: { deleted_at: new Date(), is_active: false },
   });
+};
+
+/** Hard-delete: permanent removal. Requires shift to be soft-deleted first. */
+export const hardDeleteWorkShift = async (id: string) => {
+  const existing = await prisma.workShift.findUnique({ where: { id } });
+  if (!existing) throw new AppError("Shift tidak ditemukan.", 404);
+  if (!existing.deleted_at) {
+    throw new AppError("Shift harus dihapus (soft-delete) terlebih dahulu sebelum dihapus permanen.", 400);
+  }
+
+  await prisma.$transaction([
+    prisma.employeeShift.deleteMany({ where: { shift_id: id } }),
+    prisma.workShift.delete({ where: { id } }),
+  ]);
+
+  return { id };
 };
 
 // ── EmployeeShift (assign shifts to employees) ────────────────────────────────

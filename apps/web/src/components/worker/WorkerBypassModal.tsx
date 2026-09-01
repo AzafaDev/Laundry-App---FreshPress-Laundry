@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { X, Flag, Upload, Trash2, Loader2, AlertTriangle, ImagePlus, Shirt, Tag } from "lucide-react";
 import { z } from "zod";
-import { useWorkerStation } from "@/hooks/useWorkerStation";
+import { useWorkerStation } from "@/hooks/worker/useWorkerStation";
 import { useMultiFileValidation } from "@/hooks/useMultiFileValidation";
 import toast from "react-hot-toast";
 import type { Discrepancy } from "@/services/workerStation.service";
@@ -47,7 +47,6 @@ export function WorkerBypassModal({
     maxSizeBytes: 5 * 1024 * 1024, // 5 MB — harus tetap sinkron manual dengan apps/api/src/config/constants.ts
     allowedTypes: ["image/jpeg", "image/png", "image/webp"],
   });
-
   useEffect(() => {
     if (!open) {
       setDescription("");
@@ -224,7 +223,6 @@ export function WorkerBypassModal({
                 if (fileInputRef.current) fileInputRef.current.value = "";
               }}
             />
-
 
             {/* Preview grid */}
             {photos.length > 0 && (

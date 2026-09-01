@@ -3,9 +3,9 @@ import crypto from "crypto";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
 import { verifyRefreshToken } from "../../utils/jwt.util.js";
-import { revokeRefreshToken, hashToken, issueAuthTokens, buildAuthCookieOptions } from "../../utils/token.util.js";
+import { revokeRefreshToken, hashToken, issueAuthTokens, buildAuthCookieOptions, generateTokenPair } from "../../utils/token.util.js";
 import { sendEmployeeResetPasswordEmail } from "../../lib/email.js";
-import { Response } from "express";
+import { Request, Response } from "express";
 
 export const loginEmployee = async (
   email: string,
@@ -48,7 +48,7 @@ export const loginEmployee = async (
   };
 };
 
-export const refreshEmployeeToken = async (req: any, res: Response) => {
+export const refreshEmployeeToken = async (req: Request, res: Response) => {
   const refreshToken = req.cookies?.refreshToken;
   if (!refreshToken) {
     throw new AppError("Refresh token tidak ditemukan", 401);
@@ -75,20 +75,39 @@ export const refreshEmployeeToken = async (req: any, res: Response) => {
     throw new AppError("Refresh token tidak valid", 401);
   }
 
-  await revokeRefreshToken(refreshToken);
+  const { tokens } = await prisma.$transaction(async (tx) => {
+    await tx.refreshToken.updateMany({
+      where: { token: hashToken(refreshToken), revoked_at: null },
+      data: { revoked_at: new Date() },
+    });
 
-  await issueAuthTokens(res, {
-    userId: payload.userId,
-    role: payload.role,
-    email: payload.email,
-    outletId: payload.outletId,
-    tokenVersion: payload.tokenVersion,
+    const tokens = generateTokenPair({
+      userId: payload.userId,
+      role: payload.role,
+      email: payload.email,
+      outletId: payload.outletId,
+      tokenVersion: payload.tokenVersion,
+    });
+
+    await tx.refreshToken.create({
+      data: {
+        user_id: payload.userId,
+        user_type: "employee",
+        token: hashToken(tokens.refreshToken),
+        expires_at: new Date(Date.now() + tokens.expiresMs),
+      },
+    });
+
+    return { tokens };
   });
+
+  res.cookie("accessToken", tokens.accessToken, buildAuthCookieOptions(tokens.accessExpiresMs));
+  res.cookie("refreshToken", tokens.refreshToken, buildAuthCookieOptions(tokens.expiresMs));
 
   return {};
 };
 
-export const logoutEmployee = async (req: any, res: Response) => {
+export const logoutEmployee = async (req: Request, res: Response) => {
   const refreshToken = req.cookies?.refreshToken;
   if (refreshToken) {
     await revokeRefreshToken(refreshToken);
@@ -133,39 +152,53 @@ export const resetPassword = async (rawToken: string, newPassword: string, res: 
   if (!record) throw new AppError("Token tidak valid atau sudah kadaluarsa.", 400);
   if (record.employee.deleted_at) throw new AppError("Akun tidak ditemukan.", 404);
 
-  // Akun yang inactive = akun baru (invite flow). Aktifkan otomatis saat set password pertama kali.
   const isFirstActivation = !record.employee.is_active;
 
   const password_hash = await bcrypt.hash(newPassword, 10);
-  const [updatedEmployee] = await prisma.$transaction([
-    prisma.employee.update({
+  const employee = record.employee;
+
+  const { tokens } = await prisma.$transaction(async (tx) => {
+    const updatedEmployee = await tx.employee.update({
       where: { id: record.employee_id },
       data: {
         password_hash,
         token_version: { increment: 1 },
         ...(isFirstActivation && { is_active: true }),
       },
-    }),
-    prisma.passwordResetToken.update({
+    });
+
+    await tx.passwordResetToken.update({
       where: { id: record.id },
       data: { used_at: new Date() },
-    }),
-  ]);
+    });
 
-  const employee = record.employee;
+    await tx.refreshToken.updateMany({
+      where: { user_id: employee.id, user_type: "employee", revoked_at: null },
+      data: { revoked_at: new Date() },
+    });
 
-  await prisma.refreshToken.updateMany({
-    where: { user_id: employee.id, user_type: "employee", revoked_at: null },
-    data: { revoked_at: new Date() },
+    const tokens = generateTokenPair({
+      userId: employee.id,
+      role: employee.role,
+      email: employee.email,
+      outletId: employee.outlet_id,
+      tokenVersion: updatedEmployee.token_version,
+    });
+
+    await tx.refreshToken.create({
+      data: {
+        user_id: employee.id,
+        user_type: "employee",
+        token: hashToken(tokens.refreshToken),
+        expires_at: new Date(Date.now() + tokens.expiresMs),
+      },
+    });
+
+    return { tokens };
   });
 
-  await issueAuthTokens(res, {
-    userId: employee.id,
-    role: employee.role,
-    email: employee.email,
-    outletId: employee.outlet_id,
-    tokenVersion: updatedEmployee.token_version,
-  });
+  res.cookie("accessToken", tokens.accessToken, buildAuthCookieOptions(tokens.accessExpiresMs));
+  res.cookie("refreshToken", tokens.refreshToken, buildAuthCookieOptions(tokens.expiresMs));
 
   const outlet = employee.outlet_id
     ? await prisma.outlet.findUnique({ where: { id: employee.outlet_id }, select: { name: true } })
@@ -175,7 +208,6 @@ export const resetPassword = async (rawToken: string, newPassword: string, res: 
   return {
     employee: {
       ...employeeWithoutPassword,
-      // Reflect activation state accurately in the response
       is_active: isFirstActivation ? true : employee.is_active,
       outlet_name: outlet?.name ?? null,
     },
@@ -195,24 +227,41 @@ export const changePassword = async (
   if (!isValid) throw new AppError("Password lama tidak sesuai.", 400);
 
   const password_hash = await bcrypt.hash(newPassword, 10);
-  const updated = await prisma.employee.update({
-    where: { id: employeeId },
-    data: { password_hash, token_version: { increment: 1 } },
-    select: { id: true, role: true, email: true, outlet_id: true, token_version: true },
+
+  const { tokens } = await prisma.$transaction(async (tx) => {
+    const updated = await tx.employee.update({
+      where: { id: employeeId },
+      data: { password_hash, token_version: { increment: 1 } },
+      select: { id: true, role: true, email: true, outlet_id: true, token_version: true },
+    });
+
+    await tx.refreshToken.updateMany({
+      where: { user_id: employeeId, user_type: "employee", revoked_at: null },
+      data: { revoked_at: new Date() },
+    });
+
+    const tokens = generateTokenPair({
+      userId: updated.id,
+      role: updated.role,
+      email: updated.email,
+      outletId: updated.outlet_id,
+      tokenVersion: updated.token_version,
+    });
+
+    await tx.refreshToken.create({
+      data: {
+        user_id: updated.id,
+        user_type: "employee",
+        token: hashToken(tokens.refreshToken),
+        expires_at: new Date(Date.now() + tokens.expiresMs),
+      },
+    });
+
+    return { tokens };
   });
 
-  await prisma.refreshToken.updateMany({
-    where: { user_id: employeeId, user_type: "employee", revoked_at: null },
-    data: { revoked_at: new Date() },
-  });
-
-  await issueAuthTokens(res, {
-    userId: updated.id,
-    role: updated.role,
-    email: updated.email,
-    outletId: updated.outlet_id,
-    tokenVersion: updated.token_version,
-  });
+  res.cookie("accessToken", tokens.accessToken, buildAuthCookieOptions(tokens.accessExpiresMs));
+  res.cookie("refreshToken", tokens.refreshToken, buildAuthCookieOptions(tokens.expiresMs));
 
   return { message: "Password berhasil diubah." };
 };

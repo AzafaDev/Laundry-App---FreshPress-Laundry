@@ -53,7 +53,6 @@ export const changePassword = async (
   }
 };
 
-// Multer config for avatar upload (memory storage)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_AVATAR_SIZE_BYTES },
@@ -76,7 +75,6 @@ export const uploadAvatar = async (
   try {
     if (!req.file) throw new AppError("File tidak ditemukan.", 400);
 
-    // Use Cloudinary if configured, otherwise save to local/placeholder
     let avatarUrl: string;
     const { env } = await import("../../config/env.js");
 

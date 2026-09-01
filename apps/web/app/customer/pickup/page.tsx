@@ -27,7 +27,7 @@ export default function CustomerOrderPage() {
 
   useEffect(() => {
     if (!_hasHydrated) return;
-    if (!user) router.replace("/customer/login?redirect=/customer/order");
+    if (!user) router.replace("/customer/login?redirect=/customer/pickup");
   }, [_hasHydrated, user, router]);
 
   const { data: addresses = [], isLoading: loadingAddresses, isError: hasAddressError, refetch: refetchAddresses } = useQuery<CustomerAddress[]>({
@@ -64,6 +64,8 @@ export default function CustomerOrderPage() {
     queryFn: () => addressService.estimateDeliveryFee(selectedAddressId!),
     enabled: _hasHydrated && !!user && !!selectedAddressId,
   });
+
+  console.log(deliveryEstimate)
 
   const canOrder = !!selectedAddress && !loadingAddresses && !createOrderMutation.isPending && !createOrderSuccess;
 

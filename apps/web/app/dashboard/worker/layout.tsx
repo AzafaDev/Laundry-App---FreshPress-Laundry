@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
-import { useWorkerSocket } from "@/hooks/useWorkerSocket";
+import { useWorkerSocket } from "@/hooks/worker/useWorkerSocket";
 import type { EmployeeRole } from "@/types/employee.types";
 
 const WORKER_ROLES: EmployeeRole[] = [

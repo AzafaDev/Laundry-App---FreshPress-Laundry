@@ -5,13 +5,10 @@ import type { BypassState } from "@/components/worker/stationConfig";
 
 interface UseWorkerStationSocketParams {
   station: "washing" | "ironing" | "packing" | null;
-  setIsConnected: (v: boolean) => void;
   setBypassState: React.Dispatch<React.SetStateAction<Record<string, BypassState>>>;
 }
-
 export function useWorkerStationSocket({
   station,
-  setIsConnected,
   setBypassState,
 }: UseWorkerStationSocketParams) {
   const { on } = useSocket();
@@ -19,17 +16,14 @@ export function useWorkerStationSocket({
 
   useEffect(() => {
     if (!station) return;
-
     const unsubNewOrder = on("station:new-order", (data: { station: string }) => {
       if (data.station === station) {
         queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
       }
     });
-
     const unsubBypassCreated = on("bypass:created", () => {
       queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     });
-
     const unsubApproved = on("bypass:approved", (data: { orderId: string }) => {
       setBypassState((prev) => {
         const next = { ...prev };
@@ -38,7 +32,6 @@ export function useWorkerStationSocket({
       });
       queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     });
-
     const unsubRejected = on("bypass:rejected", (data: { orderId: string; admin_notes?: string }) => {
       setBypassState((prev) => {
         if (!prev[data.orderId]) return prev;
@@ -49,17 +42,17 @@ export function useWorkerStationSocket({
       });
       queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
     });
-
-    const unsubConnect = on("connect", () => setIsConnected(true));
-    const unsubDisconnect = on("disconnect", () => setIsConnected(false));
+    const unsubConnect = on("connect", () => {
+      queryClient.invalidateQueries({ queryKey: ["worker", "station", station] });
+    });
 
     return () => {
+      /* cleanup semua listener */
       unsubNewOrder();
       unsubBypassCreated();
       unsubApproved();
       unsubRejected();
       unsubConnect();
-      unsubDisconnect();
     };
-  }, [on, queryClient, station, setIsConnected, setBypassState]);
+  }, [on, queryClient, station, setBypassState]);
 }

@@ -1,5 +1,3 @@
-// Admin API routes
-
 import { Router } from "express";
 import { authenticate } from "../../middlewares/auth.middleware.js";
 import { requireRole } from "../../middlewares/role.middleware.js";
@@ -42,10 +40,8 @@ import { processOrderSchema, reviewBypassSchema } from "../../validations/order.
 
 const router = Router();
 
-// All admin routes require a valid Bearer token.
 router.use(authenticate);
 
-// Reports
 router.get(
   "/reports/attendance",
   requireRole("super_admin", "outlet_admin"),
@@ -57,11 +53,9 @@ router.get(
   exportAttendanceReport,
 );
 
-// -- Users (super_admin only) --------------------------------------------------
 router.get("/admin/users", requireRole("super_admin", "outlet_admin"), UserCtrl.listUsers);
 router.get("/admin/users/:id", requireRole("super_admin", "outlet_admin"), UserCtrl.getUser);
 
-// -- Customers (super_admin only — read-only) ----------------------------------
 router.get("/admin/customers", requireRole("super_admin"), UserCtrl.listCustomers);
 router.post(
   "/admin/users",
@@ -91,7 +85,6 @@ router.post(
   UserCtrl.resendInvite,
 );
 
-// Employee shift assignments
 router.get(
   "/admin/employees/:id/shifts",
   requireRole("super_admin", "outlet_admin"),
@@ -109,7 +102,6 @@ router.delete(
   ShiftCtrl.removeEmployeeShift,
 );
 
-// -- Outlets (super_admin only) ------------------------------------------------
 router.get(
   "/admin/outlets",
   requireRole("super_admin"),
@@ -164,7 +156,6 @@ router.post(
   OutletCtrl.assignUserToOutlet,
 );
 
-// -- WorkShifts ----------------------------------------------------------------
 router.get(
   "/admin/shifts",
   requireRole("super_admin", "outlet_admin"),
@@ -192,9 +183,13 @@ router.delete(
   requireRole("super_admin"),
   ShiftCtrl.deleteWorkShift,
 );
+router.delete(
+  "/admin/shifts/:id/permanent",
+  requireRole("super_admin"),
+  ShiftCtrl.hardDeleteWorkShift,
+);
 
-// -- Laundry Items -------------------------------------------------------------
-// GET is accessible by both super_admin and outlet_admin (needed for create order)
+// GET laundry items accessible by outlet_admin (needed for create order)
 router.get(
   "/admin/laundry-items",
   requireRole("super_admin", "outlet_admin"),
@@ -228,7 +223,6 @@ router.delete(
   LaundryItemCtrl.hardDeleteLaundryItem,
 );
 
-// -- Orders -------------------------------------------------------------------
 router.get(
   "/admin/orders",
   requireRole("super_admin", "outlet_admin"),
@@ -246,7 +240,6 @@ router.post(
   OrderCtrl.processOrder,
 );
 
-// -- Bypass Requests ----------------------------------------------------------
 router.get(
   "/admin/bypass-requests",
   requireRole("super_admin", "outlet_admin"),
@@ -264,8 +257,7 @@ router.patch(
   BypassCtrl.reviewBypassRequest,
 );
 
-// -- Clothing Types (master data) ---------------------------------------------
-// GET accessible by outlet_admin too (needed for processOrder breakdown)
+// GET clothing types accessible by outlet_admin (needed for processOrder breakdown)
 router.get(
   "/admin/clothing-types",
   requireRole("super_admin", "outlet_admin"),
@@ -294,7 +286,6 @@ router.delete(
   ClothingCtrl.deleteClothingType,
 );
 
-// -- Sales & Employee Performance Reports -------------------------------------
 router.get(
   "/reports/sales",
   requireRole("super_admin", "outlet_admin"),
@@ -316,7 +307,6 @@ router.get(
   exportEmployeeReport,
 );
 
-// -- Admin Notifications ------------------------------------------------------
 router.get(
   "/admin/notifications",
   requireRole("super_admin", "outlet_admin"),
@@ -338,7 +328,6 @@ router.patch(
   NotifCtrl.markAsRead,
 );
 
-// -- Complaints ---------------------------------------------------------------
 router.get(
   "/admin/complaints",
   requireRole("super_admin", "outlet_admin"),

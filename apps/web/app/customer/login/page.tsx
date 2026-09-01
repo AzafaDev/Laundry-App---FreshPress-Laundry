@@ -9,6 +9,8 @@ import { useAuthStore } from "@/stores/authStore";
 import type { User as UserType } from "@/types/user.types";
 import { LoginBrandingPanel } from "@/components/customer/LoginBrandingPanel";
 import { useTranslation } from "@/i18n/useTranslation";
+import { DemoAccountPicker } from "@/components/ui/DemoAccountPicker";
+import { CUSTOMER_ACCOUNT_GROUPS } from "@/lib/demoAccounts";
 
 interface LoginErrors {
   email?: string;
@@ -107,6 +109,16 @@ function CustomerLoginContent() {
               <h2 className="text-2xl md:text-3xl font-bold text-on-surface mb-1">{t("auth.login.welcomeBack")}</h2>
               <p className="text-base text-on-surface-variant">{t("auth.login.subtitle")}</p>
             </div>
+
+            <DemoAccountPicker
+              groups={CUSTOMER_ACCOUNT_GROUPS}
+              onPick={(demoEmail, demoPassword) => {
+                setEmail(demoEmail);
+                setPassword(demoPassword);
+                setErrors({});
+              }}
+              className="mb-5"
+            />
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {(errors.server || googleError) && (

@@ -26,14 +26,8 @@ function useClientProgress(currentShift: CurrentShift | null) {
     return { progressPercent: 0, remainingSeconds: 0 };
   }
 
-  const [startH, startM] = currentShift.startTime.split(":").map(Number);
-  const [endH, endM] = currentShift.endTime.split(":").map(Number);
-  const todayBase = new Date(now);
-
-  const start = new Date(todayBase);
-  start.setHours(startH, startM, 0, 0);
-  const end = new Date(todayBase);
-  end.setHours(endH, endM, 0, 0);
+  const start = new Date(currentShift.startEpoch ?? serverBase);
+  const end = new Date(currentShift.endEpoch ?? serverBase);
 
   if (currentShift.phase === "pre_shift") {
     const remainingSeconds = Math.max(0, Math.round((start.getTime() - now.getTime()) / 1000));

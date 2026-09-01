@@ -256,13 +256,14 @@ model Outlet {
 // ─────────────────────────────────────────
 
 model WorkShift {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String   @unique @db.VarChar(50)
-  start_time  DateTime @db.Time
-  end_time    DateTime @db.Time
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String    @unique @db.VarChar(50)
+  start_time  DateTime  @db.Time
+  end_time    DateTime  @db.Time
   description String?
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now()) @db.Timestamptz
+  is_active   Boolean   @default(true)
+  deleted_at  DateTime? @db.Timestamptz
+  created_at  DateTime  @default(now()) @db.Timestamptz
 
   // Relations
   employee_shifts EmployeeShift[]

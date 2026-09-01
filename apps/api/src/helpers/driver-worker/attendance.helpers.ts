@@ -48,7 +48,6 @@ export function buildShiftPayload(
   outletName: string,
 ) {
   const { shiftName, startTime, endTime } = shiftInfo;
-
   const isEnded = now > endTime;
   const isActive = !isEnded && now >= startTime;
   const isPreShift = now < startTime;
@@ -83,5 +82,7 @@ export function buildShiftPayload(
     canCheckIn: !alreadyCheckedIn && canCheckIn(now, startTime, endTime, 15),
     canCheckOut: alreadyCheckedIn && !alreadyCheckedOut && now > endTime,
     serverNow: now.toISOString(),
+    startEpoch: startTime.getTime(),
+    endEpoch: endTime.getTime(),
   };
 }

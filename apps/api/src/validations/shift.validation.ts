@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// HH:MM format for time fields
 const timeSchema = z
   .string()
   .regex(/^\d{2}:\d{2}$/, "Format waktu harus HH:MM (contoh: 08:00).");
@@ -29,9 +28,7 @@ export const assignEmployeeShiftSchema = z
   .object({
     shift_id: z.string().uuid("shift_id harus UUID."),
     outlet_id: z.string().uuid("outlet_id harus UUID."),
-    // Recurring weekly (0=Sun … 6=Sat) — required when date is not set
     day_of_week: z.number().int().min(0).max(6).optional(),
-    // One-time specific date — takes priority when provided
     date: z.string().date("Format tanggal harus YYYY-MM-DD.").optional(),
     is_active: z.boolean().optional().default(true),
   })
@@ -49,6 +46,10 @@ export const listWorkShiftQuerySchema = z.object({
     .union([z.literal("true"), z.literal("false")])
     .optional()
     .transform((v) => (v === undefined ? undefined : v === "true")),
+  include_deleted: z
+    .union([z.literal("true"), z.literal("false")])
+    .optional()
+    .transform((v) => v === "true"),
 });
 
 export type CreateWorkShiftInput = z.infer<typeof createWorkShiftSchema>;

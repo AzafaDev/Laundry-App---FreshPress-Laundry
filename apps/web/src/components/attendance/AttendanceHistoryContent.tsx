@@ -3,8 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Home, ChevronRight, CheckCircle2, AlertTriangle, XCircle, CalendarDays } from "lucide-react";
-import { useAttendance } from "@/hooks/useAttendance";
-import { useQuery } from "@tanstack/react-query";
+import { useAttendanceLogs } from "@/hooks/attendance/useAttendance";
 import { toLogRecord } from "@/utils/formatDate";
 import { AttendanceLog } from "@/components/attendance/AttendanceLog";
 
@@ -50,50 +49,27 @@ export function AttendanceHistoryContent({ role, dashboardHref, pageTitle }: Pro
   const [customEnd, setCustomEnd] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const { fetchLogs } = useAttendance();
-
   const { start: presetStart, end: presetEnd } = useMemo(
     () => (preset !== "custom" ? getDateRange(preset) : { start: customStart, end: customEnd }),
     [preset, customStart, customEnd]
   );
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["attendance", "logs", "history", page, presetStart, presetEnd, role],
-    queryFn: () =>
-      fetchLogs({
-        page,
-        limit: 10,
-        startDate: presetStart || undefined,
-        endDate: presetEnd || undefined,
-      }),
+  const { data, isLoading } = useAttendanceLogs({
+    page,
+    limit: 10,
+    startDate: presetStart || undefined,
+    endDate: presetEnd || undefined,
+    status: statusFilter === "all" ? undefined : statusFilter,
   });
 
-  // Separate stats query — fetch more records for accurate summary
-  const { data: statsData } = useQuery({
-    queryKey: ["attendance", "logs", "stats", presetStart, presetEnd, role],
-    queryFn: () =>
-      fetchLogs({
-        page: 1,
-        limit: 100,
-        startDate: presetStart || undefined,
-        endDate: presetEnd || undefined,
-      }),
-    enabled: true,
-  });
-
-  const allRecords = useMemo(() => (statsData?.data ?? []).map(toLogRecord), [statsData]);
   const stats = useMemo(() => ({
-    total: allRecords.length,
-    on_time: allRecords.filter((r) => r.status === "on_time").length,
-    late: allRecords.filter((r) => r.status === "late").length,
-    absent: allRecords.filter((r) => r.status === "absent").length,
-  }), [allRecords]);
+    total: (data?.summary?.on_time ?? 0) + (data?.summary?.late ?? 0) + (data?.summary?.absent ?? 0),
+    on_time: data?.summary?.on_time ?? 0,
+    late: data?.summary?.late ?? 0,
+    absent: data?.summary?.absent ?? 0,
+  }), [data?.summary]);
 
-  const rawRecords = useMemo(() => (data?.data ?? []).map(toLogRecord), [data]);
-  const filteredRecords = useMemo(
-    () => (statusFilter === "all" ? rawRecords : rawRecords.filter((r) => r.status === statusFilter)),
-    [rawRecords, statusFilter]
-  );
+  const records = useMemo(() => (data?.data ?? []).map(toLogRecord), [data]);
 
   const presets: { key: DatePreset; label: string }[] = [
     { key: "this_week", label: "Minggu ini" },
@@ -225,8 +201,8 @@ export function AttendanceHistoryContent({ role, dashboardHref, pageTitle }: Pro
       </div>
 
       <AttendanceLog
-        records={filteredRecords}
-        pagination={statusFilter === "all" ? data?.pagination : undefined}
+        records={records}
+        pagination={data?.pagination}
         onPageChange={(p) => setPage(p)}
         isLoading={isLoading}
       />

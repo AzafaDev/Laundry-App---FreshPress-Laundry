@@ -15,8 +15,8 @@ import { EmptyState } from "@/components/driver/EmptyState";
 import { TaskSkeleton } from "@/components/driver/TaskSkeleton";
 import { TaskDetailModal } from "@/components/driver/TaskDetailModal";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
-import { useAttendance } from "@/hooks/useAttendance";
-import { useDriverTasks } from "@/hooks/useDriverTasks";
+import { useAttendance } from "@/hooks/attendance/useAttendance";
+import { useDriverTasks } from "@/hooks/driver/useDriverTasks";
 import type { DriverTask } from "@/services/driverTask.service";
 
 type TaskTab = "pickup" | "delivery";
@@ -26,7 +26,6 @@ export default function DriverDashboardPage() {
   const [activeTab, setActiveTab] = useState<TaskTab>("pickup");
   const [selectedTask, setSelectedTask] = useState<DriverTask | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
   const { currentShift, checkedIn, checkInTime } = useAttendance();
   const {
     activeTask,
@@ -121,11 +120,11 @@ export default function DriverDashboardPage() {
           checkInTime={checkInTime}
           currentShift={currentShift}
         />
-
+        {/* CheckInPrompt muncul kalau belum check-in DAN shift belum berakhir */}
         {!checkedIn && currentShift?.phase !== "ended" && (
           <CheckInPrompt href="/dashboard/driver/attendance" />
         )}
-
+        {/* ActiveTaskCard hanya render kalau ada task aktif */}
         {!isLoadingActive && hasActiveTask && activeTask && (
           <div>
             <h2 className="text-sm font-bold uppercase tracking-wider text-on-surface-variant mb-3">
@@ -137,9 +136,9 @@ export default function DriverDashboardPage() {
             />
           </div>
         )}
-
+        {/* LockedTaskPreview: placeholder visual kalau belum check-in */}
         {!checkedIn && !hasActiveTask && <LockedTaskPreview />}
-
+        {/* Daftar available tasks hanya muncul kalau sudah check-in */}
         {checkedIn && (
           <div>
             <div className="flex items-center gap-1 bg-surface-container-low rounded-xl p-1 mb-4">

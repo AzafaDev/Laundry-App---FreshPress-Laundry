@@ -22,6 +22,7 @@ import { axiosInstance } from "@/lib/axios";
 import toast from "react-hot-toast";
 import { BypassReviewModal } from "@/components/admin/BypassReviewModal";
 import { useSocket } from "@/hooks/useSocket";
+import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface BypassItem {
@@ -62,6 +63,7 @@ const fetchBypassRequests = async (
     sort_dir: "desc",
   });
   if (statusFilter !== "all") params.set("status", statusFilter);
+  if (search.trim()) params.set("search", search.trim());
   const { data } = await axiosInstance.get(`/v1/admin/bypass-requests?${params}`);
   return data;
 };
@@ -113,6 +115,8 @@ const STATION_LABEL: Record<string, string> = {
 export default function BypassRequestsPage() {
   const qc = useQueryClient();
   const { on } = useSocket();
+  const user = useEmployeeAuthStore((s) => s.user);
+  const isReadOnly = user?.role === "super_admin";
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [search, setSearch] = useState("");
@@ -128,7 +132,7 @@ export default function BypassRequestsPage() {
   }, [on]);
 
   const { data, isFetching, isError } = useQuery({
-    queryKey: ["admin", "bypass-requests", page, statusFilter],
+    queryKey: ["admin", "bypass-requests", page, statusFilter, search],
     queryFn: () => fetchBypassRequests(page, statusFilter, search),
     placeholderData: keepPreviousData,
   });
@@ -162,20 +166,8 @@ export default function BypassRequestsPage() {
 
   const items: BypassRequest[] = data?.data ?? [];
   const pagination = data?.pagination;
-
-  // Client-side search filter
-  const filtered = search.trim()
-    ? items.filter(
-        (r) =>
-          r.order.invoice_number
-            .toLowerCase()
-            .includes(search.toLowerCase()) ||
-          r.requester.full_name
-            .toLowerCase()
-            .includes(search.toLowerCase()) ||
-          r.station.toLowerCase().includes(search.toLowerCase()),
-      )
-    : items;
+  // Search dilakukan server-side — gunakan items langsung
+  const filtered = items;
 
   const handleApprove = (_pin: string, adminNote: string) => {
     if (!selected) return;
@@ -244,7 +236,7 @@ export default function BypassRequestsPage() {
             type="text"
             placeholder="Cari invoice, worker, station..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-outline-variant bg-surface focus:outline-none focus:border-primary text-sm"
           />
         </div>
@@ -344,10 +336,11 @@ export default function BypassRequestsPage() {
                       <td className="px-4 py-3 text-center">
                         <button
                           onClick={() => setSelected(req)}
-                          className="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-lg"
-                          title="Review"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-on-surface-variant hover:text-primary hover:bg-surface-container-high rounded-lg border border-outline-variant transition-colors"
+                          title={isReadOnly ? "Detail" : "Review"}
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-3.5 h-3.5" />
+                          {isReadOnly ? "Detail" : "Review"}
                         </button>
                       </td>
                     </tr>
@@ -379,7 +372,7 @@ export default function BypassRequestsPage() {
                 onClick={() => setSelected(req)}
                 className="flex items-center gap-1 px-3 py-1.5 border border-outline-variant rounded-lg text-xs hover:bg-surface-container-high"
               >
-                <Eye className="w-3 h-3" /> Review
+                <Eye className="w-3 h-3" /> {isReadOnly ? "Detail" : "Review"}
               </button>
             </div>
           ))}
@@ -423,6 +416,7 @@ export default function BypassRequestsPage() {
           onClose={() => setSelected(null)}
           onApprove={handleApprove}
           onReject={handleReject}
+          readOnly={isReadOnly}
         />
       )}
     </>

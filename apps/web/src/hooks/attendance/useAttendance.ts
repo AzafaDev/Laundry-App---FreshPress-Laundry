@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { attendanceService } from "@/services/attendance.service";
 import { formatTime } from "@/utils/formatDate";
-import { useGeolocation } from "./useGeolocation";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
@@ -24,18 +24,11 @@ export function useAttendance() {
     enabled: isEmployee && !!employeeId,
   });
 
-  const logsQuery = useQuery({
-    queryKey: ["attendance", "logs", employeeId],
-    queryFn: () => attendanceService.getMyLogs({}),
-    staleTime: 0,
-    enabled: isEmployee && !!employeeId,
-  });
-
   const shiftQuery = useQuery({
     queryKey: ["attendance", "currentShift", employeeId],
     queryFn: attendanceService.getCurrentShift,
     staleTime: 0,
-    enabled: isEmployee && !!employeeId,
+    enabled: isEmployee && !!employeeId, 
   });
 
   const [remainingSeconds, setRemainingSeconds] = useState<number>(0);
@@ -138,14 +131,11 @@ export function useAttendance() {
     checkInTime: today?.check_in_time ?? undefined,
     checkOutTime: today?.check_out_time ?? undefined,
     attendanceId: today?.id ?? null,
-    records: logsQuery.data?.data ?? [],
-    pagination: logsQuery.data?.pagination,
     currentShift: shiftQuery.data,
     remainingSeconds,
-    isLoading:
-      todayQuery.isLoading || logsQuery.isLoading || shiftQuery.isLoading,
-    isError: todayQuery.isError || logsQuery.isError || shiftQuery.isError,
-    error: todayQuery.error ?? logsQuery.error ?? shiftQuery.error,
+    isLoading: todayQuery.isLoading || shiftQuery.isLoading,
+    isError: todayQuery.isError || shiftQuery.isError,
+    error: todayQuery.error ?? shiftQuery.error,
     checkIn: () => checkInMutation.mutate(),
     checkInAsync: checkInMutation.mutateAsync,
     checkOut: () => today?.id && checkOutMutation.mutate(today.id),
@@ -158,8 +148,25 @@ export function useAttendance() {
       queryClient.invalidateQueries({ queryKey: ["attendance", "logs", employeeId] });
       queryClient.invalidateQueries({ queryKey: ["attendance", "currentShift", employeeId] });
     },
-    fetchLogs: attendanceService.getMyLogs,
   };
+}
+
+export function useAttendanceLogs(params: {
+  page: number;
+  limit: number;
+  startDate?: string;
+  endDate?: string;
+  status?: "on_time" | "late" | "absent";
+}) {
+  const { user } = useEmployeeAuthStore();
+  const employeeId = user?.id;
+
+  return useQuery({
+    queryKey: ["attendance", "logs", employeeId, params],
+    queryFn: () => attendanceService.getMyLogs(params),
+    enabled: !!employeeId,
+    staleTime: 0,
+  });
 }
 
 export function useAttendanceReport(params: AttendanceReportParams) {

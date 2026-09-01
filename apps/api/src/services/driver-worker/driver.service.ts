@@ -1,6 +1,9 @@
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../middlewares/error.middleware.js";
-import { assertShiftEligibility, assertDriverEligibility } from "../../guards/driver-worker/shift.guard.js";
+import {
+  assertShiftEligibility,
+  assertDriverEligibility,
+} from "../../guards/driver-worker/shift.guard.js";
 import { getNow, toWIBView, wibTimeOnDate } from "../../utils/time.util.js";
 import { haversineKm } from "../../utils/geo.util.js";
 import {
@@ -8,7 +11,10 @@ import {
   runClaimTransaction,
   runCompleteTransaction,
 } from "../../repositories/driver-worker/driver.repository.js";
-import { emitClaimEvents, emitCompleteEvents } from "../../helpers/driver-worker/driver.helpers.js";
+import {
+  emitClaimEvents,
+  emitCompleteEvents,
+} from "../../helpers/driver-worker/driver.helpers.js";
 
 function withDistance<
   T extends {
@@ -23,7 +29,12 @@ function withDistance<
   const distance_km =
     addr && outlet
       ? Math.round(
-          haversineKm(Number(outlet.latitude), Number(outlet.longitude), Number(addr.latitude), Number(addr.longitude)) * 10,
+          haversineKm(
+            Number(outlet.latitude),
+            Number(outlet.longitude),
+            Number(addr.latitude),
+            Number(addr.longitude),
+          ) * 10,
         ) / 10
       : null;
   return { ...task, distance_km };
@@ -43,7 +54,15 @@ export const driverService = {
           pickup_date: { lte: endOfToday },
         },
       },
-      include: { order: { include: { customer: true, pickup_address: true, outlet: { select: { latitude: true, longitude: true } } } } },
+      include: {
+        order: {
+          include: {
+            customer: true,
+            pickup_address: true,
+            outlet: { select: { latitude: true, longitude: true } },
+          },
+        },
+      },
       orderBy: { created_at: "asc" },
       take: 200,
     });
@@ -59,7 +78,15 @@ export const driverService = {
         driver_id: null,
         order: { status: "ready_for_delivery", outlet_id: outletId },
       },
-      include: { order: { include: { customer: true, pickup_address: true, outlet: { select: { latitude: true, longitude: true } } } } },
+      include: {
+        order: {
+          include: {
+            customer: true,
+            pickup_address: true,
+            outlet: { select: { latitude: true, longitude: true } },
+          },
+        },
+      },
       orderBy: { created_at: "asc" },
       take: 200,
     });
@@ -77,20 +104,21 @@ export const driverService = {
   async claimTask(employeeId: string, taskId: string) {
     const [{ employeeOutletId }, employee] = await Promise.all([
       assertDriverEligibility(employeeId),
-      prisma.employee.findUnique({ where: { id: employeeId }, select: { full_name: true } }),
+      prisma.employee.findUnique({
+        where: { id: employeeId },
+        select: { full_name: true },
+      }),
     ]);
     const driverName = employee?.full_name ?? "Driver";
-    const claimed = await runClaimTransaction(taskId, employeeId, employeeOutletId);
-    await emitClaimEvents(claimed, employeeId, driverName);
+    const claimed = await runClaimTransaction(
+      taskId,
+      employeeId,
+      employeeOutletId,
+    );
+    emitClaimEvents(claimed, employeeId, driverName).catch((err) =>
+      console.error("[claimTask] emitClaimEvents failed:", err),
+    );
     return withDistance(claimed);
-  },
-
-  async createDeliveryTask(orderId: string) {
-    return prisma.driverTask.upsert({
-      where: { order_id_task_type: { order_id: orderId, task_type: "delivery" } },
-      update: {},
-      create: { order_id: orderId, task_type: "delivery", status: "available" },
-    });
   },
 
   async getTaskHistory(employeeId: string, page: number, limit: number) {
@@ -120,20 +148,38 @@ export const driverService = {
       }),
       prisma.driverTask.count({ where }),
     ]);
-    return { tasks, pagination: { page, limit, total, total_pages: Math.ceil(total / limit) } };
+    return {
+      tasks,
+      pagination: { page, limit, total, total_pages: Math.ceil(total / limit) },
+    };
   },
 
   async completeTask(employeeId: string, taskId: string) {
     const task = await prisma.driverTask.findUnique({
       where: { id: taskId },
-      include: { order: { select: { id: true, outlet_id: true, customer_id: true, status: true } } },
+      include: {
+        order: {
+          select: {
+            id: true,
+            outlet_id: true,
+            customer_id: true,
+            status: true,
+          },
+        },
+      },
     });
     if (!task) throw new AppError("Task tidak ditemukan", 404);
-    if (task.status !== "in_progress") throw new AppError("Task tidak sedang berlangsung", 400);
-    if (task.driver_id !== employeeId) throw new AppError("Anda tidak terassign ke task ini", 403);
-
-    const { updatedTask, newOrderStatus } = await runCompleteTransaction(task, taskId, employeeId);
-    await emitCompleteEvents(task, employeeId, newOrderStatus);
-    return updatedTask;
+    if (task.status !== "in_progress")
+      throw new AppError("Task tidak sedang berlangsung", 400);
+    if (task.driver_id !== employeeId)
+      throw new AppError("Anda tidak terassign ke task ini", 403);
+    const { updatedTask, newOrderStatus } = await runCompleteTransaction(
+      task,
+      taskId,
+      employeeId,
+    );
+    emitCompleteEvents(task, employeeId, newOrderStatus).catch((err) =>
+      console.error("[completeTask] emitCompleteEvents failed:", err),
+    );
   },
 };

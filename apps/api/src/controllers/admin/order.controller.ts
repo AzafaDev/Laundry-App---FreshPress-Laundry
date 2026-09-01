@@ -1,4 +1,3 @@
-// Admin order controller — list + detail + process
 import type { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { OrderStatus } from "../../../generated/prisma/client.js";
@@ -22,31 +21,76 @@ const listOrderQuerySchema = z.object({
   sort_dir: z.enum(["asc", "desc"]).optional().default("desc"),
 });
 
-const processOrderSchema = z.object({
-  total_weight_kg: z.coerce
-    .number()
-    .positive("Berat harus lebih dari 0.")
-    .max(999.99, "Berat maksimal 999.99 kg."),
-  items: z
-    .array(
-      z.object({
-        laundry_item_id: z.string().uuid("laundry_item_id harus UUID."),
-        quantity: z.coerce.number().int().positive("Quantity harus lebih dari 0."),
-      }),
-    )
-    .min(1, "Minimal satu item harus diisi."),
-  breakdown: z
-    .array(
-      z.object({
-        clothing_type_id: z.string().uuid("clothing_type_id harus UUID."),
-        quantity: z.coerce.number().int().positive("Quantity harus lebih dari 0."),
-      }),
-    )
-    .optional(),
-  notes: z.string().optional(),
-});
+const processOrderSchema = z
+  .object({
+    // 0 diperbolehkan bila order hanya berisi item satuan (tanpa kiloan)
+    total_weight_kg: z.coerce
+      .number({ message: "Berat total harus berupa angka." })
+      .min(0, "Berat tidak boleh negatif.")
+      .max(999.99, "Berat maksimal 999.99 kg.")
+      .default(0),
+    items: z
+      .array(
+        z.object({
+          laundry_item_id: z.string().uuid("laundry_item_id harus UUID."),
+          quantity: z.coerce
+            .number()
+            .positive("Quantity harus lebih dari 0.")
+            .int("Quantity harus bilangan bulat."),
+        }),
+      )
+      .min(1, "Minimal satu item laundry harus diisi."),
+    breakdown: z
+      .array(
+        z.object({
+          clothing_type_id: z.string().uuid("clothing_type_id harus UUID."),
+          quantity: z.coerce.number().int().positive("Quantity harus lebih dari 0."),
+        }),
+      )
+      .optional(),
+    notes: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Minimal ada satu item dengan quantity > 0
+    const hasAnyItem = data.items.some((i) => i.quantity > 0);
+    if (!hasAnyItem) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Minimal satu item (kiloan atau satuan) harus memiliki quantity lebih dari 0.",
+        path: ["items"],
+      });
+    }
 
-// ── List orders ───────────────────────────────────────────────────────────────
+    // Berat kiloan harus bilangan bulat
+    if (data.total_weight_kg > 0 && !Number.isInteger(data.total_weight_kg)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Berat kiloan harus bilangan bulat (tidak boleh desimal seperti 0.5).",
+        path: ["total_weight_kg"],
+      });
+    }
+
+    const hasBreakdown = (data.breakdown ?? []).some((b) => b.quantity > 0);
+
+    // Jika breakdown diisi, harus ada berat kiloan
+    if (hasBreakdown && data.total_weight_kg === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Rincian jenis pakaian diisi, tetapi berat kiloan masih 0.",
+        path: ["breakdown"],
+      });
+    }
+
+    // Jika berat kiloan > 0, breakdown wajib diisi
+    if (data.total_weight_kg > 0 && !hasBreakdown) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Berat kiloan sudah diisi. Wajib mengisi rincian jenis pakaian.",
+        path: ["breakdown"],
+      });
+    }
+  });
+
 export const listOrders = async (
   req: Request,
   res: Response,
@@ -109,7 +153,6 @@ export const listOrders = async (
   }
 };
 
-// ── Get order detail ──────────────────────────────────────────────────────────
 export const getOrder = async (
   req: Request,
   res: Response,
@@ -165,7 +208,6 @@ export const getOrder = async (
   }
 };
 
-// ── Process order (outlet admin: input weight + items → advance to washing) ───
 export const processOrder = async (
   req: Request,
   res: Response,
@@ -178,7 +220,6 @@ export const processOrder = async (
 
     const body = processOrderSchema.parse(req.body);
 
-    // Fetch order (with customer) and verify it belongs to this outlet and is in the right status
     const order = await prisma.order.findFirst({
       where: {
         id,
@@ -203,7 +244,6 @@ export const processOrder = async (
       return next(new AppError("Order ini sudah diproses sebelumnya.", 409));
     }
 
-    // Fetch all requested laundry items to get current prices
     const laundryItemIds = body.items.map((i) => i.laundry_item_id);
     const laundryItems = await prisma.laundryItem.findMany({
       where: { id: { in: laundryItemIds }, deleted_at: null, is_active: true },
@@ -236,8 +276,7 @@ export const processOrder = async (
     const updated = await prisma.$transaction(async (tx) => {
       await tx.orderItem.createMany({ data: orderItemsData });
 
-      // Save clothing-type breakdown if provided
-      if (body.breakdown && body.breakdown.length > 0) {
+        if (body.breakdown && body.breakdown.length > 0) {
         await tx.orderItemBreakdown.createMany({
           data: body.breakdown.map((b) => ({
             order_id: id,
@@ -279,7 +318,6 @@ export const processOrder = async (
     const fmt = (n: number) =>
       new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(n);
 
-    // 1. Notify: order details confirmed
     await notifyCustomer(
       updated.customer_id,
       "Detail pesanan telah diinput",
@@ -288,7 +326,6 @@ export const processOrder = async (
       updated.id,
     );
 
-    // 2. Notify: payment reminder (in-app)
     await notifyCustomer(
       updated.customer_id,
       "Tagihan Pembayaran",
@@ -297,7 +334,6 @@ export const processOrder = async (
       updated.id,
     );
 
-    // 3. Email: payment reminder (fire-and-forget)
     if (order?.customer?.email) {
       sendPaymentReminderEmail(
         order.customer.email,

@@ -13,6 +13,8 @@ import { seedDriverNotifications } from './driverNotifications.seed.js';
 import { seedTaskHistory } from './taskHistory.seed.js';
 import { seedReportData } from './reportData.seed.js';
 import { seedOrderDetail } from './orderDetail.seed.js';
+import { seedExtraOrders } from './extraOrders.seed.js';
+import { seedTodayAbsent } from './todayAbsent.seed.js';
 
 export async function runAllSeeds() {
   console.log('🌱 Starting database seeding...\n');
@@ -60,6 +62,7 @@ export async function runAllSeeds() {
   ]);
 
   await seedOrders(mainOutlet, employees, customers);
+  await seedExtraOrders();
 
   await Promise.all([
     ...outlets.map((outlet) => seedReportData(outlet, employees, customers[0])),
@@ -146,6 +149,12 @@ export async function runModuleSeed(moduleName: string) {
       break;
     case 'order-detail':
       await seedOrderDetail();
+      break;
+    case 'extra-orders':
+      await seedExtraOrders();
+      break;
+    case 'today-absent':
+      await seedTodayAbsent();
       break;
     default:
       console.log(`Module ${moduleName} not recognized`);

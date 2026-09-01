@@ -2,16 +2,16 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Menu, User, LogOut, ChevronDown, ShieldAlert } from "lucide-react";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
+import { useEmployeeAuth } from "@/hooks/useEmployeeAuth";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
 
 export function EmployeeTopBar({ onToggleSidebar }: { onToggleSidebar?: () => void }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { user, clearAuth } = useEmployeeAuthStore();
-  const router = useRouter();
+  const { user } = useEmployeeAuthStore();
+  const { logout } = useEmployeeAuth();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -25,9 +25,8 @@ export function EmployeeTopBar({ onToggleSidebar }: { onToggleSidebar?: () => vo
   }, [dropdownOpen]);
 
   const handleLogout = () => {
-    clearAuth();
     setDropdownOpen(false);
-    router.push("/");
+    logout();
   };
 
   const initial = user?.full_name?.slice(0, 1).toUpperCase() ?? user?.role?.slice(0, 1).toUpperCase() ?? "?";

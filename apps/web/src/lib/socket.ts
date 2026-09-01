@@ -16,36 +16,18 @@ export function getSocket(): Socket {
     withCredentials: true,
     transports: ["websocket", "polling"],
     reconnection: true,
-    reconnectionAttempts: 5,
+    reconnectionAttempts: 10,
     reconnectionDelay: 3000,
     reconnectionDelayMax: 10000,
     autoConnect: true,
   });
 
-  g.__appSocket.on("connect", () => {
-    console.log("[socket] connected");
-  });
-
-  g.__appSocket.on("disconnect", (reason) => {
-    console.log("[socket] disconnected:", reason);
-  });
-
-  let errorCount = 0;
-  g.__appSocket.on("connect_error", (err) => {
-    errorCount++;
-    if (errorCount === 1) {
-      console.warn("[socket] connection error:", err.message);
-    } else if (errorCount === 5) {
-      console.warn("[socket] giving up after 5 attempts. Is the API server running?");
-      g.__appSocket?.disconnect();
-    }
-  });
-
-  g.__appSocket.on("connect", () => {
-    errorCount = 0;
-  });
 
   return g.__appSocket;
+}
+
+export function isSocketConnected(): boolean {
+  return g.__appSocket?.connected ?? false;
 }
 
 export function disconnectSocket() {
@@ -56,7 +38,6 @@ export function disconnectSocket() {
 }
 
 export function reconnectSocket() {
-  if (g.__appSocket?.connected) return g.__appSocket;
-  disconnectSocket();
+  if (g.__appSocket) return g.__appSocket;
   return getSocket();
 }

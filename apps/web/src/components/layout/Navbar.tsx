@@ -14,7 +14,6 @@ import { socketToast } from "@/lib/socketToast";
 import { useTranslation } from "@/i18n/useTranslation";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 
-
 export const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { user, clearAuth } = useAuthStore();
@@ -32,8 +31,6 @@ export const Navbar = () => {
   });
   const notifications = data?.notifications ?? [];
   const unreadCount = notifications.filter((n) => !n.is_read).length;
-
-  useCustomerNotificationSocket((data) => socketToast(data.title, data.body));
 
   const handleLogout = () => {
     clearAuth();

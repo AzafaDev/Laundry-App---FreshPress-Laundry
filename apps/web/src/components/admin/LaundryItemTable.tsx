@@ -19,7 +19,6 @@ const laundryItemSchema = z.object({
   base_price: z.number({ message: "Harga harus berupa angka." }).positive("Harga harus lebih dari 0."),
 });
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 const fmtPrice = (v: string | number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(v));
 
@@ -31,7 +30,6 @@ const isKiloUnit = (unit: string) => KILO_UNITS.includes(unit.trim().toLowerCase
 type SortCol = "name" | "base_price";
 type SortDir = "asc" | "desc";
 
-// ── Form Modal ────────────────────────────────────────────────────────────────
 interface FormModalProps {
   initial?: LaundryItem | null;
   onClose: () => void;
@@ -185,7 +183,6 @@ function LaundryItemFormModal({ initial, onClose }: FormModalProps) {
   );
 }
 
-// ── Items Section (one unit group) ────────────────────────────────────────────
 interface ItemsSectionProps {
   title: string;
   icon: React.ReactNode;
@@ -216,7 +213,6 @@ function ItemsSection({
       </div>
 
       <div className="bg-surface border border-outline-variant rounded-xl overflow-hidden shadow-sm">
-        {/* Desktop */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -286,7 +282,6 @@ function ItemsSection({
           </table>
         </div>
 
-        {/* Mobile */}
         <div className="md:hidden divide-y divide-outline-variant">
           {items.map((item) => {
             const isDeleted = !!item.deleted_at;
@@ -328,7 +323,6 @@ function ItemsSection({
   );
 }
 
-// ── Main Table ────────────────────────────────────────────────────────────────
 type StatusFilter = "all" | "active" | "inactive" | "deleted";
 
 export function LaundryItemTable() {
@@ -426,7 +420,6 @@ export function LaundryItemTable() {
 
   return (
     <div className="space-y-3">
-      {/* Toolbar */}
       <div className="flex flex-col md:flex-row gap-3 justify-between">
         <div className="flex flex-col sm:flex-row gap-3 flex-1">
           <div className="relative flex-1">
@@ -464,7 +457,6 @@ export function LaundryItemTable() {
         </p>
       )}
 
-      {/* Kiloan section — only on first pcs page */}
       {pcPage === 1 && (
         <ItemsSection
           title="Per Kilo (kg)"
@@ -493,7 +485,6 @@ export function LaundryItemTable() {
         onHardDelete={handleHardDelete}
       />
 
-      {/* Pagination — for pcs items only */}
       {pcsPagination && pcsPagination.total > 0 && (
         <div className="bg-surface-container-low p-4 flex flex-col sm:flex-row items-center justify-between gap-2 border border-outline-variant rounded-xl">
           <p className="text-xs text-on-surface-variant">
@@ -535,7 +526,6 @@ export function LaundryItemTable() {
         </div>
       )}
 
-      {/* Modal */}
       {(modal === "create" || modal === "edit") && (
         <LaundryItemFormModal
           initial={modal === "edit" ? editing : null}
@@ -543,7 +533,6 @@ export function LaundryItemTable() {
         />
       )}
 
-      {/* Hard Delete Confirm Dialog */}
       {hardDeleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-surface rounded-2xl w-full max-w-md shadow-xl p-6 space-y-4">

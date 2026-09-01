@@ -20,18 +20,15 @@ export async function getEmployeeOutlet(employeeId: string): Promise<string> {
 
 export async function getEmployeeShiftForDate(
   employeeId: string,
-  localDate: Date,
+  wibMidnightDate: Date,
 ): Promise<{ shiftName: string; startTime: Date; endTime: Date } | null> {
-  const wibDate = toWIBView(localDate);
-  const dbDay = wibDate.getUTCDay();
+  const dbDay = wibMidnightDate.getUTCDay();
 
-  // Date-specific takes priority over recurring
-  const dateOnly = new Date(Date.UTC(wibDate.getUTCFullYear(), wibDate.getUTCMonth(), wibDate.getUTCDate()));
+  const dateOnly = new Date(Date.UTC(wibMidnightDate.getUTCFullYear(), wibMidnightDate.getUTCMonth(), wibMidnightDate.getUTCDate()));
   const dateSpecific = await prisma.employeeShift.findFirst({
     where: { employee_id: employeeId, date: dateOnly, is_active: true },
     include: { shift: true },
   });
-
   const employeeShift = dateSpecific ?? await prisma.employeeShift.findFirst({
     where: { employee_id: employeeId, day_of_week: dbDay, date: null, is_active: true },
     include: { shift: true },
@@ -40,9 +37,8 @@ export async function getEmployeeShiftForDate(
   if (!employeeShift || !employeeShift.shift) return null;
 
   const shift = employeeShift.shift;
-  const startTime = wibTimeOnDate(wibDate, shift.start_time.getUTCHours(), shift.start_time.getUTCMinutes(), shift.start_time.getUTCSeconds());
-  let endTime = wibTimeOnDate(wibDate, shift.end_time.getUTCHours(), shift.end_time.getUTCMinutes(), shift.end_time.getUTCSeconds());
-
+  const startTime = wibTimeOnDate(wibMidnightDate, shift.start_time.getUTCHours(), shift.start_time.getUTCMinutes(), shift.start_time.getUTCSeconds());
+  let endTime = wibTimeOnDate(wibMidnightDate, shift.end_time.getUTCHours(), shift.end_time.getUTCMinutes(), shift.end_time.getUTCSeconds());
   if (endTime <= startTime) endTime = new Date(endTime.getTime() + 24 * 60 * 60 * 1000);
 
   return { shiftName: shift.name, startTime, endTime };
@@ -55,7 +51,6 @@ export async function getShiftForDateTime(
   const wibTarget = toWIBView(targetDate);
   const dbDay = wibTarget.getUTCDay();
 
-  // Date-specific takes priority over recurring
   const dateOnly = new Date(Date.UTC(wibTarget.getUTCFullYear(), wibTarget.getUTCMonth(), wibTarget.getUTCDate()));
   const dateSpecific = await prisma.employeeShift.findFirst({
     where: { employee_id: employeeId, date: dateOnly, is_active: true },
@@ -104,7 +99,6 @@ export async function getUpcomingShiftForDateTime(
   const wibTarget = toWIBView(targetDate);
   const dbDay = wibTarget.getUTCDay();
 
-  // Date-specific takes priority over recurring
   const dateOnly = new Date(Date.UTC(wibTarget.getUTCFullYear(), wibTarget.getUTCMonth(), wibTarget.getUTCDate()));
   const dateSpecific = await prisma.employeeShift.findFirst({
     where: { employee_id: employeeId, date: dateOnly, is_active: true },

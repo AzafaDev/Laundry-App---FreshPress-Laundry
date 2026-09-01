@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { driverTaskService, type DriverTask, type ActiveTaskResponse, type AvailableTasksResponse } from "@/services/driverTask.service";
+import { driverTaskService, type DriverTask, type ActiveTaskResponse, type AvailableTasksResponse, type TaskHistoryResponse } from "@/services/driverTask.service";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
 import toast from "react-hot-toast";
 
@@ -7,7 +7,6 @@ export function useDriverTasks({ checkedIn }: { checkedIn: boolean }) {
   const { user } = useEmployeeAuthStore();
   const queryClient = useQueryClient();
   const isDriver = !!user && user.role === "driver";
-
   const activeTaskQuery = useQuery<ActiveTaskResponse>({
     queryKey: ["driver", "tasks", "active"],
     queryFn: driverTaskService.getActiveTask,
@@ -21,16 +20,16 @@ export function useDriverTasks({ checkedIn }: { checkedIn: boolean }) {
   const availablePickupsQuery = useQuery<AvailableTasksResponse>({
     queryKey: ["driver", "tasks", "available-pickups"],
     queryFn: driverTaskService.getAvailablePickups,
-    enabled: isDriver && checkedIn && !hasActiveTask,
+
+    enabled: isDriver && checkedIn && !hasActiveTask && !activeTaskQuery.isLoading,
     staleTime: 10000,
     retry: false,
     refetchOnWindowFocus: false,
   });
-
   const availableDeliveriesQuery = useQuery<AvailableTasksResponse>({
     queryKey: ["driver", "tasks", "available-deliveries"],
     queryFn: driverTaskService.getAvailableDeliveries,
-    enabled: isDriver && checkedIn && !hasActiveTask,
+    enabled: isDriver && checkedIn && !hasActiveTask && !activeTaskQuery.isLoading,
     staleTime: 10000,
     retry: false,
     refetchOnWindowFocus: false,
@@ -42,6 +41,7 @@ export function useDriverTasks({ checkedIn }: { checkedIn: boolean }) {
       queryClient.setQueryData(["driver", "tasks", "active"], data);
       const label = data.task?.task_type === "delivery" ? "delivery" : "pickup";
       toast.success(`Task ${label} berhasil diambil!`);
+
     },
     onError: (error: any) => {
       const message = error?.response?.data?.message || "Gagal mengambil task. Coba lagi.";
@@ -83,4 +83,11 @@ export function useDriverTasks({ checkedIn }: { checkedIn: boolean }) {
       availableDeliveriesQuery.refetch();
     },
   };
+}
+
+export function useDriverTaskHistory(page: number, limit: number) {
+  return useQuery<TaskHistoryResponse>({
+    queryKey: ["driver", "task-history", page],
+    queryFn: () => driverTaskService.getTaskHistory(page, limit),
+  });
 }

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useWorkerStation } from "@/hooks/useWorkerStation";
-import { useWorkerStationSocket } from "@/hooks/useWorkerStationSocket";
+import { useWorkerStation } from "@/hooks/worker/useWorkerStation";
+import { useWorkerStationSocket } from "@/hooks/worker/useWorkerStationSocket";
+import { useSocketStatus } from "@/hooks/useSocket";
 import { useEmployeeAuthStore } from "@/stores/employeeAuthStore";
-import { useAttendance } from "@/hooks/useAttendance";
+import { useAttendance } from "@/hooks/attendance/useAttendance";
 import { WorkerSidebar } from "@/components/dashboard/WorkerSidebar";
 import { WorkerTopBar } from "@/components/dashboard/WorkerTopBar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -23,7 +24,6 @@ export default function WorkerStationPage() {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(true);
   const [bypassState, setBypassState] = useState<Record<string, BypassState>>({});
   const [bypassModalOpen, setBypassModalOpen] = useState<string | null>(null);
   const [bypassViewId, setBypassViewId] = useState<string | null>(null);
@@ -34,7 +34,6 @@ export default function WorkerStationPage() {
     discrepancies?: Discrepancy[];
     actualItems?: { breakdown: { clothing_type_id: string; actual_quantity: number }[]; satuan: { laundry_item_id: string; actual_quantity: number }[] };
   } | null>(null);
-
   let station: "washing" | "ironing" | "packing" | null = null;
   if (user?.role === "washing_worker") station = "washing";
   else if (user?.role === "ironing_worker") station = "ironing";
@@ -43,8 +42,8 @@ export default function WorkerStationPage() {
   const { checkedIn } = useAttendance();
   const { stationOrders, isLoading, submitItems } = useWorkerStation();
 
-  useWorkerStationSocket({ station, setIsConnected, setBypassState });
-
+  const isConnected = useSocketStatus();
+  useWorkerStationSocket({ station, setBypassState });
   if (_hasHydrated && !station) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -96,27 +95,22 @@ export default function WorkerStationPage() {
 
   const cfg = stationConfig[station!];
   const { Icon } = cfg;
-
   const handleProcessClick = (orderId: string) => {
     setSelectedOrderId(orderId);
     setModalOpen(true);
   };
-
   const handleVerify = async (orderId: string, received: { breakdown: Record<string, number>; satuan: Record<string, number> }) => {
     const order = stationOrders.find((o) => o.id === orderId);
     if (!order || !station) return;
-
     const actual_items = order.order_item_breakdowns.map((item) => ({
       clothing_type_id: item.clothing_type_id,
       actual_quantity: received.breakdown[item.id] ?? 0,
     }));
-
     const satuanOrderItems = order.order_items.filter((i) => i.laundry_item.unit !== "kg");
     const actual_satuan_items = satuanOrderItems.map((item) => ({
       laundry_item_id: item.laundry_item_id,
       actual_quantity: received.satuan[item.laundry_item_id] ?? 0,
     }));
-
     const totalQty =
       actual_items.reduce((sum, i) => sum + i.actual_quantity, 0) +
       actual_satuan_items.reduce((sum, i) => sum + i.actual_quantity, 0);
@@ -162,7 +156,6 @@ export default function WorkerStationPage() {
     }
     setVerificationResult(null);
   };
-
   const handleProceedToBypass = () => {
     if (!verificationResult || verificationResult.type !== "mismatch") return;
     const { orderId, discrepancies, actualItems } = verificationResult;
@@ -173,7 +166,6 @@ export default function WorkerStationPage() {
     setVerificationResult(null);
     setBypassModalOpen(orderId);
   };
-
   const handleBypassSuccess = (orderId: string) => {
     setBypassState((prev) => ({
       ...prev,
@@ -277,7 +269,6 @@ export default function WorkerStationPage() {
           onSuccess={() => handleBypassSuccess(bypassOrder.id)}
         />
       )}
-
       {bypassViewId && (
         <BypassViewModal
           open={true}

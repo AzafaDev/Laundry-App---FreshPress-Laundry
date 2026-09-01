@@ -118,6 +118,7 @@ interface BypassReviewModalProps {
   onClose: () => void;
   onApprove: (pin: string, adminNote: string) => void;
   onReject: (pin: string, adminNote: string) => void;
+  readOnly?: boolean;
 }
 
 export function BypassReviewModal({
@@ -125,6 +126,7 @@ export function BypassReviewModal({
   onClose,
   onApprove,
   onReject,
+  readOnly = false,
 }: BypassReviewModalProps) {
   const [adminNote, setAdminNote] = useState(request.admin_notes ?? "");
   const isFinalAttempt = (request.attempt_number ?? 1) >= 2;
@@ -280,7 +282,7 @@ export function BypassReviewModal({
 
         {/* Footer */}
         <div className="px-5 py-4 border-t border-outline-variant shrink-0">
-          {request.status === "pending" ? (
+          {!readOnly && request.status === "pending" ? (
             <div className="flex gap-3">
               {!isFinalAttempt && (
                 <button

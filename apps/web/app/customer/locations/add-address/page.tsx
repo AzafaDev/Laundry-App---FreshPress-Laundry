@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save, Loader2, AlertCircle, MapPin, Search } from "lucide-react";
+import { ArrowLeft, Save, Loader2, AlertCircle, MapPin, Search, Eraser } from "lucide-react";
 import { z } from "zod";
 import { addressService, type GeocodeResult } from "@/services/address.service";
 import { useAuthStore } from "@/stores/authStore";
@@ -159,6 +159,14 @@ function AddAddressPageInner() {
     setMatches([]);
   };
 
+  const handleClear = () => {
+    setStreet(""); setDetail(""); setProvince(""); setCity(""); setDistrict(""); setPostalCode("");
+    setLabel("Rumah"); setCustomLabel(""); setShowCustomInput(false); setIsPrimary(false);
+    setLat(DEFAULT_LAT); setLng(DEFAULT_LNG); setPinSet(false); setFlyToTrigger((n) => n + 1);
+    setMatches([]); setShowMatches(false); setGeocodeError(null); setSaveError(null);
+    setRegionOpen(false);
+  };
+
   const handleSave = async () => {
     setSaveError(null);
     const finalLabel = label === "custom" ? customLabel.trim() : label;
@@ -246,6 +254,17 @@ function AddAddressPageInner() {
             <input type="text" value={detail} onChange={(e) => setDetail(e.target.value)} placeholder={t("locations.form.detailPlaceholder")} className="w-full px-4 py-4 text-sm text-gray-800 placeholder:text-gray-400 bg-transparent focus:outline-none" />
           </div>
 
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleClear}
+              className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <Eraser className="w-3 h-3" />
+              Kosongkan pencarian
+            </button>
+          </div>
+
           <MapPickerSection lat={lat} lng={lng} flyToTrigger={flyToTrigger} pinSet={pinSet} geocoding={geocoding} geocodeError={geocodeError} onPin={handlePin} />
 
           <AddressLabelSelector label={label} customLabel={customLabel} showCustomInput={showCustomInput} onSelectLabel={(l) => { setLabel(l); setShowCustomInput(false); }} onCustomLabelChange={setCustomLabel} onSelectCustom={() => { setLabel("custom"); setShowCustomInput(true); }} />
@@ -269,7 +288,7 @@ function AddAddressPageInner() {
         </main>
       )}
 
-      <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 px-4 py-3 z-50">
+      <div className="fixed bottom-16 lg:bottom-0 left-0 w-full bg-white border-t border-gray-200 px-4 py-3 z-50">
         <button type="button" onClick={handleSave} disabled={saving} className="w-full h-12 bg-primary text-on-primary rounded-xl text-sm font-bold shadow flex items-center justify-center gap-2 disabled:opacity-60 hover:bg-primary/90 transition-all active:scale-[0.98]">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           {saving ? t("locations.form.saving") : isEditMode ? t("locations.form.saveChanges") : t("locations.form.saveAddress")}

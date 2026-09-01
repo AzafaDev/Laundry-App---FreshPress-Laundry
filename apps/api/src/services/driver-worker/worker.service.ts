@@ -41,7 +41,10 @@ export const workerService = {
     const outletId = await assertShiftEligibility(employeeId);
 
     const orders = await prisma.order.findMany({
-      where: { status: stationType as OrderStatus, outlet_id: outletId },
+      where: { 
+        status: stationType as OrderStatus, 
+        outlet_id: outletId
+      },
       include: {
         customer: true,
         order_items: { include: { laundry_item: true } },
@@ -105,7 +108,7 @@ export const workerService = {
         });
         await notifyOutletEmployees(
           order.outlet_id,
-          ["outlet_admin", "driver"],
+          ["driver"],
           "Pembayaran berhasil",
           `Pesanan ${order.invoice_number} siap untuk diantar.`,
           "payment_completed",
@@ -128,22 +131,21 @@ export const workerService = {
   ) {
     const [outletId, order] = await Promise.all([
       assertShiftEligibility(employeeId),
-      prisma.order.findUnique({ where: { id: orderId }, select: { outlet_id: true, status: true } }),
+      prisma.order.findUnique({ where: { id: orderId }, select: { outlet_id: true, status: true, invoice_number: true } }),
     ]);
 
     if (!order) throw new AppError("Order tidak ditemukan", 404);
     if (order.outlet_id !== outletId) throw new AppError("Order bukan dari outlet Anda", 403);
     if (order.status !== station) throw new AppError(`Order tidak sedang di station ${station}`, 400);
-
     const existing = await prisma.bypassRequest.findFirst({
       where: { order_id: orderId, station: station as StationType, status: "pending" },
     });
     if (existing) throw new AppError("Sudah ada bypass request pending untuk order ini, tunggu review admin", 409);
-
     const previousCount = await prisma.bypassRequest.count({
       where: { order_id: orderId, station: station as StationType, status: { not: "pending" } },
     });
     if (previousCount >= 2) throw new AppError("Bypass request sudah mencapai batas maksimal (2x) untuk station ini", 400);
+    return { outletId, order };
   },
 
   async createBypassRequest(
@@ -155,17 +157,8 @@ export const workerService = {
     actualSatuanItemsRaw: { laundry_item_id: string; actual_quantity: number }[],
     photoUrls: string[],
   ) {
-    const [outletId, order] = await Promise.all([
-      assertShiftEligibility(employeeId),
-      prisma.order.findUnique({ where: { id: orderId }, select: { outlet_id: true, status: true, invoice_number: true } }),
-    ]);
-
-    if (!order) throw new AppError("Order tidak ditemukan", 404);
-    if (order.outlet_id !== outletId) throw new AppError("Order bukan dari outlet Anda", 403);
-    if (order.status !== station) throw new AppError(`Order tidak sedang di station ${station}`, 400);
-
+    const { outletId, order } = await this.validateBypassEligibility(employeeId, station, orderId);
     const { expectedItems, actualItems } = await buildBypassData(orderId, actualItemsRaw, actualSatuanItemsRaw);
-
     const bypass = await prisma.$transaction(async (tx) => {
       const existing = await tx.bypassRequest.findFirst({
         where: { order_id: orderId, station: station as StationType, status: "pending" },
@@ -185,12 +178,11 @@ export const workerService = {
           expected_items: expectedItems,
           actual_items: actualItems,
           discrepancy_description: discrepancyDescription,
-          photo_evidence: photoUrls,
+          photo_evidence: photoUrls,      
           attempt_number: previousCount + 1,
         },
       });
     });
-
     await notifyOutletAdmins(
       outletId,
       "Bypass Request Baru",
@@ -198,14 +190,12 @@ export const workerService = {
       "bypass_request",
       bypass.id,
     );
-
     emitToRoom(`outlet:${outletId}`, "bypass:created", { bypassId: bypass.id, orderId, station, workerId: employeeId });
     emitToUser(employeeId, "bypass:created", { bypassId: bypass.id, status: "pending" });
 
     return bypass;
   },
 
-  // Called by admin bypass controller on approve — skips shift guard
   async completeStationAfterBypass(
     station: "washing" | "ironing" | "packing",
     orderId: string,
@@ -228,7 +218,6 @@ export const workerService = {
       if (payment?.status === "paid") finalStatus = "ready_for_delivery";
     }
 
-    // checkPendingBypass = false karena bypass sudah di-approve, tidak perlu cek ulang
     await runCompleteStationTransaction(orderId, workerId, station, order.status, finalStatus, false, actualItems, bypassRequestId);
 
     if (finalStatus === "ready_for_delivery") {
@@ -245,7 +234,7 @@ export const workerService = {
         });
         await notifyOutletEmployees(
           order.outlet_id,
-          ["outlet_admin", "driver"],
+          ["driver"],
           "Pembayaran berhasil",
           `Pesanan ${order.invoice_number} siap untuk diantar.`,
           "payment_completed",
@@ -267,7 +256,6 @@ export const workerService = {
       include: { clothing_type: true },
     });
   },
-
   async validateActualItems(
     orderId: string,
     actualItems: { clothing_type_id: string; actual_quantity: number }[],
@@ -280,19 +268,17 @@ export const workerService = {
         include: { laundry_item: { select: { id: true, name: true } } },
       }),
     ]);
-
     return compareItems(breakdownItems, satuanOrderItems, actualItems, actualSatuanItems);
   },
 
   async getBypassForOrder(employeeId: string, orderId: string) {
     const outletId = await getEmployeeOutlet(employeeId);
     const order = await prisma.order.findUnique({
-      where: { id: orderId },
+      where: { id: orderId }, 
       select: { outlet_id: true },
     });
     if (!order) throw new AppError("Order tidak ditemukan", 404);
     if (order.outlet_id !== outletId) throw new AppError("Order bukan dari outlet Anda", 403);
-
     return prisma.bypassRequest.findFirst({
       where: { order_id: orderId },
       orderBy: { created_at: "desc" },
@@ -317,6 +303,7 @@ export const workerService = {
     actualItems: { clothing_type_id: string; actual_quantity: number }[],
     actualSatuanItems: { laundry_item_id: string; actual_quantity: number }[] = [],
   ) {
+    await assertShiftEligibility(employeeId);
     const { isMatch, discrepancies } = await this.validateActualItems(orderId, actualItems, actualSatuanItems);
     if (!isMatch) return { success: false as const, requiresBypass: true, discrepancies };
     return this.completeStation(employeeId, station, orderId, actualItems, true);

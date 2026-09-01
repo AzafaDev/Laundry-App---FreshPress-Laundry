@@ -19,7 +19,6 @@ const TABS: { key: HistoryTab; label: string; icon: typeof ClipboardList }[] = [
 export default function DriverHistoryPage() {
   const { _hasHydrated } = useEmployeeAuthStore();
   const [activeTab, setActiveTab] = useState<HistoryTab>("task");
-
   if (!_hasHydrated) {
     return <div className="min-h-screen flex items-center justify-center">Memuat...</div>;
   }
@@ -51,7 +50,6 @@ export default function DriverHistoryPage() {
             </button>
           ))}
         </div>
-
         {activeTab === "task" ? (
           <DriverTaskHistory />
         ) : (

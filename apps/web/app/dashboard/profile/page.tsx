@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from "react";
+import { useState, useEffect, useRef, type ChangeEvent, FormEvent } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   User, Phone, Lock, EyeOff, Eye, Camera,
   Mail, MapPin, Shield, CheckCircle2,
@@ -40,6 +42,8 @@ const employeePasswordSchema = z
     message: "Konfirmasi password tidak cocok.",
     path: ["confirmPassword"],
   });
+
+type PasswordFormData = z.infer<typeof employeePasswordSchema>;
 
 const ROLE_LABEL: Record<EmployeeRole, string> = {
   super_admin: "Super Admin",
@@ -87,15 +91,18 @@ export default function EmployeeProfilePage() {
   const [avatarLoading, setAvatarLoading] = useState(false);
   const [avatarMsg, setAvatarMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const [oldPassword, setOldPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showOld, setShowOld] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const changePasswordMutation = useChangePassword();
+  const {
+    register: registerPassword,
+    handleSubmit: handlePasswordSubmit,
+    reset: resetPasswordForm,
+    formState: { errors: passwordErrors },
+  } = useForm<PasswordFormData>({ resolver: zodResolver(employeePasswordSchema) });
 
   useEffect(() => {
     if (user) {
@@ -143,20 +150,12 @@ export default function EmployeeProfilePage() {
     }
   };
 
-  const handlePasswordSubmit = (e: FormEvent) => {
-    e.preventDefault();
+  const onPasswordSubmit = (data: PasswordFormData) => {
     setPasswordMsg(null);
-
-    const result = employeePasswordSchema.safeParse({ oldPassword, newPassword, confirmPassword });
-    if (!result.success) {
-      setPasswordMsg({ type: "error", text: result.error.issues[0].message });
-      return;
-    }
-
-    changePasswordMutation.mutate({ oldPassword, newPassword }, {
-      onSuccess: (data) => {
-        setPasswordMsg({ type: "success", text: data.message });
-        setOldPassword(""); setNewPassword(""); setConfirmPassword("");
+    changePasswordMutation.mutate({ oldPassword: data.oldPassword, newPassword: data.newPassword }, {
+      onSuccess: (res) => {
+        setPasswordMsg({ type: "success", text: res.message });
+        resetPasswordForm();
       },
       onError: (err: any) => {
         setPasswordMsg({ type: "error", text: err?.response?.data?.message || "Gagal mengganti password." });
@@ -317,33 +316,61 @@ export default function EmployeeProfilePage() {
           </button>
 
           {passwordOpen && (
-            <form onSubmit={handlePasswordSubmit} className="px-5 pb-5 space-y-4 border-t border-gray-50 pt-4">
-              {[
-                { id: "oldPassword", label: "Password Lama", value: oldPassword, setter: setOldPassword, show: showOld, toggle: () => setShowOld((v) => !v) },
-                { id: "newPassword", label: "Password Baru", value: newPassword, setter: setNewPassword, show: showNew, toggle: () => setShowNew((v) => !v), hint: "Min. 8 karakter" },
-                { id: "confirmPassword", label: "Konfirmasi Password Baru", value: confirmPassword, setter: setConfirmPassword, show: showConfirm, toggle: () => setShowConfirm((v) => !v) },
-              ].map(({ id, label, value, setter, show, toggle, hint }) => (
-                <div key={id} className="space-y-1.5">
-                  <label htmlFor={id} className="text-xs font-semibold text-gray-500 block">{label}</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-                    <input
-                      id={id}
-                      type={show ? "text" : "password"}
-                      value={value}
-                      onChange={(e) => setter(e.target.value)}
-                      required
-                      minLength={id !== "oldPassword" ? 8 : 1}
-                      maxLength={id === "newPassword" ? 64 : undefined}
-                      placeholder={hint || "••••••••"}
-                      className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary text-sm placeholder:text-gray-300 transition-colors"
-                    />
-                    <button type="button" onClick={toggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
-                      {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
+            <form onSubmit={handlePasswordSubmit(onPasswordSubmit)} className="px-5 pb-5 space-y-4 border-t border-gray-50 pt-4">
+              <div className="space-y-1.5">
+                <label htmlFor="oldPassword" className="text-xs font-semibold text-gray-500 block">Password Lama</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                  <input
+                    id="oldPassword"
+                    type={showOld ? "text" : "password"}
+                    placeholder="••••••••"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary text-sm placeholder:text-gray-300 transition-colors"
+                    {...registerPassword("oldPassword")}
+                  />
+                  <button type="button" onClick={() => setShowOld((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
+                    {showOld ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
-              ))}
+                {passwordErrors.oldPassword && <p className="text-xs text-red-500">{passwordErrors.oldPassword.message}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="newPassword" className="text-xs font-semibold text-gray-500 block">Password Baru</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                  <input
+                    id="newPassword"
+                    type={showNew ? "text" : "password"}
+                    placeholder="Min. 8 karakter"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary text-sm placeholder:text-gray-300 transition-colors"
+                    {...registerPassword("newPassword")}
+                  />
+                  <button type="button" onClick={() => setShowNew((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
+                    {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {passwordErrors.newPassword && <p className="text-xs text-red-500">{passwordErrors.newPassword.message}</p>}
+              </div>
+
+              <div className="space-y-1.5">
+                <label htmlFor="confirmPassword" className="text-xs font-semibold text-gray-500 block">Konfirmasi Password Baru</label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                  <input
+                    id="confirmPassword"
+                    type={showConfirm ? "text" : "password"}
+                    placeholder="••••••••"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:border-primary text-sm placeholder:text-gray-300 transition-colors"
+                    {...registerPassword("confirmPassword")}
+                  />
+                  <button type="button" onClick={() => setShowConfirm((v) => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
+                    {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {passwordErrors.confirmPassword && <p className="text-xs text-red-500">{passwordErrors.confirmPassword.message}</p>}
+              </div>
+
               <FeedbackMsg msg={passwordMsg} />
               <button
                 type="submit"

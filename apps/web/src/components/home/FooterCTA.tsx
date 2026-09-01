@@ -7,10 +7,9 @@ import { useTranslation } from "@/i18n/useTranslation";
 export const FooterCTA = () => {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
-  const ctaHref = user ? "/customer/pickup" : "/register";
+  const ctaHref = user ? "/customer/pickup" : "/customer/register";
 
   return (
-    <>
     <section className="bg-primary py-20 px-4 md:px-8 text-center">
       <div className="max-w-[48rem] mx-auto">
         <p className="text-white/70 text-sm font-semibold uppercase tracking-widest mb-3">
@@ -29,8 +28,6 @@ export const FooterCTA = () => {
           {t("home.footerCta.cta")}
         </Link>
       </div>
-     </section>
-    </>
-  )
-
+    </section>
+  );
 };

@@ -6,8 +6,8 @@ interface InputProps {
   type: string;
   placeholder: string;
   id?: string;
-  value?: string; // ← tambahan
-  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void; // ← tambahan
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void; 
   rightIcon?: React.ReactNode;
   onRightIconClick?: () => void;
 }

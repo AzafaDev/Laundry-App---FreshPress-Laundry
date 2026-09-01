@@ -16,6 +16,8 @@ import { AuthErrorAlert } from "@/components/employee/AuthErrorAlert";
 import { AuthFormField } from "@/components/employee/AuthFormField";
 import { AuthInput } from "@/components/employee/AuthInput";
 import { AuthSubmitButton } from "@/components/employee/AuthSubmitButton";
+import { DemoAccountPicker } from "@/components/ui/DemoAccountPicker";
+import { EMPLOYEE_ACCOUNT_GROUPS } from "@/lib/demoAccounts";
 
 const loginSchema = z.object({
   email: z.string().email("Format email tidak valid"),
@@ -30,7 +32,7 @@ export default function EmployeeLoginPage() {
   const { user, _hasHydrated } = useEmployeeAuthStore();
   const router = useRouter();
 
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
 
@@ -50,7 +52,16 @@ export default function EmployeeLoginPage() {
     <AuthPageShell>
       <AuthCard>
         <h2 className="text-xl font-bold text-gray-800 mb-1">Selamat datang 👋</h2>
-        <p className="text-sm text-gray-500 mb-6">Masuk untuk melanjutkan ke dashboard.</p>
+        <p className="text-sm text-gray-500 mb-4">Masuk untuk melanjutkan ke dashboard.</p>
+
+        <DemoAccountPicker
+          groups={EMPLOYEE_ACCOUNT_GROUPS}
+          onPick={(email, password) => {
+            setValue("email", email, { shouldValidate: true });
+            setValue("password", password, { shouldValidate: true });
+          }}
+          className="mb-6"
+        />
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {errorMessage && <AuthErrorAlert message={errorMessage} />}

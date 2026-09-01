@@ -55,9 +55,16 @@ export const shiftService = {
     return data.data;
   },
 
-  deactivate: async (id: string): Promise<WorkShift> => {
+  softDelete: async (id: string): Promise<WorkShift> => {
     const { data } = await axiosInstance.delete<Envelope<WorkShift>>(
       `/v1/admin/shifts/${id}`,
+    );
+    return data.data;
+  },
+
+  hardDelete: async (id: string): Promise<{ id: string }> => {
+    const { data } = await axiosInstance.delete<Envelope<{ id: string }>>(
+      `/v1/admin/shifts/${id}/permanent`,
     );
     return data.data;
   },

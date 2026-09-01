@@ -48,8 +48,6 @@ export function initSocketServer(httpServer: HttpServer): IOServer {
       outletId?: string;
     };
 
-    console.log(`[socket] connected: ${user.email} (${user.role})`);
-
     socket.join(`user:${user.userId}`);
 
     socket.join(`role:${user.role}`);
@@ -58,14 +56,10 @@ export function initSocketServer(httpServer: HttpServer): IOServer {
       socket.join(`outlet:${user.outletId}`);
     }
 
-    socket.on("disconnect", (reason) => {
-      console.log(`[socket] disconnected: ${user.email} - ${reason}`);
-    });
   });
 
   return io;
 }
-
 
 export function emitToRoom(room: string, event: string, data: any) {
   if (!io) return;

@@ -13,7 +13,6 @@ export function useDriverSocket() {
 
   useEffect(() => {
     if (!user) return;
-
     const unsubNewPickup = on("order:new-pickup-request", (data: { customerName?: string; invoiceNumber?: string }) => {
       socketToast(
         "Permintaan pickup baru",
@@ -21,7 +20,6 @@ export function useDriverSocket() {
       );
       queryClient.invalidateQueries({ queryKey: ["driver", "tasks", "available-pickups"] });
     });
-
     const unsubPaymentCompleted = on("order:payment-completed", (data: { invoiceNumber?: string }) => {
       socketToast(
         "Pembayaran berhasil",
